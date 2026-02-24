@@ -9,6 +9,7 @@ import express from "express";
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// --- Basic middleware ---
 app.use(express.json());
 
 // --- CORS ---
@@ -43,7 +44,7 @@ function seedZambianData() {
     "Chipata Central"
   ];
   const provinces = ["Lusaka", "Central", "Copperbelt", "Southern", "Eastern"];
-  const lats = [-15.4167, -14.4469, -12.9587, -17.8419, -13.6430];
+  const lats = [-15.4167, -14.4469, -12.9587, -17.8419, -13.643];
   const lons = [28.2833, 28.4464, 28.6366, 25.8544, 32.6464];
 
   clusterNames.forEach((name, i) => {
@@ -90,16 +91,14 @@ function seedZambianData() {
   });
 
   // Seed suppliers
-  ["Jinko Zambia", "Huawei Energy ZM", "Sun King Zambia"].forEach(
-    (name, i) => {
-      const supId = `SUP00${i + 1}`;
-      suppliers.set(supId, {
-        id: supId,
-        name,
-        contact: `contact@${name.toLowerCase().replace(/\s+/g, "")}.zm`
-      });
-    }
-  );
+  ["Jinko Zambia", "Huawei Energy ZM", "Sun King Zambia"].forEach((name, i) => {
+    const supId = `SUP00${i + 1}`;
+    suppliers.set(supId, {
+      id: supId,
+      name,
+      contact: `contact@${name.toLowerCase().replace(/\s+/g, "")}.zm`
+    });
+  });
 
   // Seed products
   [
@@ -133,6 +132,33 @@ function seedZambianData() {
     `✅ Seeded ${clusters.size} clusters, ${users.size} users, ${suppliers.size} suppliers, ${products.size} products`
   );
 }
+
+// --- Root & health ---
+app.get("/", (req, res) => {
+  res.json({
+    status: "OK",
+    message: "Enerlectra MVP backend is running",
+    healthEndpoint: "/api/v1/health"
+  });
+});
+
+app.get(
+  "/api/v1/health",
+  asyncHandler(async (req, res) => {
+    res.json({
+      status: "OK",
+      features: [
+        "Cluster",
+        "Wallet",
+        "Ledger",
+        "Contributions",
+        "Marketplace",
+        "Map"
+      ],
+      stats: { users: users.size, clusters: clusters.size }
+    });
+  })
+);
 
 // --- Real endpoints ---
 app.get(
@@ -409,25 +435,6 @@ app.get(
   })
 );
 
-// --- HEALTH CHECK ---
-app.get(
-  "/api/v1/health",
-  asyncHandler(async (req, res) => {
-    res.json({
-      status: "OK",
-      features: [
-        "Cluster",
-        "Wallet",
-        "Ledger",
-        "Contributions",
-        "Marketplace",
-        "Map"
-      ],
-      stats: { users: users.size, clusters: clusters.size }
-    });
-  })
-);
-
 // --- STUBBED ENDPOINTS (frontend expects) ---
 const stub = async data =>
   new Promise(resolve => setTimeout(() => resolve({ data }), 60));
@@ -514,10 +521,10 @@ app.post(
 
 // --- Global error handler ---
 app.use((err, req, res, next) => {
-  console.error("[ERROR]", err.message || err);
+  console.error("[ERROR]", err && err.stack ? err.stack : err);
   res
     .status(500)
-    .json({ status: "error", message: err.message || "Internal Server Error" });
+    .json({ status: "error", message: err?.message || "Internal Server Error" });
 });
 
 // --- Start server ---
@@ -527,9 +534,10 @@ const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`⚡ ENERLECTRA MVP RUNNING ON PORT ${PORT}`);
   console.log("=".repeat(60));
   console.log("📊 TEST ENDPOINTS:");
-  console.log("  GET  http://localhost:3000/api/v1/health");
-  console.log("  GET  http://localhost:3000/api/v1/clusters");
-  console.log("  GET  http://localhost:3000/api/v1/map");
+  console.log(`  GET  http://localhost:${PORT}/`);
+  console.log(`  GET  http://localhost:${PORT}/api/v1/health`);
+  console.log(`  GET  http://localhost:${PORT}/api/v1/clusters`);
+  console.log(`  GET  http://localhost:${PORT}/api/v1/map`);
   console.log("=".repeat(60));
 });
 

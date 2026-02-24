@@ -9,12 +9,12 @@
     "dev": "nodemon server.js",
     "dev:core": "ts-node --esm ./enerlectra-core/src/server.ts",
     "dev:server": "tsx ./server/index.ts",
-    "db:migrate": "psql %DATABASE_URL% -f enerlectra-core/src/persistence/schema/001_marketplace_schema.sql",
-    "db:seed": "psql %DATABASE_URL% -f enerlectra-core/src/persistence/schema/003_seed_data.sql",
+    "db:migrate": "psql \"$DATABASE_URL\" -f enerlectra-core/src/persistence/schema/001_marketplace_schema.sql",
+    "db:seed": "psql \"$DATABASE_URL\" -f enerlectra-core/src/persistence/schema/003_seed_data.sql",
     "test": "jest",
     "test:security": "node src/security/securityTest.ts",
     "test:api": "node test/api-tests.js",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint \"src/**/*.ts\"",
     "clean": "rm -rf dist"
   },
   "dependencies": {
