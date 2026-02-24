@@ -1,9 +1,12 @@
-import { generateId } from '../utils/id'
-import { Cluster } from '../types/cluster'
+import { storeFile } from '../engines/storePath.ts'
+import { generateId } from '../utils/id.ts'
+import { Cluster } from '../types/cluster.ts'
 import * as fs from 'fs/promises'
 import * as path from 'path'
 
-const clustersFile = path.join(process.cwd(), 'store', 'clusters.json')
+// Path where clusters will be stored
+const clustersFile = storeFile('clusters.json')
+
 let clusters: Cluster[] = []
 
 async function loadClusters() {
@@ -21,7 +24,7 @@ async function saveClusters() {
   await fs.writeFile(clustersFile, JSON.stringify(clusters, null, 2))
 }
 
-// Initialize synchronously on first use
+// Initialize on first use
 let initialized = false
 async function ensureInitialized() {
   if (!initialized) {
@@ -30,7 +33,9 @@ async function ensureInitialized() {
   }
 }
 
-export async function createCluster(data: Omit<Cluster, 'clusterId' | 'status' | 'createdAt'>): Promise<Cluster> {
+export async function createCluster(
+  data: Omit<Cluster, 'clusterId' | 'status' | 'createdAt'>
+): Promise<Cluster> {
   await ensureInitialized()
   const cluster: Cluster = {
     clusterId: generateId('clu'),
@@ -57,11 +62,14 @@ export async function deleteCluster(id: string): Promise<boolean> {
   return true
 }
 
-export async function updateCluster(id: string, updates: Partial<Cluster>): Promise<Cluster | null> {
+export async function updateCluster(
+  id: string,
+  updates: Partial<Cluster>
+): Promise<Cluster | null> {
   await ensureInitialized()
   const cluster = clusters.find(c => c.clusterId === id)
   if (!cluster) return null
-  
+
   Object.assign(cluster, updates, { updatedAt: new Date().toISOString() })
   await saveClusters()
   return cluster

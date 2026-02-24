@@ -1,0 +1,191 @@
+[
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 1000,
+      "effectiveUnitsTotal": 1000,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-01T01:23:57.150Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "version": 2,
+      "contributors": 1,
+      "baseUnits": 1000,
+      "effectiveUnits": 1000
+    },
+    "timestamp": "2026-01-01T01:23:57.161Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 2000,
+      "effectiveUnitsTotal": 2000,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-01T01:45:56.587Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_mtaQS4Wb",
+      "version": 2,
+      "contributors": 2,
+      "baseUnits": 2000,
+      "effectiveUnits": 2000
+    },
+    "timestamp": "2026-01-01T01:45:56.595Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 2000,
+      "effectiveUnitsTotal": 2000,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-01T01:46:39.993Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_3c9mHKvw",
+      "version": 2,
+      "contributors": 1,
+      "baseUnits": 2000,
+      "effectiveUnits": 2000
+    },
+    "timestamp": "2026-01-01T01:46:40.003Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:03:55.949Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_mtaQS4Wb",
+      "totalKwh": 1000,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-01T02:04:43.579Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_3c9mHKvw",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:05:06.215Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_mtaQS4Wb",
+      "distributionId": "dist_3wpYJwEi",
+      "totalKwh": 1000,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-01T02:08:55.556Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "distributionId": "dist_RLoygJDY",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:19:39.815Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_3c9mHKvw",
+      "distributionId": "dist_bwCvkC-Y",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:20:42.477Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "distributionId": "dist_bah6XGmj",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:26:27.999Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_wy3Wrodr",
+      "distributionId": "dist_t3R5_MTV",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-02T23:31:38.495Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_Duhe9l9L",
+      "distributionId": "dist_jS3syETZ",
+      "totalKwh": 1000,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-02T23:31:39.262Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_HkhLVcLY",
+      "distributionId": "dist_B_HuyhFj",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-02T23:31:39.971Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_3wpYJwEi",
+      "rateZMWPerKwh": 2.5,
+      "count": 2
+    },
+    "timestamp": "2026-01-03T04:44:47.486Z"
+  }
+]

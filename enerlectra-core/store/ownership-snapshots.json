@@ -1,0 +1,985 @@
+{
+  "passive-complex": [
+    {
+      "clusterId": "passive-complex",
+      "baseOwnership": [
+        {
+          "userId": "user-1",
+          "units": 1000,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user-1",
+          "units": 1000,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 1000,
+        "totalEffectiveUnits": 1000
+      },
+      "snapshotId": "snap_wy3Wrodr",
+      "version": 1,
+      "generatedAt": "2026-01-01T01:23:57.156Z",
+      "finalized": true,
+      "finalizedAt": "2026-01-02T23:31:38.491Z"
+    },
+    {
+      "clusterId": "passive-complex",
+      "baseOwnership": [
+        {
+          "userId": "user-1",
+          "units": 1000,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user-1",
+          "units": 1000,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 1000,
+        "totalEffectiveUnits": 1000
+      },
+      "snapshotId": "snap_LN4EhlNj",
+      "version": 2,
+      "generatedAt": "2026-01-01T01:23:57.159Z",
+      "finalized": true
+    }
+  ],
+  "clu_rct5pbmy": [
+    {
+      "clusterId": "clu_rct5pbmy",
+      "baseOwnership": [
+        {
+          "userId": "user-1",
+          "units": 500,
+          "pct": 25
+        },
+        {
+          "userId": "user-2",
+          "units": 1500,
+          "pct": 75
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user-1",
+          "units": 500,
+          "pct": 25
+        },
+        {
+          "userId": "user-2",
+          "units": 1500,
+          "pct": 75
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 2000,
+        "totalEffectiveUnits": 2000
+      },
+      "snapshotId": "snap_Duhe9l9L",
+      "version": 1,
+      "generatedAt": "2026-01-01T01:45:56.590Z",
+      "finalized": false
+    },
+    {
+      "clusterId": "clu_rct5pbmy",
+      "baseOwnership": [
+        {
+          "userId": "user-1",
+          "units": 500,
+          "pct": 25
+        },
+        {
+          "userId": "user-2",
+          "units": 1500,
+          "pct": 75
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user-1",
+          "units": 500,
+          "pct": 25
+        },
+        {
+          "userId": "user-2",
+          "units": 1500,
+          "pct": 75
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 2000,
+        "totalEffectiveUnits": 2000
+      },
+      "snapshotId": "snap_mtaQS4Wb",
+      "version": 2,
+      "generatedAt": "2026-01-01T01:45:56.593Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 250,
+        "totalEffectiveUnits": 250
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 250,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 250,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_BaOIy0fp",
+      "clusterId": "clu_rct5pbmy",
+      "version": 3,
+      "generatedAt": "2026-01-25T18:09:10.055Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 300,
+        "totalEffectiveUnits": 300
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 300,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 300,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_iCtqwBst",
+      "clusterId": "clu_rct5pbmy",
+      "version": 4,
+      "generatedAt": "2026-01-25T18:09:17.834Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_JjCntQtH",
+      "clusterId": "clu_rct5pbmy",
+      "version": 5,
+      "generatedAt": "2026-01-25T18:26:43.435Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_ZrpOk3of",
+      "clusterId": "clu_rct5pbmy",
+      "version": 6,
+      "generatedAt": "2026-01-25T18:38:09.631Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_BQZljNUS",
+      "clusterId": "clu_rct5pbmy",
+      "version": 7,
+      "generatedAt": "2026-01-25T18:38:09.635Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_gORx-CRI",
+      "clusterId": "clu_rct5pbmy",
+      "version": 8,
+      "generatedAt": "2026-01-25T21:00:14.172Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_yR07lmFX",
+      "clusterId": "clu_rct5pbmy",
+      "version": 9,
+      "generatedAt": "2026-01-25T21:00:14.231Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_4sbs2805",
+      "clusterId": "clu_rct5pbmy",
+      "version": 10,
+      "generatedAt": "2026-01-25T21:06:15.770Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_Vt7d_Eoa",
+      "clusterId": "clu_rct5pbmy",
+      "version": 11,
+      "generatedAt": "2026-01-25T21:06:15.783Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_puvIA8v4",
+      "clusterId": "clu_rct5pbmy",
+      "version": 12,
+      "generatedAt": "2026-01-25T23:01:34.589Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_U_IoJx-q",
+      "clusterId": "clu_rct5pbmy",
+      "version": 13,
+      "generatedAt": "2026-01-25T23:01:34.594Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_kZ6rNoTA",
+      "clusterId": "clu_rct5pbmy",
+      "version": 14,
+      "generatedAt": "2026-01-26T19:11:13.688Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_moR-1kIP",
+      "clusterId": "clu_rct5pbmy",
+      "version": 15,
+      "generatedAt": "2026-01-26T19:11:13.695Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_xoudG0sg",
+      "clusterId": "clu_rct5pbmy",
+      "version": 16,
+      "generatedAt": "2026-01-26T20:30:01.235Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_uvxi8Nul",
+      "clusterId": "clu_rct5pbmy",
+      "version": 17,
+      "generatedAt": "2026-01-26T20:30:01.241Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_Z_pck4xN",
+      "clusterId": "clu_rct5pbmy",
+      "version": 18,
+      "generatedAt": "2026-01-26T21:20:42.225Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 350,
+        "totalEffectiveUnits": 350
+      },
+      "snapshotId": "snap_pDJhxqEx",
+      "clusterId": "clu_rct5pbmy",
+      "version": 19,
+      "generatedAt": "2026-01-26T21:20:42.230Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 450,
+        "totalEffectiveUnits": 450
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 77.78
+        },
+        {
+          "userId": "test_user",
+          "units": 100,
+          "pct": 22.22
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 77.78
+        },
+        {
+          "userId": "test_user",
+          "units": 100,
+          "pct": 22.22
+        }
+      ],
+      "snapshotId": "snap_tBlbSU3X",
+      "clusterId": "clu_rct5pbmy",
+      "version": 20,
+      "generatedAt": "2026-01-29T11:32:45.805Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 550,
+        "totalEffectiveUnits": 550
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 63.64
+        },
+        {
+          "userId": "test_user",
+          "units": 200,
+          "pct": 36.36
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 63.64
+        },
+        {
+          "userId": "test_user",
+          "units": 200,
+          "pct": 36.36
+        }
+      ],
+      "snapshotId": "snap_SNE_vJYN",
+      "clusterId": "clu_rct5pbmy",
+      "version": 21,
+      "generatedAt": "2026-01-29T11:59:16.221Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 550,
+        "totalEffectiveUnits": 550
+      },
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 63.64
+        },
+        {
+          "userId": "test_user",
+          "units": 200,
+          "pct": 36.36
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 63.64
+        },
+        {
+          "userId": "test_user",
+          "units": 200,
+          "pct": 36.36
+        }
+      ],
+      "snapshotId": "snap_09d49TJ7",
+      "clusterId": "clu_rct5pbmy",
+      "version": 22,
+      "generatedAt": "2026-01-29T12:41:44.659Z",
+      "finalized": false
+    },
+    {
+      "baseOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 63.64
+        },
+        {
+          "userId": "test_user",
+          "units": 200,
+          "pct": 36.36
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user_1",
+          "units": 350,
+          "pct": 63.64
+        },
+        {
+          "userId": "test_user",
+          "units": 200,
+          "pct": 36.36
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 550,
+        "totalEffectiveUnits": 550
+      },
+      "snapshotId": "snap_aqGhZwEv",
+      "clusterId": "clu_rct5pbmy",
+      "version": 23,
+      "generatedAt": "2026-01-29T12:41:44.827Z",
+      "finalized": true,
+      "finalizedAt": "2026-01-29T12:47:01.087Z"
+    }
+  ],
+  "clu_ghkjb95x": [
+    {
+      "clusterId": "clu_ghkjb95x",
+      "baseOwnership": [
+        {
+          "userId": "user-3",
+          "units": 2000,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user-3",
+          "units": 2000,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 2000,
+        "totalEffectiveUnits": 2000
+      },
+      "snapshotId": "snap_HkhLVcLY",
+      "version": 1,
+      "generatedAt": "2026-01-01T01:46:39.997Z",
+      "finalized": true,
+      "finalizedAt": "2026-01-02T23:31:39.967Z"
+    },
+    {
+      "clusterId": "clu_ghkjb95x",
+      "baseOwnership": [
+        {
+          "userId": "user-3",
+          "units": 2000,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "user-3",
+          "units": 2000,
+          "pct": 100
+        }
+      ],
+      "totals": {
+        "totalBaseUnits": 2000,
+        "totalEffectiveUnits": 2000
+      },
+      "snapshotId": "snap_3c9mHKvw",
+      "version": 2,
+      "generatedAt": "2026-01-01T01:46:40.001Z",
+      "finalized": true
+    }
+  ],
+  "clu_73x96b83": [
+    {
+      "totals": {
+        "totalBaseUnits": 100,
+        "totalEffectiveUnits": 100
+      },
+      "baseOwnership": [
+        {
+          "userId": "Samuel",
+          "units": 100,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Samuel",
+          "units": 100,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_uKv_Wxqm",
+      "clusterId": "clu_73x96b83",
+      "version": 1,
+      "generatedAt": "2026-01-31T15:55:40.470Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 200,
+        "totalEffectiveUnits": 200
+      },
+      "baseOwnership": [
+        {
+          "userId": "Samuel",
+          "units": 100,
+          "pct": 50
+        },
+        {
+          "userId": "Toliver",
+          "units": 100,
+          "pct": 50
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Samuel",
+          "units": 100,
+          "pct": 50
+        },
+        {
+          "userId": "Toliver",
+          "units": 100,
+          "pct": 50
+        }
+      ],
+      "snapshotId": "snap_U2HYJ-mr",
+      "clusterId": "clu_73x96b83",
+      "version": 2,
+      "generatedAt": "2026-02-02T05:18:55.097Z",
+      "finalized": false
+    }
+  ],
+  "clu_l8nydwpo": [
+    {
+      "totals": {
+        "totalBaseUnits": 100,
+        "totalEffectiveUnits": 100
+      },
+      "baseOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 100
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 100
+        }
+      ],
+      "snapshotId": "snap_la_Lb8MI",
+      "clusterId": "clu_l8nydwpo",
+      "version": 1,
+      "generatedAt": "2026-02-01T18:02:44.416Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 110,
+        "totalEffectiveUnits": 110
+      },
+      "baseOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 90.91
+        },
+        {
+          "userId": "Samuel",
+          "units": 10,
+          "pct": 9.09
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 90.91
+        },
+        {
+          "userId": "Samuel",
+          "units": 10,
+          "pct": 9.09
+        }
+      ],
+      "snapshotId": "snap_AvOPL9SY",
+      "clusterId": "clu_l8nydwpo",
+      "version": 2,
+      "generatedAt": "2026-02-01T18:04:09.109Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 120,
+        "totalEffectiveUnits": 120
+      },
+      "baseOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 83.33
+        },
+        {
+          "userId": "Samuel",
+          "units": 20,
+          "pct": 16.67
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 83.33
+        },
+        {
+          "userId": "Samuel",
+          "units": 20,
+          "pct": 16.67
+        }
+      ],
+      "snapshotId": "snap_PVQK7ML1",
+      "clusterId": "clu_l8nydwpo",
+      "version": 3,
+      "generatedAt": "2026-02-01T19:16:27.428Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 220,
+        "totalEffectiveUnits": 220
+      },
+      "baseOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 45.45
+        },
+        {
+          "userId": "Samuel",
+          "units": 120,
+          "pct": 54.55
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 45.45
+        },
+        {
+          "userId": "Samuel",
+          "units": 120,
+          "pct": 54.55
+        }
+      ],
+      "snapshotId": "snap__EPt1xG8",
+      "clusterId": "clu_l8nydwpo",
+      "version": 4,
+      "generatedAt": "2026-02-01T19:17:09.293Z",
+      "finalized": false
+    },
+    {
+      "totals": {
+        "totalBaseUnits": 320,
+        "totalEffectiveUnits": 320
+      },
+      "baseOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 31.25
+        },
+        {
+          "userId": "Samuel",
+          "units": 120,
+          "pct": 37.5
+        },
+        {
+          "userId": "Sau Paulo",
+          "units": 100,
+          "pct": 31.25
+        }
+      ],
+      "effectiveOwnership": [
+        {
+          "userId": "Catherine",
+          "units": 100,
+          "pct": 31.25
+        },
+        {
+          "userId": "Samuel",
+          "units": 120,
+          "pct": 37.5
+        },
+        {
+          "userId": "Sau Paulo",
+          "units": 100,
+          "pct": 31.25
+        }
+      ],
+      "snapshotId": "snap_VsoKVwes",
+      "clusterId": "clu_l8nydwpo",
+      "version": 5,
+      "generatedAt": "2026-02-01T19:18:36.934Z",
+      "finalized": false
+    }
+  ]
+}

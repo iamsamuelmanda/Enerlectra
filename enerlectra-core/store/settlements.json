@@ -1,0 +1,26 @@
+[
+  {
+    "settlementId": "set_jJjXUuxd",
+    "distributionId": "dist_3wpYJwEi",
+    "clusterId": "clu_rct5pbmy",
+    "userId": "user-1",
+    "allocatedKwh": 250,
+    "rateZMWPerKwh": 2.5,
+    "amountZMW": 625,
+    "currency": "ZMW",
+    "status": "pending",
+    "generatedAt": "2026-01-03T04:44:47.475Z"
+  },
+  {
+    "settlementId": "set_bSnxFpMh",
+    "distributionId": "dist_3wpYJwEi",
+    "clusterId": "clu_rct5pbmy",
+    "userId": "user-2",
+    "allocatedKwh": 750,
+    "rateZMWPerKwh": 2.5,
+    "amountZMW": 1875,
+    "currency": "ZMW",
+    "status": "pending",
+    "generatedAt": "2026-01-03T04:44:47.475Z"
+  }
+]

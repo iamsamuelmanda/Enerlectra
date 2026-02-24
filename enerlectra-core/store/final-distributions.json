@@ -1,0 +1,100 @@
+[
+  {
+    "distributionId": "dist_bah6XGmj",
+    "finalizedAt": "2026-01-01T02:26:27.000Z",
+    "clusterId": "passive-complex",
+    "snapshotId": "snap_LN4EhlNj",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user-1",
+        "ownershipPct": 100,
+        "allocatedKwh": 1000
+      }
+    ]
+  },
+  {
+    "distributionId": "dist_3wpYJwEi",
+    "finalizedAt": "2026-01-01T02:08:55.555Z",
+    "clusterId": "clu_rct5pbmy",
+    "snapshotId": "snap_mtaQS4Wb",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user-1",
+        "ownershipPct": 25,
+        "allocatedKwh": 250
+      },
+      {
+        "userId": "user-2",
+        "ownershipPct": 75,
+        "allocatedKwh": 750
+      }
+    ]
+  },
+  {
+    "distributionId": "dist_bwCvkC-Y",
+    "finalizedAt": "2026-01-01T02:20:42.000Z",
+    "clusterId": "clu_ghkjb95x",
+    "snapshotId": "snap_3c9mHKvw",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user-3",
+        "ownershipPct": 100,
+        "allocatedKwh": 1000
+      }
+    ]
+  },
+  {
+    "distributionId": "dist_t3R5_MTV",
+    "finalizedAt": "2026-01-02T23:31:38.486Z",
+    "clusterId": "passive-complex",
+    "snapshotId": "snap_wy3Wrodr",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user-1"
+      }
+    ]
+  },
+  {
+    "distributionId": "dist_jS3syETZ",
+    "finalizedAt": "2026-01-02T23:31:39.257Z",
+    "clusterId": "clu_rct5pbmy",
+    "snapshotId": "snap_Duhe9l9L",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user-1"
+      },
+      {
+        "userId": "user-2"
+      }
+    ]
+  },
+  {
+    "distributionId": "dist_B_HuyhFj",
+    "finalizedAt": "2026-01-02T23:31:39.963Z",
+    "clusterId": "clu_ghkjb95x",
+    "snapshotId": "snap_HkhLVcLY",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user-3"
+      }
+    ]
+  },
+  {
+    "distributionId": "dist_pZ9DJgB5",
+    "finalizedAt": "2026-01-25T21:18:10.332Z",
+    "clusterId": "clu_rct5pbmy",
+    "snapshotId": "snap_Vt7d_Eoa",
+    "totalKwh": 1000,
+    "allocations": [
+      {
+        "userId": "user_1"
+      }
+    ]
+  }
+]

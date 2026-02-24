@@ -3,14 +3,21 @@
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+
     "outDir": "./dist",
-    "rootDir": "./src",
+
+    "rootDirs": [
+      "./src",
+      "./server",
+      "./enerlectra-core/src"
+    ],
+
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": true,
+    "declaration": false,
     "sourceMap": true,
     "noImplicitAny": true,
     "noImplicitReturns": true,
@@ -21,14 +28,24 @@
       "./src/types"
     ]
   },
+
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "server/**/*.ts",
+    "enerlectra-core/src/**/*.ts",
+    "**/*.ts",
+    "types/**/*.d.ts"
   ],
+
   "exclude": [
     "node_modules",
     "dist",
     "test",
     "**/*.test.ts",
     "**/*.spec.ts"
-  ]
+  ],
+
+  "ts-node": {
+    "esm": true
+  }
 }

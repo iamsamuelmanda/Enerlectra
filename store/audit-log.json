@@ -1,0 +1,705 @@
+[
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 1000,
+      "effectiveUnitsTotal": 1000,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-01T01:23:57.150Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "version": 2,
+      "contributors": 1,
+      "baseUnits": 1000,
+      "effectiveUnits": 1000
+    },
+    "timestamp": "2026-01-01T01:23:57.161Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 2000,
+      "effectiveUnitsTotal": 2000,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-01T01:45:56.587Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_mtaQS4Wb",
+      "version": 2,
+      "contributors": 2,
+      "baseUnits": 2000,
+      "effectiveUnits": 2000
+    },
+    "timestamp": "2026-01-01T01:45:56.595Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 2000,
+      "effectiveUnitsTotal": 2000,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-01T01:46:39.993Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_3c9mHKvw",
+      "version": 2,
+      "contributors": 1,
+      "baseUnits": 2000,
+      "effectiveUnits": 2000
+    },
+    "timestamp": "2026-01-01T01:46:40.003Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:03:55.949Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_mtaQS4Wb",
+      "totalKwh": 1000,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-01T02:04:43.579Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_3c9mHKvw",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:05:06.215Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_mtaQS4Wb",
+      "distributionId": "dist_3wpYJwEi",
+      "totalKwh": 1000,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-01T02:08:55.556Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "distributionId": "dist_RLoygJDY",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:19:39.815Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_3c9mHKvw",
+      "distributionId": "dist_bwCvkC-Y",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:20:42.477Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_LN4EhlNj",
+      "distributionId": "dist_bah6XGmj",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-01T02:26:27.999Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "passive-complex",
+    "payload": {
+      "snapshotId": "snap_wy3Wrodr",
+      "distributionId": "dist_t3R5_MTV",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-02T23:31:38.495Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_Duhe9l9L",
+      "distributionId": "dist_jS3syETZ",
+      "totalKwh": 1000,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-02T23:31:39.262Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "snapshotId": "snap_HkhLVcLY",
+      "distributionId": "dist_B_HuyhFj",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-02T23:31:39.971Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_3wpYJwEi",
+      "rateZMWPerKwh": 2.5,
+      "count": 2
+    },
+    "timestamp": "2026-01-03T04:44:47.486Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 150,
+      "effectiveUnitsTotal": 150,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T17:49:58.164Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 200,
+      "effectiveUnitsTotal": 200,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T17:51:59.023Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 250,
+      "effectiveUnitsTotal": 250,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T18:09:10.021Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 300,
+      "effectiveUnitsTotal": 300,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T18:09:17.832Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T18:26:43.434Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T18:38:09.628Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_BQZljNUS",
+      "version": 7,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-25T18:38:09.638Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T21:00:14.135Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_yR07lmFX",
+      "version": 9,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-25T21:00:14.236Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T21:06:15.762Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_Vt7d_Eoa",
+      "version": 11,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-25T21:06:15.793Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_Vt7d_Eoa",
+      "totalKwh": 1000,
+      "recipients": 1,
+      "distributionId": "dist_pZ9DJgB5"
+    },
+    "timestamp": "2026-01-25T21:18:10.337Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-25T23:01:34.489Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_U_IoJx-q",
+      "version": 13,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-25T23:01:34.615Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_U_IoJx-q",
+      "distributionId": "dist_gcobk0xr",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-25T23:10:20.385Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_gcobk0xr",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T00:00:37.055Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_gcobk0xr",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T00:28:43.147Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_gcobk0xr",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T00:29:12.311Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_gcobk0xr",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T00:41:08.758Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-26T19:11:12.797Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_moR-1kIP",
+      "version": 15,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-26T19:11:13.699Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_moR-1kIP",
+      "distributionId": "dist_yolckdyc",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-26T19:12:07.982Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_yolckdyc",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T19:13:09.973Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-26T20:30:01.113Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_uvxi8Nul",
+      "version": 17,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-26T20:30:01.244Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_yolckdyc",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T20:31:33.352Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 350,
+      "effectiveUnitsTotal": 350,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-26T21:20:42.219Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_pDJhxqEx",
+      "version": 19,
+      "contributors": 1,
+      "baseUnits": 350,
+      "effectiveUnits": 350
+    },
+    "timestamp": "2026-01-26T21:20:42.234Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_pDJhxqEx",
+      "distributionId": "dist_4wikg9wg",
+      "totalKwh": 1000,
+      "recipients": 1
+    },
+    "timestamp": "2026-01-26T21:21:44.264Z"
+  },
+  {
+    "eventType": "SETTLEMENT_GENERATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "distributionId": "dist_4wikg9wg",
+      "rateZMWPerKwh": 2.5,
+      "supersedesSettlementId": null,
+      "count": 1
+    },
+    "timestamp": "2026-01-26T21:22:28.677Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 450,
+      "effectiveUnitsTotal": 450,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-29T11:32:45.196Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 550,
+      "effectiveUnitsTotal": 550,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-29T11:59:16.111Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 550,
+      "effectiveUnitsTotal": 550,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-29T12:41:44.399Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_aqGhZwEv",
+      "version": 23,
+      "contributors": 2,
+      "baseUnits": 550,
+      "effectiveUnits": 550
+    },
+    "timestamp": "2026-01-29T12:41:44.831Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_SIMULATED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_aqGhZwEv",
+      "totalKwh": 2250,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-29T12:45:36.667Z"
+  },
+  {
+    "eventType": "DISTRIBUTION_FINALIZED",
+    "clusterId": "clu_rct5pbmy",
+    "payload": {
+      "snapshotId": "snap_aqGhZwEv",
+      "distributionId": "dist_dvlam91i",
+      "totalKwh": 2250,
+      "recipients": 2
+    },
+    "timestamp": "2026-01-29T12:47:01.125Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_ghkjb95x",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 200,
+      "effectiveUnitsTotal": 200,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-31T15:51:01.859Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_73x96b83",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 100,
+      "effectiveUnitsTotal": 100,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-01-31T15:55:40.462Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_l8nydwpo",
+    "payload": {
+      "contributors": 1,
+      "baseUnitsTotal": 100,
+      "effectiveUnitsTotal": 100,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-02-01T18:02:44.339Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_l8nydwpo",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 110,
+      "effectiveUnitsTotal": 110,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-02-01T18:04:09.105Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_l8nydwpo",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 120,
+      "effectiveUnitsTotal": 120,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-02-01T19:16:25.450Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_l8nydwpo",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 220,
+      "effectiveUnitsTotal": 220,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-02-01T19:17:09.255Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_l8nydwpo",
+    "payload": {
+      "contributors": 3,
+      "baseUnitsTotal": 320,
+      "effectiveUnitsTotal": 320,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-02-01T19:18:36.929Z"
+  },
+  {
+    "eventType": "OWNERSHIP_SNAPSHOT_COMPUTED",
+    "clusterId": "clu_73x96b83",
+    "payload": {
+      "contributors": 2,
+      "baseUnitsTotal": 200,
+      "effectiveUnitsTotal": 200,
+      "confidenceMultiplier": 1,
+      "campaignMultiplier": 1
+    },
+    "timestamp": "2026-02-02T05:18:54.803Z"
+  }
+]

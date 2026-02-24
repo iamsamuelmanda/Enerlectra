@@ -6,12 +6,13 @@
   "scripts": {
     "dev": "ts-node src/server.ts",
     "seed:kabwe": "node scripts/seed-kabwe.js",
+    "start": "node dist/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.2.1",
