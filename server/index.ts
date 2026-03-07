@@ -1,7 +1,6 @@
 /**
- * ENERLECTRA PRODUCTION BACKEND
- * Combines MVP functionality with production payment infrastructure
- * Single file - no missing dependencies
+ * ENERLECTRA PRODUCTION BACKEND v2.1
+ * Fixed: Live exchange rate API integration
  */
 
 import 'dotenv/config';
@@ -17,7 +16,6 @@ const PORT = process.env.PORT || 4000;
 // INITIALIZE SERVICES
 // ═══════════════════════════════════════════════════════════
 
-// Supabase client (optional - gracefully degrades if not configured)
 let supabase: any = null;
 if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
   try {
@@ -31,17 +29,53 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
   }
 }
 
-// Exchange rate API helper
-async function getExchangeRate(from: string = 'USD', to: string = 'ZMW'): Promise<number> {
+// ═══════════════════════════════════════════════════════════
+// EXCHANGE RATE HELPER (FIXED VERSION)
+// ═══════════════════════════════════════════════════════════
+
+async function getExchangeRate(from: string = 'USD', to: string = 'ZMW'): Promise<{ rate: number; live: boolean; error?: string }> {
+  const FALLBACK_RATE = 27.5;
+  const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
+
+  if (!API_KEY) {
+    console.log('⚠️ EXCHANGE_RATE_API_KEY not configured, using fallback');
+    return { rate: FALLBACK_RATE, live: false, error: 'API key not configured' };
+  }
+
   try {
-    const API_KEY = process.env.EXCHANGE_RATE_API_KEY || '2215840235f970b11aa718d2';
+    console.log(`[EXCHANGE RATE] Fetching ${from}/${to} from API...`);
     const axios = (await import('axios')).default;
-    const response = await axios.get(
-      `https://v6.exchangerate-api.com/v6/${API_KEY}/latest/${from}`
-    );
-    return response.data.conversion_rates[to] || 27.5;
-  } catch (error) {
-    return 27.5; // Fallback
+    
+    const url = `https://v6.exchangerate-api.com/v6/${API_KEY}/latest/${from}`;
+    console.log(`[EXCHANGE RATE] URL: ${url}`);
+    
+    const response = await axios.get(url, { timeout: 5000 });
+    
+    console.log(`[EXCHANGE RATE] API Response status: ${response.status}`);
+    console.log(`[EXCHANGE RATE] API Result: ${response.data.result}`);
+
+    if (response.data.result !== 'success') {
+      console.error('[EXCHANGE RATE] API returned error:', response.data);
+      return { rate: FALLBACK_RATE, live: false, error: response.data['error-type'] || 'API error' };
+    }
+
+    const rate = response.data.conversion_rates[to];
+    
+    if (!rate) {
+      console.error(`[EXCHANGE RATE] Currency ${to} not found in response`);
+      return { rate: FALLBACK_RATE, live: false, error: `Currency ${to} not found` };
+    }
+
+    console.log(`✅ [EXCHANGE RATE] Live rate fetched: ${rate}`);
+    return { rate, live: true };
+
+  } catch (error: any) {
+    console.error('[EXCHANGE RATE ERROR]', error.message);
+    return { 
+      rate: FALLBACK_RATE, 
+      live: false, 
+      error: error.message || 'Unknown error' 
+    };
   }
 }
 
@@ -52,7 +86,6 @@ async function getExchangeRate(from: string = 'USD', to: string = 'ZMW'): Promis
 app.use(cors());
 app.use(express.json());
 
-// Request logging
 app.use((req, res, next) => {
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] ${req.method} ${req.path}`);
@@ -67,7 +100,7 @@ app.get('/', (req, res) => {
   res.json({
     status: 'OK',
     message: 'Enerlectra Production Backend',
-    version: '2.0.0',
+    version: '2.1.0',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/api/health',
@@ -112,27 +145,34 @@ app.get('/api/system/ip', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// EXCHANGE RATE ENDPOINT
+// EXCHANGE RATE ENDPOINT (FIXED)
 // ═══════════════════════════════════════════════════════════
 
 app.get('/api/exchange-rate/:from/:to', async (req, res) => {
   try {
     const { from, to } = req.params;
-    const rate = await getExchangeRate(from, to);
+    const result = await getExchangeRate(from, to);
+    
     res.json({ 
-      rate,
+      rate: result.rate,
       from,
       to,
       timestamp: new Date().toISOString(),
-      live: true
+      live: result.live,
+      source: result.live ? 'ExchangeRate-API' : 'Fallback',
+      ...(result.error && { error: result.error })
     });
-  } catch (error) {
-    res.json({ rate: 27.5, fallback: true });
+  } catch (error: any) {
+    res.status(500).json({ 
+      rate: 27.5, 
+      fallback: true,
+      error: error.message 
+    });
   }
 });
 
 // ═══════════════════════════════════════════════════════════
-// PAYMENT ENDPOINTS
+// PAYMENT ENDPOINTS (FIXED)
 // ═══════════════════════════════════════════════════════════
 
 app.post('/api/payments/initiate', async (req, res) => {
@@ -141,7 +181,6 @@ app.post('/api/payments/initiate', async (req, res) => {
 
     console.log('[PAYMENT INITIATE]', { provider, phoneNumber, amountUSD, clusterId, userId });
 
-    // Validate
     if (!provider || !phoneNumber || !amountUSD) {
       return res.status(400).json({ 
         error: 'Missing required fields',
@@ -149,14 +188,16 @@ app.post('/api/payments/initiate', async (req, res) => {
       });
     }
 
-    // Get exchange rate
-    const exchangeRate = await getExchangeRate('USD', 'ZMW');
+    // Get LIVE exchange rate
+    const exchangeRateResult = await getExchangeRate('USD', 'ZMW');
+    const exchangeRate = exchangeRateResult.rate;
     const amountZMW = amountUSD * exchangeRate;
 
-    // Generate transaction ID
+    console.log(`[PAYMENT] Exchange rate: ${exchangeRate} (${exchangeRateResult.live ? 'LIVE' : 'FALLBACK'})`);
+
     const transactionId = externalId || `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Log payment intent to database (if Supabase available)
+    // Log to database if available
     if (supabase) {
       try {
         await supabase.from('payment_intents').insert({
@@ -168,16 +209,18 @@ app.post('/api/payments/initiate', async (req, res) => {
           cluster_id: clusterId,
           user_id: userId,
           status: 'PENDING',
+          metadata: {
+            exchange_rate: exchangeRate,
+            exchange_rate_live: exchangeRateResult.live
+          },
           created_at: new Date().toISOString()
         });
+        console.log(`✅ [PAYMENT] Logged to database: ${transactionId}`);
       } catch (dbError) {
         console.error('[DB ERROR]', dbError);
-        // Continue even if DB fails
       }
     }
 
-    // TODO: Actually call MTN/Airtel APIs when ready
-    // For now, return success response
     res.json({
       success: true,
       transactionId,
@@ -186,6 +229,7 @@ app.post('/api/payments/initiate', async (req, res) => {
       amountUSD,
       amountZMW: amountZMW.toFixed(2),
       exchangeRate,
+      exchangeRateLive: exchangeRateResult.live,
       message: `Payment initiated. Please approve on your ${provider.toUpperCase()} phone.`,
       note: 'Demo mode - no real payment processed yet'
     });
@@ -205,7 +249,6 @@ app.get('/api/payments/status/:transactionId', async (req, res) => {
 
     console.log('[PAYMENT STATUS]', transactionId);
 
-    // Check database if available
     if (supabase) {
       try {
         const { data, error } = await supabase
@@ -229,7 +272,6 @@ app.get('/api/payments/status/:transactionId', async (req, res) => {
       }
     }
 
-    // Default response
     res.json({
       success: true,
       status: 'PENDING',
@@ -254,7 +296,6 @@ app.post('/api/webhooks/mtn', async (req, res) => {
   try {
     console.log('[MTN WEBHOOK] Received:', JSON.stringify(req.body, null, 2));
     
-    // Log webhook to database
     if (supabase) {
       try {
         await supabase.from('webhook_logs').insert({
@@ -268,24 +309,14 @@ app.post('/api/webhooks/mtn', async (req, res) => {
       }
     }
 
-    // Process webhook
     const isSuccess = req.body.status === 'SUCCESSFUL' || req.body.status === 'SUCCEEDED';
 
     if (isSuccess) {
       console.log('[MTN WEBHOOK] Payment successful:', req.body.financialTransactionId);
-      
-      // TODO: Update payment intent status, mint PCUs, etc.
-      
-      res.status(200).json({ 
-        message: 'Webhook processed successfully',
-        status: 'success'
-      });
+      res.status(200).json({ message: 'Webhook processed successfully', status: 'success' });
     } else {
       console.log('[MTN WEBHOOK] Payment not successful:', req.body.status);
-      res.status(200).json({ 
-        message: 'Webhook received',
-        status: 'ignored'
-      });
+      res.status(200).json({ message: 'Webhook received', status: 'ignored' });
     }
 
   } catch (error: any) {
@@ -298,7 +329,6 @@ app.post('/api/webhooks/airtel', async (req, res) => {
   try {
     console.log('[AIRTEL WEBHOOK] Received:', JSON.stringify(req.body, null, 2));
     
-    // Log webhook to database
     if (supabase) {
       try {
         await supabase.from('webhook_logs').insert({
@@ -312,22 +342,14 @@ app.post('/api/webhooks/airtel', async (req, res) => {
       }
     }
 
-    // Process webhook
-    const isSuccess = req.body.transaction?.status === 'SUCCESS' || 
-                     req.body.status?.success === true;
+    const isSuccess = req.body.transaction?.status === 'SUCCESS' || req.body.status?.success === true;
 
     if (isSuccess) {
       console.log('[AIRTEL WEBHOOK] Payment successful:', req.body.transaction?.id);
-      res.status(200).json({ 
-        message: 'Webhook processed successfully',
-        status: 'success'
-      });
+      res.status(200).json({ message: 'Webhook processed successfully', status: 'success' });
     } else {
       console.log('[AIRTEL WEBHOOK] Payment not successful');
-      res.status(200).json({ 
-        message: 'Webhook received',
-        status: 'ignored'
-      });
+      res.status(200).json({ message: 'Webhook received', status: 'ignored' });
     }
 
   } catch (error: any) {
@@ -365,10 +387,9 @@ app.get('/api/webhooks/status', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// LEGACY MVP ENDPOINTS (for backward compatibility)
+// LEGACY ENDPOINTS
 // ═══════════════════════════════════════════════════════════
 
-// These endpoints maintain compatibility with any existing integrations
 app.get('/api/v1/health', (req, res) => {
   res.json({
     status: 'OK',
@@ -390,7 +411,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   });
 });
 
-// 404 handler
 app.use((req, res) => {
   res.status(404).json({
     error: 'Not found',
@@ -415,7 +435,7 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
   console.log('═'.repeat(70));
-  console.log(`⚡ ENERLECTRA PRODUCTION BACKEND v2.0.0`);
+  console.log(`⚡ ENERLECTRA PRODUCTION BACKEND v2.1.0`);
   console.log('═'.repeat(70));
   console.log(`🌐 Server: http://localhost:${PORT}`);
   console.log(`📅 Started: ${new Date().toISOString()}`);
