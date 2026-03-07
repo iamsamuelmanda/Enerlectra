@@ -21,6 +21,7 @@ import distributionFinalize from './routes/distributionFinalize.ts'
 import settlement from './routes/settlement.ts'
 import lifecycle from './routes/lifecycle.ts';
 import ownershipLedgerRouter from "./routes/ownershipLedger";
+import systemRouter from './routes/system';
 
 const app = express()
 const exchangeAPI = require('./utils/exchangeRate');
@@ -42,6 +43,7 @@ app.use('/distribution/finalize', distributionFinalize)
 app.use('/settlement', settlement)
 app.use('/lifecycle', lifecycle);
 app.use("/ownership-ledger", ownershipLedgerRouter);
+app.use(systemRouter);
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(adminDir, 'index.html'))
