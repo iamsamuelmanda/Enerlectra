@@ -1,14 +1,15 @@
 {
   "name": "enerlectra-mvp",
-  "version": "1.0.0",
-  "description": "MVP for Zambia's Energy Internet",
+  "version": "2.0.0",
+  "description": "Enerlectra Production Backend - Zambia's Energy Internet",
   "type": "module",
-  "main": "server.js",
+  "main": "server/index.ts",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js",
+    "start": "tsx ./server/index.ts",
+    "start:old": "node server.js",
+    "dev": "tsx ./server/index.ts",
+    "dev:old": "nodemon server.js",
     "dev:core": "ts-node --esm ./enerlectra-core/src/server.ts",
-    "dev:server": "tsx ./server/index.ts",
     "db:migrate": "psql \"$DATABASE_URL\" -f enerlectra-core/src/persistence/schema/001_marketplace_schema.sql",
     "db:seed": "psql \"$DATABASE_URL\" -f enerlectra-core/src/persistence/schema/003_seed_data.sql",
     "test": "jest",
@@ -71,19 +72,23 @@
     "blockchain",
     "africa",
     "renewable",
-    "api"
+    "api",
+    "zambia",
+    "mobile-money",
+    "mtn",
+    "airtel"
   ],
   "author": "Enerlectra Team",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/iamsamuelmanda/EnerlectraTrade.git"
+    "url": "git+https://github.com/iamsamuelmanda/Enerlectra.git"
   },
   "directories": {
     "test": "test"
   },
   "bugs": {
-    "url": "https://github.com/iamsamuelmanda/EnerlectraTrade/issues"
+    "url": "https://github.com/iamsamuelmanda/Enerlectra/issues"
   },
-  "homepage": "https://github.com/iamsamuelmanda/EnerlectraTrade#readme"
+  "homepage": "https://github.com/iamsamuelmanda/Enerlectra#readme"
 }
