@@ -21,6 +21,8 @@ import distributionFinalize from './routes/distributionFinalize.ts'
 import settlement from './routes/settlement.ts'
 import lifecycle from './routes/lifecycle.ts';
 import ownershipLedgerRouter from "./routes/ownershipLedger";
+import webhooksRouter from './routes/webhooks.ts';
+import paymentsRouter from './routes/payments.ts';
 
 const app = express()
 const exchangeAPI = require('./utils/exchangeRate');
@@ -42,6 +44,8 @@ app.use('/distribution/finalize', distributionFinalize)
 app.use('/settlement', settlement)
 app.use('/lifecycle', lifecycle);
 app.use("/ownership-ledger", ownershipLedgerRouter);
+app.use('/api', webhooksRouter);
+app.use('/api', paymentsRouter);
 
 // IP Detection endpoint - inline version
 app.get('/api/system/ip', async (req, res) => {
