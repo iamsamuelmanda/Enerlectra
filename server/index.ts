@@ -21,7 +21,6 @@ import distributionFinalize from './routes/distributionFinalize.ts'
 import settlement from './routes/settlement.ts'
 import lifecycle from './routes/lifecycle.ts';
 import ownershipLedgerRouter from "./routes/ownershipLedger";
-import systemRouter from './routes/system.ts';  
 
 const app = express()
 const exchangeAPI = require('./utils/exchangeRate');
@@ -43,11 +42,31 @@ app.use('/distribution/finalize', distributionFinalize)
 app.use('/settlement', settlement)
 app.use('/lifecycle', lifecycle);
 app.use("/ownership-ledger", ownershipLedgerRouter);
-app.use(systemRouter);
+
+// IP Detection endpoint - inline version
+app.get('/api/system/ip', async (req, res) => {
+  try {
+    // Dynamic import for axios
+    const axios = (await import('axios')).default;
+    const response = await axios.get('https://api.ipify.org?format=json');
+    res.json({
+      publicIP: response.data.ip,
+      timestamp: new Date().toISOString(),
+      backend: 'enerlectra-backend.onrender.com'
+    });
+  } catch (error: any) {
+    console.error('Failed to fetch IP:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to get IP address',
+      message: error.message 
+    });
+  }
+});
 
 app.get('/', (_req, res) => {
   res.sendFile(path.join(adminDir, 'index.html'))
 })
+
 app.get('/api/exchange-rate/:from/:to', async (req, res) => {
   try {
     const { from, to } = req.params;
@@ -67,4 +86,5 @@ const PORT = 4000
 
 app.listen(PORT, () => {
   console.log(`Enerlectra Core running on :${PORT} (store at ${STORE_DIR})`)
+  console.log(`IP detection endpoint: http://localhost:${PORT}/api/system/ip`)
 })
