@@ -160,6 +160,20 @@ app.get(
   })
 );
 
+app.get('/api/system/ip', asyncHandler(async (req, res) => {
+  try {
+    const axios = (await import('axios')).default;
+    const response = await axios.get('https://api.ipify.org?format=json');
+    res.json({
+      publicIP: response.data.ip,
+      timestamp: new Date().toISOString(),
+      server: 'server.js (MVP)'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get IP' });
+  }
+}));
+
 // --- Real endpoints ---
 app.get(
   "/api/v1/clusters",
