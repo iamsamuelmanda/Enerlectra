@@ -21,7 +21,7 @@ import distributionFinalize from './routes/distributionFinalize.ts'
 import settlement from './routes/settlement.ts'
 import lifecycle from './routes/lifecycle.ts';
 import ownershipLedgerRouter from "./routes/ownershipLedger";
-import systemRouter from './routes/system';
+import systemRouter from './routes/system.ts';  
 
 const app = express()
 const exchangeAPI = require('./utils/exchangeRate');
