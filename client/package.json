@@ -1,11 +1,16 @@
 {
   "name": "enerlectra-frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.0-beta",
   "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "dev": "vite --port 5173",
     "build": "vite build",
+    "start": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "test": "jest",
