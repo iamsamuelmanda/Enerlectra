@@ -1,19 +1,32 @@
 // === src/App.tsx ===
-// Updated: Merged existing dashboard with Marketplace components
-// Adds: ClusterList, ContributionForm, OwnershipTable, UserPortfolio, SupabaseAuth
-// Keeps: All existing dashboard logic, AI Insights, Enhanced Features, WebSocket, Offline
+// Refactored with premium UI components + Landing Page
 
 import { useState, useEffect } from 'react';
 import {
   Activity, Zap, TrendingUp, Users, DollarSign,
   BarChart3, LogIn, User, Brain, Settings, Layers,
+  CheckCircle, Wifi, WifiOff, Globe
 } from 'lucide-react';
+
+// Services & Hooks
 import { apiService } from './services/api';
 import { useAuth } from './contexts/AuthContext';
 import { useSocket } from './contexts/SocketContext';
 import { useOffline } from './hooks/useOffline';
+import { useAuth as useSupabaseAuth } from './hooks/useAuth';
+import { Cluster } from './services/supabase';
+import toast from 'react-hot-toast';
 
-// Existing components (UNCHANGED)
+// UI Components
+import { Button } from './components/ui/Button';
+import { Card, CardHeader, CardStat } from './components/ui/Card';
+import { Badge } from './components/ui/Badge';
+import { Alert } from './components/ui/Alert';
+
+// Page Components
+import LandingPage from './pages/LandingPage';
+
+// Existing components
 import EnhancedLoginModal from './components/EnhancedLoginModal';
 import AIInsightsPanel from './components/AIInsightsPanel';
 import EnhancedFeaturesPanel from './components/EnhancedFeaturesPanel';
@@ -22,19 +35,13 @@ import LoadingScreen from './components/LoadingScreen';
 import OfflineIndicator from './components/OfflineIndicator';
 import AutoUpdateIndicator from './components/AutoUpdateIndicator';
 
-// NEW Marketplace components
+// Marketplace components
 import SupabaseAuth from './components/auth/SupabaseAuth';
 import UserPortfolio from './components/marketplace/UserPortfolio';
 import ClusterList from './components/marketplace/ClusterList';
 import ContributionForm from './components/marketplace/ContributionForm';
 import OwnershipTable from './components/marketplace/OwnershipTable';
 import ExchangeRateDisplay from './components/marketplace/ExchangeRateDisplay';
-
-// NEW hooks & services
-import { useAuth as useSupabaseAuth } from './hooks/useAuth';
-import { Cluster } from './services/supabase';
-
-import toast from 'react-hot-toast';
 
 // ─────────────────────────────────────────
 // TYPES
@@ -67,7 +74,7 @@ interface Stats {
 // ─────────────────────────────────────────
 const EnerlectraDashboard = () => {
 
-  // ── Existing State (UNCHANGED) ──────────────────────────────────
+  // ── State ──────────────────────────────────
   const [stats, setStats] = useState<Stats>({
     totalVolume: 2500000,
     activeTraders: 1234,
@@ -90,21 +97,18 @@ const EnerlectraDashboard = () => {
   const [showEnhancedFeatures, setShowEnhancedFeatures] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [loadingProgress, setLoadingProgress] = useState(0);
-
-  // ── NEW State ────────────────────────────────────────────────────
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   const [selectedCluster, setSelectedCluster] = useState<Cluster | null>(null);
   const [ownershipRefreshKey, setOwnershipRefreshKey] = useState(0);
+  const [showLanding, setShowLanding] = useState(true);
 
-  // ── Existing Context (UNCHANGED) ────────────────────────────────
+  // ── Context ────────────────────────────────
   const { user, isAuthenticated, logout } = useAuth();
   const { isConnected: wsConnected } = useSocket();
   const { isOnline, syncStatus } = useOffline();
-
-  // ── NEW: Supabase auth for marketplace ──────────────────────────
   const { user: supabaseUser } = useSupabaseAuth();
 
-  // ── Existing: Loading progress (UNCHANGED) ────────────────────
+  // ── Effects ────────────────────────────────
   useEffect(() => {
     const timer = setInterval(() => {
       setLoadingProgress(prev => {
@@ -119,21 +123,20 @@ const EnerlectraDashboard = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // ── Existing: Backend connection (UNCHANGED) ──────────────────
   useEffect(() => {
     const testConnection = async () => {
       try {
         const response = await fetch('/api/health');
         if (response.ok) {
           const healthData = await response.json();
-          console.log('✅ Backend connected:', healthData);
+          console.log('Backend connected:', healthData);
           setConnectionStatus('connected');
           fetchMarketData();
         } else {
           setConnectionStatus('error');
         }
       } catch (error) {
-        console.error('❌ Connection failed:', error);
+        console.error('Connection failed:', error);
         setConnectionStatus('offline');
       }
     };
@@ -141,13 +144,12 @@ const EnerlectraDashboard = () => {
     if (!isLoading) testConnection();
   }, [isLoading]);
 
-  // ── Existing: WebSocket listeners (UNCHANGED) ─────────────────
   useEffect(() => {
     const handleTradeCompleted = (event: CustomEvent) => {
       const { type, amount, cost } = event.detail;
       toast.success(
         `${type === 'buy' ? 'Purchased' : 'Sold'} ${amount} kWh for ${cost.toFixed(2)} ZMW`,
-        { duration: 5000, icon: '⚡' }
+        { duration: 5000 }
       );
       fetchMarketData();
     };
@@ -156,7 +158,6 @@ const EnerlectraDashboard = () => {
       const { energyAmount, pricePerKwh } = event.detail;
       toast(`New offer: ${energyAmount} kWh at ${pricePerKwh} ZMW/kWh`, {
         duration: 6000,
-        icon: '💡',
         style: { background: '#3B82F6', color: '#FFFFFF' },
       });
     };
@@ -165,7 +166,7 @@ const EnerlectraDashboard = () => {
       const { volume, value } = event.detail;
       toast.success(
         `Market update: ${volume} kWh traded for ${value.toFixed(2)} ZMW`,
-        { duration: 4000, icon: '📊' }
+        { duration: 4000 }
       );
       fetchMarketData();
     };
@@ -181,7 +182,7 @@ const EnerlectraDashboard = () => {
     };
   }, []);
 
-  // ── Existing: Fetch market data (UNCHANGED) ───────────────────
+  // ── Functions ──────────────────────────────
   const fetchMarketData = async () => {
     try {
       const pricingRes = await apiService.getPricing();
@@ -238,65 +239,61 @@ const EnerlectraDashboard = () => {
       maximumFractionDigits: 1,
     }).format(amount);
 
-  // ── Badge Components (UNCHANGED) ──────────────────────────────
-  const ConnectionBadge = () => {
-    const badges: Record<ConnectionStatus, { color: string; text: string }> = {
-      checking: { color: 'bg-yellow-100 text-yellow-800', text: 'Connecting...' },
-      connected: { color: 'bg-green-100 text-green-800', text: 'Live Data' },
-      offline:   { color: 'bg-red-100 text-red-800',    text: 'Demo Mode' },
-      error:     { color: 'bg-red-100 text-red-800',    text: 'Backend Error' },
-    };
-    const badge = badges[connectionStatus];
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${badge.color}`}>
-        {badge.text}
-      </span>
-    );
-  };
-
-  const WebSocketBadge = () => (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-      wsConnected ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-    }`}>
-      {wsConnected ? '🔌 Live Updates' : '📡 Offline'}
-    </span>
-  );
-
-  // ── Loading screen (UNCHANGED) ────────────────────────────────
+  // ── Loading ────────────────────────────────
   if (isLoading) return <LoadingScreen progress={loadingProgress} />;
 
-  // ─────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+  // ── Landing Page ───────────────────────────
+  if (showLanding) {
+    return (
+      <LandingPage 
+        onGetStarted={() => {
+          setShowLanding(false);
+          setShowLoginModal(true);
+        }}
+        onViewMarketplace={() => {
+          setShowLanding(false);
+          setActiveTab('marketplace');
+        }}
+        onEnterApp={() => {
+          setShowLanding(false);
+        }}
+      />
+    );
+  }
 
-      {/* Existing indicators (UNCHANGED) */}
+  // ─────────────────────────────────────────
+  // MAIN APP RENDER
+  // ─────────────────────────────────────────
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+
       <OfflineIndicator />
       <AutoUpdateIndicator />
 
-      {/* ── HEADER ──────────────────────────────────────────────── */}
-      <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700 sticky top-0 z-40">
+      {/* ═══════════════════════════════════════════════════════════
+          HEADER
+      ═══════════════════════════════════════════════════════════ */}
+      <div className="glass-dark border-b border-white/10 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
 
-            {/* Left: Logo */}
+            {/* Logo */}
             <div className="flex items-center space-x-4">
               <EnerlectraLogo size="small" animated={false} showTagline={false} />
               <div>
-                <h1 className="text-2xl font-bold text-white">Enerlectra</h1>
+                <h1 className="text-2xl font-display font-bold text-white">Enerlectra</h1>
                 <p className="text-slate-400 text-sm">The Energy Internet</p>
               </div>
             </div>
 
-            {/* Center: Tab Navigation (NEW) */}
-            <div className="flex items-center bg-slate-700/50 rounded-xl p-1 border border-slate-600">
+            {/* Tab Navigation */}
+            <div className="flex items-center glass rounded-xl p-1">
               <button
                 onClick={() => setActiveTab('dashboard')}
                 className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   activeTab === 'dashboard'
-                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'gradient-blue text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <BarChart3 className="w-4 h-4" />
@@ -306,344 +303,364 @@ const EnerlectraDashboard = () => {
                 onClick={() => setActiveTab('marketplace')}
                 className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all duration-200 ${
                   activeTab === 'marketplace'
-                    ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg'
-                    : 'text-slate-400 hover:text-white'
+                    ? 'gradient-purple text-white shadow-lg'
+                    : 'text-slate-400 hover:text-white hover:bg-white/5'
                 }`}
               >
                 <Layers className="w-4 h-4" />
                 Marketplace
-                <span className="bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded-full">
-                  NEW
-                </span>
+                <Badge variant="purple" size="sm">BETA</Badge>
               </button>
             </div>
 
-            {/* Right: Status + Auth */}
-            <div className="flex items-center space-x-3">
-              <ConnectionBadge />
-              <WebSocketBadge />
-              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                isOnline ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
-              }`}>
-                {isOnline ? '🌐 Online' : '📱 Offline'}
-              </span>
+            {/* Status + Auth */}
+            <div className="flex items-center gap-3">
+              <Badge 
+                variant={connectionStatus === 'connected' ? 'success' : connectionStatus === 'checking' ? 'warning' : 'error'}
+                size="sm"
+              >
+                {connectionStatus === 'connected' ? 'Live Data' : connectionStatus === 'checking' ? 'Connecting...' : 'Demo Mode'}
+              </Badge>
+
+              <Badge 
+                variant={wsConnected ? 'success' : 'error'}
+                icon={wsConnected ? Wifi : WifiOff}
+                size="sm"
+              >
+                {wsConnected ? 'Live' : 'Offline'}
+              </Badge>
+
+              <Badge 
+                variant={isOnline ? 'success' : 'warning'}
+                icon={Globe}
+                size="sm"
+              >
+                {isOnline ? 'Online' : 'Offline'}
+              </Badge>
 
               {isAuthenticated ? (
-                <div className="flex items-center space-x-3">
-                  <button
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    icon={Settings}
                     onClick={() => setShowEnhancedFeatures(!showEnhancedFeatures)}
-                    className="px-3 py-1 bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center space-x-2"
                   >
-                    <Settings className="w-4 h-4" />
                     <span className="hidden sm:inline">Enhanced</span>
-                  </button>
-                  <button
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    icon={Brain}
                     onClick={() => setShowAIInsights(!showAIInsights)}
-                    className="px-3 py-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white text-sm font-medium rounded-lg transition-all duration-200 flex items-center space-x-2"
                   >
-                    <Brain className="w-4 h-4" />
                     <span className="hidden sm:inline">AI</span>
-                  </button>
-                  <div className="flex items-center space-x-2 text-white">
+                  </Button>
+                  <div className="flex items-center gap-2 text-white">
                     <User className="w-4 h-4" />
                     <span className="text-sm hidden sm:inline">{user?.name || 'User'}</span>
                   </div>
-                  <button
+                  <Button 
+                    variant="danger" 
+                    size="sm"
                     onClick={logout}
-                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-all duration-200"
                   >
                     Logout
-                  </button>
+                  </Button>
                 </div>
               ) : (
-                <button
+                <Button 
+                  variant="primary"
+                  icon={LogIn}
                   onClick={() => setShowLoginModal(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-medium rounded-lg transition-all duration-200 flex items-center space-x-2"
                 >
-                  <LogIn className="w-4 h-4" />
-                  <span>Sign In</span>
-                </button>
+                  Sign In
+                </Button>
               )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── PAGE CONTENT ─────────────────────────────────────────── */}
+      {/* ═══════════════════════════════════════════════════════════
+          PAGE CONTENT
+      ═══════════════════════════════════════════════════════════ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* ════════════════════════════════════════════════════════
-            DASHBOARD TAB (existing content - UNCHANGED)
-        ════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════
+            DASHBOARD TAB
+        ══════════════════════════════════════════════════════════ */}
         {activeTab === 'dashboard' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-fade-in">
+
             {/* Welcome Section */}
             <div className="text-center">
               <div className="mb-6">
                 <EnerlectraLogo size="large" animated={true} showTagline={true} />
               </div>
-              <h2 className="text-3xl font-bold text-white mb-4">
+              <h2 className="text-4xl font-display font-bold text-white mb-4">
                 Welcome to The Energy Internet
               </h2>
-              <p className="text-slate-300 text-lg mb-6">
+              <p className="text-slate-300 text-lg mb-6 max-w-2xl mx-auto">
                 Join the future of African energy trading with blockchain-powered efficiency
               </p>
 
               {!isAuthenticated ? (
                 <div className="flex items-center justify-center gap-4">
-                  <button
+                  <Button 
+                    variant="primary" 
+                    size="lg"
                     onClick={() => setShowLoginModal(true)}
-                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
                   >
                     Get Started
-                  </button>
-                  <button
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="lg"
+                    icon={Layers}
                     onClick={() => setActiveTab('marketplace')}
-                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 px-8 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2"
                   >
-                    <Layers className="w-5 h-5" />
                     View Marketplace
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center justify-center flex-wrap gap-4">
-                  <span className="text-green-400 text-lg">
-                    ✅ Welcome back, {user?.name}!
-                  </span>
-                  <button
+                  <Alert variant="success" className="max-w-md">
+                    Welcome back, {user?.name}!
+                  </Alert>
+                  <Button 
+                    variant="secondary"
+                    icon={Settings}
                     onClick={() => setShowEnhancedFeatures(!showEnhancedFeatures)}
-                    className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
                   >
                     Test Enhanced Features
-                  </button>
-                  <button
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    icon={Brain}
                     onClick={() => setShowAIInsights(!showAIInsights)}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200"
                   >
                     View AI Insights
-                  </button>
-                  <button
+                  </Button>
+                  <Button 
+                    variant="primary"
+                    icon={Layers}
                     onClick={() => setActiveTab('marketplace')}
-                    className="bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-2 px-6 rounded-lg transition-all duration-200 flex items-center gap-2"
                   >
-                    <Layers className="w-4 h-4" />
                     Go to Marketplace
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
 
             {/* Enhanced Features Panel */}
             {showEnhancedFeatures && (
-              <EnhancedFeaturesPanel />
+              <div className="animate-slide-down">
+                <EnhancedFeaturesPanel />
+              </div>
             )}
 
             {/* AI Insights Panel */}
             {showAIInsights && (
-              <AIInsightsPanel />
+              <div className="animate-slide-down">
+                <AIInsightsPanel />
+              </div>
             )}
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <DollarSign className="w-8 h-8 text-green-400" />
-                  <span className="text-green-400 text-sm font-medium">{stats.priceChange}</span>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-slate-400 text-sm">Energy Price</p>
-                  <p className="text-2xl font-bold text-white">${stats.energyPrice}/kWh</p>
-                </div>
-              </div>
+              <CardStat
+                label="Energy Price"
+                value={`$${stats.energyPrice}/kWh`}
+                icon={DollarSign}
+                iconColor="text-emerald-400"
+                trend={{ value: stats.priceChange, positive: true }}
+              />
 
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <TrendingUp className="w-8 h-8 text-blue-400" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-slate-400 text-sm">Total Volume</p>
-                  <p className="text-2xl font-bold text-white">{formatCurrency(stats.totalVolume)}</p>
-                </div>
-              </div>
+              <CardStat
+                label="Total Volume"
+                value={formatCurrency(stats.totalVolume)}
+                icon={TrendingUp}
+                iconColor="text-blue-400"
+              />
 
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Users className="w-8 h-8 text-purple-400" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-slate-400 text-sm">Active Traders</p>
-                  <p className="text-2xl font-bold text-white">{stats.activeTraders.toLocaleString()}</p>
-                </div>
-              </div>
+              <CardStat
+                label="Active Traders"
+                value={stats.activeTraders.toLocaleString()}
+                icon={Users}
+                iconColor="text-purple-400"
+              />
 
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <Activity className="w-8 h-8 text-orange-400" />
-                </div>
-                <div className="space-y-1">
-                  <p className="text-slate-400 text-sm">Market Status</p>
-                  <p className="text-2xl font-bold text-white">
-                    {connectionStatus === 'connected' ? 'Live' : 'Demo'}
-                  </p>
-                </div>
-              </div>
+              <CardStat
+                label="Market Status"
+                value={connectionStatus === 'connected' ? 'Live' : 'Demo'}
+                icon={Activity}
+                iconColor="text-orange-400"
+              />
             </div>
 
             {/* Live Energy Listings */}
             {connectionStatus === 'connected' && listings.length > 0 && (
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-                <div className="flex items-center space-x-2 mb-6">
-                  <Zap className="w-5 h-5 text-yellow-400" />
-                  <h3 className="text-lg font-semibold text-white">Live Energy Listings</h3>
-                </div>
+              <Card>
+                <CardHeader 
+                  title="Live Energy Listings"
+                  icon={Zap}
+                  iconColor="text-amber-400"
+                />
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {listings.map(listing => (
-                    <div key={listing.id} className="bg-slate-700/30 rounded-lg p-4">
+                    <Card key={listing.id} variant="glass-dark" hover>
                       <div className="flex justify-between items-start mb-2">
-                        <span className="text-white font-medium">{listing.amount} kWh</span>
-                        <span className="text-green-400 font-bold">${listing.pricePerKwh}/kWh</span>
+                        <span className="text-white font-semibold">{listing.amount} kWh</span>
+                        <span className="text-emerald-400 font-bold">${listing.pricePerKwh}/kWh</span>
                       </div>
-                      <p className="text-slate-300 text-sm">{listing.description}</p>
-                    </div>
+                      <p className="text-slate-400 text-sm">{listing.description}</p>
+                    </Card>
                   ))}
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* Price Chart */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-              <div className="flex items-center space-x-2 mb-6">
-                <BarChart3 className="w-5 h-5 text-slate-400" />
-                <h3 className="text-lg font-semibold text-white">
-                  {connectionStatus === 'connected' ? 'Live Energy Prices' : 'Energy Price Trend'}
-                </h3>
-              </div>
+            <Card>
+              <CardHeader 
+                title={connectionStatus === 'connected' ? 'Live Energy Prices' : 'Energy Price Trend'}
+                icon={BarChart3}
+                iconColor="text-slate-400"
+              />
               <div className="space-y-4">
                 {priceData.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                  <div key={index} className="flex items-center justify-between p-4 glass-dark rounded-xl">
                     <div className="flex-1">
-                      <span className="text-slate-300">{item.time}</span>
+                      <span className="text-white font-medium">{item.time}</span>
                       {item.description && (
                         <p className="text-xs text-slate-400 mt-1">{item.description}</p>
                       )}
                     </div>
-                    <span className="text-white font-medium mx-4">${item.price}/kWh</span>
-                    <div className="w-32 bg-slate-600 rounded-full h-2">
+                    <span className="text-white font-bold mx-4">${item.price}/kWh</span>
+                    <div className="w-32 bg-slate-700 rounded-full h-2">
                       <div
-                        className="bg-gradient-to-r from-blue-500 to-cyan-500 h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${(item.price / 0.07) * 100}%` }}
+                        className="gradient-blue h-2 rounded-full transition-all duration-500"
+                        style={{ width: `${(item.price / 0.14) * 100}%` }}
                       />
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* System Status */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4">System Status</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div className="space-y-2 text-slate-300">
-                  <p><strong>Backend URL:</strong> /api (proxied)</p>
-                  <p><strong>Health Check:</strong> /api/health ✅</p>
-                  <p><strong>Energy API:</strong> /api/pricing ✅</p>
-                  <p><strong>Connection:</strong>{' '}
-                    <span className={connectionStatus === 'connected' ? 'text-green-400' : 'text-red-400'}>
+            <Card>
+              <CardHeader title="System Status" icon={Activity} />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Backend URL</span>
+                    <span className="text-white font-medium">/api (proxied)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Connection</span>
+                    <Badge variant={connectionStatus === 'connected' ? 'success' : 'error'}>
                       {connectionStatus}
-                    </span>
-                  </p>
-                  <p><strong>WebSocket:</strong>{' '}
-                    <span className={wsConnected ? 'text-green-400' : 'text-red-400'}>
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">WebSocket</span>
+                    <Badge variant={wsConnected ? 'success' : 'error'}>
                       {wsConnected ? 'Connected' : 'Disconnected'}
-                    </span>
-                  </p>
-                  <p><strong>Offline Mode:</strong>{' '}
-                    <span className={isOnline ? 'text-green-400' : 'text-orange-400'}>
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Offline Mode</span>
+                    <Badge variant={isOnline ? 'success' : 'warning'}>
                       {isOnline ? 'Online' : 'Offline'}
-                    </span>
-                  </p>
-                  <p><strong>Sync Status:</strong>{' '}
-                    <span className={syncStatus.syncInProgress ? 'text-yellow-400' : 'text-green-400'}>
-                      {syncStatus.syncInProgress ? 'Syncing' : 'Synced'}
-                    </span>
-                  </p>
+                    </Badge>
+                  </div>
                 </div>
-                <div className="space-y-2 text-slate-300">
-                  <p><strong>Data Mode:</strong> {connectionStatus === 'connected' ? 'Live Data' : 'Demo Data'}</p>
-                  <p><strong>Active Listings:</strong> {listings.length}</p>
-                  <p><strong>Last Updated:</strong> {new Date().toLocaleTimeString()}</p>
-                  <p><strong>Authentication:</strong> {isAuthenticated ? '🟢 Logged In' : '🔴 Guest'}</p>
-                  <p><strong>Supabase:</strong>{' '}
-                    <span className={supabaseUser ? 'text-green-400' : 'text-slate-400'}>
-                      {supabaseUser ? `🟢 ${supabaseUser.email?.split('@')[0]}` : '⚪ Not signed in'}
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Data Mode</span>
+                    <span className="text-white font-medium">
+                      {connectionStatus === 'connected' ? 'Live Data' : 'Demo Data'}
                     </span>
-                  </p>
-                  <p><strong>Pending Actions:</strong> {syncStatus.pendingActions}</p>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Active Listings</span>
+                    <span className="text-white font-medium">{listings.length}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Authentication</span>
+                    <Badge variant={isAuthenticated ? 'success' : 'error'}>
+                      {isAuthenticated ? 'Logged In' : 'Guest'}
+                    </Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Supabase</span>
+                    <Badge variant={supabaseUser ? 'success' : 'default'}>
+                      {supabaseUser ? supabaseUser.email?.split('@')[0] : 'Not signed in'}
+                    </Badge>
+                  </div>
                 </div>
               </div>
-            </div>
+            </Card>
           </div>
         )}
 
-        {/* ════════════════════════════════════════════════════════
-            MARKETPLACE TAB (NEW)
-        ════════════════════════════════════════════════════════ */}
+        {/* ══════════════════════════════════════════════════════════
+            MARKETPLACE TAB
+        ══════════════════════════════════════════════════════════ */}
         {activeTab === 'marketplace' && (
-          <div className="space-y-8">
+          <div className="space-y-8 animate-fade-in">
 
             {/* Marketplace Header */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-8">
+            <Card variant="glass-strong" padding="lg">
               <div className="flex items-center justify-between flex-wrap gap-4 mb-6">
                 <div>
-                  <h2 className="text-3xl font-bold text-white flex items-center gap-3">
+                  <h2 className="text-3xl font-display font-bold text-white flex items-center gap-3 mb-2">
                     <Layers className="w-8 h-8 text-purple-400" />
                     Energy Ownership Marketplace
                   </h2>
-                  <p className="text-slate-400 mt-1">
+                  <p className="text-slate-400">
                     Contribute to solar clusters. Earn real energy. Own your power.
                   </p>
                 </div>
                 <ExchangeRateDisplay />
               </div>
 
-              {/* Demo Banner */}
-              <div className="bg-blue-900/40 border border-blue-700 rounded-xl p-4 flex items-center gap-3">
-                <div className="w-6 h-6 text-blue-400 flex-shrink-0">ℹ️</div>
-                <p className="text-sm text-blue-200">
-                  <strong>Demo Mode:</strong> All contributions are reversible.
-                  Anti-whale protection active (max 30% ownership per cluster).
-                  If this doesn't feel fair, we stop.
-                </p>
-              </div>
-            </div>
+              <Alert variant="info" title="Beta Mode">
+                All contributions are reversible during beta. Anti-whale protection active (max 30% ownership per cluster). If this doesn't feel fair, we stop.
+              </Alert>
+            </Card>
 
-            {/* Supabase Auth Panel */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6">
-              <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                <User className="w-5 h-5 text-purple-400" />
-                Account
-              </h3>
+            {/* Supabase Auth */}
+            <Card>
+              <CardHeader 
+                title="Account"
+                icon={User}
+                iconColor="text-purple-400"
+              />
               <SupabaseAuth />
-            </div>
+            </Card>
 
             {/* User Portfolio */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6">
+            <Card>
               <UserPortfolio user={supabaseUser} />
-            </div>
+            </Card>
 
             {/* Energy Communities */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6">
-              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                <Zap className="w-7 h-7 text-yellow-400" />
-                Energy Communities
-              </h3>
+            <Card>
+              <CardHeader 
+                title="Energy Communities"
+                icon={Zap}
+                iconColor="text-amber-400"
+              />
               <ClusterList onSelectCluster={setSelectedCluster} />
-            </div>
+            </Card>
 
             {/* Contribution Form */}
             {selectedCluster && (
-              <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6">
-                <h3 className="text-xl font-bold text-white mb-1">
+              <Card>
+                <h3 className="text-xl font-bold text-white mb-2">
                   Contributing to:{' '}
                   <span className="text-purple-400">{selectedCluster.name}</span>
                 </h3>
@@ -655,23 +672,23 @@ const EnerlectraDashboard = () => {
                   cluster={selectedCluster}
                   onContributionSuccess={() => {
                     setOwnershipRefreshKey(k => k + 1);
-                    toast.success('Ownership table updated!', { icon: '📊' });
+                    toast.success('Ownership table updated!');
                   }}
                 />
-              </div>
+              </Card>
             )}
 
             {/* Ownership Table */}
-            <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-2xl p-6">
+            <Card>
               <OwnershipTable
                 key={ownershipRefreshKey}
                 clusterId={selectedCluster?.id ?? null}
                 clusterName={selectedCluster?.name}
               />
-            </div>
+            </Card>
 
-            {/* Marketplace Footer */}
-            <div className="text-center py-8 border-t border-slate-700">
+            {/* Footer */}
+            <div className="text-center py-8 border-t border-white/10">
               <p className="text-slate-400 text-sm">
                 Enerlectra Marketplace • Powered by Supabase + Backend API
               </p>
@@ -683,7 +700,7 @@ const EnerlectraDashboard = () => {
         )}
       </div>
 
-      {/* Existing Modal (UNCHANGED) */}
+      {/* Modals */}
       <EnhancedLoginModal
         isOpen={showLoginModal}
         onClose={() => setShowLoginModal(false)}
