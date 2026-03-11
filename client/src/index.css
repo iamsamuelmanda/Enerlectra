@@ -6,7 +6,7 @@
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-slate-700;
   }
   
   html {
@@ -25,9 +25,6 @@
 }
 
 @layer components {
-  /* ═══════════════════════════════════════════════════════════
-     GLASS EFFECTS
-  ═══════════════════════════════════════════════════════════ */
   .glass {
     @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl shadow-black/20;
   }
@@ -40,23 +37,20 @@
     @apply bg-slate-900/60 backdrop-blur-xl border border-slate-700/50 shadow-2xl shadow-black/40;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     BUTTONS
-  ═══════════════════════════════════════════════════════════ */
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed;
   }
 
   .btn-primary {
-    @apply btn bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-[1.02] active:scale-[0.98];
+    @apply btn bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/30 hover:shadow-xl hover:shadow-emerald-500/40 hover:scale-105 active:scale-95;
   }
 
   .btn-secondary {
-    @apply btn glass-strong text-white hover:bg-white/20 hover:scale-[1.02] active:scale-[0.98];
+    @apply btn glass-strong text-white hover:bg-white/20 hover:scale-105 active:scale-95;
   }
 
   .btn-outline {
-    @apply btn border-2 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10 hover:scale-[1.02] active:scale-[0.98];
+    @apply btn border-2 border-emerald-500 text-emerald-400 hover:bg-emerald-500/10 hover:scale-105 active:scale-95;
   }
 
   .btn-ghost {
@@ -64,27 +58,17 @@
   }
 
   .btn-danger {
-    @apply btn bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-[1.02] active:scale-[0.98];
+    @apply btn bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/30 hover:shadow-xl hover:shadow-red-500/40 hover:scale-105 active:scale-95;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     CARDS
-  ═══════════════════════════════════════════════════════════ */
   .card {
     @apply glass rounded-2xl p-6;
   }
 
   .card-hover {
-    @apply card hover:scale-[1.02] hover:shadow-2xl transition-all duration-300 cursor-pointer;
+    @apply card hover:scale-105 hover:shadow-2xl transition-all duration-300 cursor-pointer;
   }
 
-  .card-stat {
-    @apply card;
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     GRADIENTS
-  ═══════════════════════════════════════════════════════════ */
   .gradient-energy {
     @apply bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500;
   }
@@ -105,50 +89,6 @@
     @apply bg-gradient-to-r from-blue-500 to-cyan-500;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     ANIMATIONS
-  ═══════════════════════════════════════════════════════════ */
-  .animate-float {
-    animation: float 6s ease-in-out infinite;
-  }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-20px); }
-  }
-
-  .animate-glow {
-    animation: glow 2s ease-in-out infinite;
-  }
-
-  @keyframes glow {
-    0%, 100% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.3); }
-    50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.6); }
-  }
-
-  .animate-pulse-slow {
-    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .animate-shimmer {
-    animation: shimmer 2s linear infinite;
-    background: linear-gradient(
-      90deg,
-      transparent,
-      rgba(255, 255, 255, 0.1),
-      transparent
-    );
-    background-size: 200% 100%;
-  }
-
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-
-  /* ═══════════════════════════════════════════════════════════
-     INPUTS
-  ═══════════════════════════════════════════════════════════ */
   .input {
     @apply w-full px-4 py-3 glass-strong rounded-xl text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all duration-200;
   }
@@ -157,9 +97,6 @@
     @apply input ring-2 ring-red-500;
   }
 
-  /* ═══════════════════════════════════════════════════════════
-     BADGES
-  ═══════════════════════════════════════════════════════════ */
   .badge {
     @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold;
   }
@@ -183,30 +120,8 @@
   .badge-purple {
     @apply badge bg-purple-500/20 text-purple-400 border border-purple-500/30;
   }
-
-  /* ═══════════════════════════════════════════════════════════
-     UTILITIES
-  ═══════════════════════════════════════════════════════════ */
-  .text-balance {
-    text-wrap: balance;
-  }
-
-  .glow-sm {
-    box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
-  }
-
-  .glow {
-    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
-  }
-
-  .glow-lg {
-    box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
-  }
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SCROLLBAR STYLING
-═══════════════════════════════════════════════════════════ */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -220,16 +135,10 @@
   @apply bg-emerald-500/50 rounded-full hover:bg-emerald-500/70;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   SELECTION
-═══════════════════════════════════════════════════════════ */
 ::selection {
   @apply bg-emerald-500/30 text-white;
 }
 
-/* ═══════════════════════════════════════════════════════════
-   FOCUS VISIBLE
-═══════════════════════════════════════════════════════════ */
 :focus-visible {
   @apply outline-none ring-2 ring-emerald-500 ring-offset-2 ring-offset-slate-900;
 }

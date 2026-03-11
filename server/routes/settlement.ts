@@ -6,8 +6,8 @@ import {
   getSettlementsForUser,
   getSettlementsForCluster,
   getNetForUserFromDb,
-} from '../services/settlementSupabase';
-import { getFinalDistributionFromDb } from '../services/distributionSupabase';
+} from '../services/settlementSupabase.js';
+import { getFinalDistributionFromDb } from '../services/distributionSupabase.js';
 
 const router = Router();
 
