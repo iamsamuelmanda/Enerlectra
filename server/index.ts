@@ -488,21 +488,20 @@ app.post('/api/energy/readings', async (req, res) => {
     }
 
     const surplus_kwh = generation_kwh - consumption_kwh;
-
-    const { data, error } = await supabase
-      .from('energy_readings')
-      .insert([{
-        cluster_id,
-        unit_id,
-        date,
-        generation_kwh,
-        consumption_kwh,
-        surplus_kwh,
-        recorded_by: recorded_by || null,
-        created_at: new Date().toISOString()
-      }])
-      .select()
-      .single();
+    
+const { data, error } = await supabase
+.from('energy_readings')
+.insert([{
+  cluster_id,
+  unit_id,
+  date,
+  generation_kwh,
+  consumption_kwh,
+  recorded_by: recorded_by || null,
+  created_at: new Date().toISOString()
+}])
+.select()
+.single();
 
     if (error) throw error;
     console.log(`✅ [ENERGY] Reading saved: ${unit_id} on ${date}`);
