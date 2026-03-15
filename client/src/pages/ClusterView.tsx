@@ -90,9 +90,9 @@ export default function ClusterView() {
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
           <CampaignProgress cluster={cluster} />
-          <FundingChart clusterId={cluster.clusterId} />
+          <FundingChart clusterId={cluster.id} />
           <ContributionForm
-            clusterId={cluster.clusterId}
+            clusterId={cluster.id}
             onSuccess={() => setRefreshKey(prev => prev + 1)}
           />
         </div>
@@ -107,7 +107,7 @@ export default function ClusterView() {
                   <Sun className="w-4 h-4 text-yellow-400" />
                   <span className="text-sm text-purple-200">Solar target</span>
                 </div>
-                <span className="font-medium">{cluster.target_kW} kW</span>
+                <span className="font-medium">{cluster.target_kw} kW</span>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -130,7 +130,7 @@ export default function ClusterView() {
             </div>
           </Card>
 
-          <ContributionHistory clusterId={cluster.clusterId} />
+          <ContributionHistory clusterId={cluster.id} />
         </div>
       </div>
     </div>

@@ -49,7 +49,7 @@ export function ClusterList() {
     >
       {clusters.map((cluster, index) => (
         <motion.div
-          key={cluster.clusterId}
+          key={cluster.id}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: index * 0.1 }}

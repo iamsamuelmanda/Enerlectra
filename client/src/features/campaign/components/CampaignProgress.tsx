@@ -27,7 +27,7 @@ export function CampaignProgress({ cluster }: CampaignProgressProps) {
     const subscription = supabase
       .channel('cluster-updates')
       .on('postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'clusters', filter: `id=eq.${cluster.clusterId}` },
+        { event: 'UPDATE', schema: 'public', table: 'clusters', filter: `id=eq.${cluster.id}` },
         (payload) => { setCurrentUSD(payload.new.current_usd ?? 0); }
       )
       .subscribe();
@@ -36,7 +36,7 @@ export function CampaignProgress({ cluster }: CampaignProgressProps) {
       subscription.unsubscribe();
       clearInterval(timer);
     };
-  }, [cluster.clusterId, cluster.deadline]);
+  }, [cluster.id, cluster.deadline]);
 
   // Campaign fields are optional — show placeholder if backend hasn't provided them yet
   if (!cluster.target_usd || !cluster.deadline) {

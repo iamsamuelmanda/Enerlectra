@@ -33,7 +33,7 @@ export function ClusterCard({ cluster }: ClusterCardProps) {
         <h3 className="text-xl font-semibold text-white">{cluster.name}</h3>
         <span className={cn(
   'px-3 py-1 rounded-full text-xs font-medium',
-  statusColors[cluster.lifecycle_state ?? cluster.status] ?? statusColors[cluster.status]
+  statusColors[(cluster.lifecycle_state ?? cluster.status) as string] ?? ""
 )}>
   {cluster.lifecycle_state ?? cluster.status}
 </span>
@@ -46,7 +46,7 @@ export function ClusterCard({ cluster }: ClusterCardProps) {
         </div>
         <div className="flex items-center text-sm">
           <Sun className="w-4 h-4 mr-2 text-yellow-400" />
-          <span className="text-white">{cluster.target_kW} kW solar</span>
+          <span className="text-white">{cluster.target_kw} kW solar</span>
         </div>
         <div className="flex items-center text-sm">
           <Battery className="w-4 h-4 mr-2 text-green-400" />
@@ -74,7 +74,7 @@ export function ClusterCard({ cluster }: ClusterCardProps) {
       </div>
 
       <Link
-        to={`/clusters/${cluster.clusterId}`}
+        to={`/clusters/${cluster.id}`}
         className="block w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg text-center transition-all"
       >
         View Details

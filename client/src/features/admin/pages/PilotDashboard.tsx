@@ -6,14 +6,14 @@ import { triggerSettlement } from '../../energy/services/settlementService';
 
 // Real clusters from your backend — replace/extend as clusters are added
 const CLUSTERS = [
-  { clusterId: 'clu_73x96b83', name: 'Ndola Cluster B' },
-  { clusterId: 'clu_l8nydwpo', name: 'Ndola Cluster B (v2)' },
-  { clusterId: 'clu_rct5pbmy', name: 'Kabwe Solar Cluster A' },
-  { clusterId: 'clu_ghkjb95x', name: 'Kabwe Solar Cluster B' },
+  { id: 'clu_73x96b83', name: 'Ndola Cluster B' },
+  { id: 'clu_l8nydwpo', name: 'Ndola Cluster B (v2)' },
+  { id: 'clu_rct5pbmy', name: 'Kabwe Solar Cluster A' },
+  { id: 'clu_ghkjb95x', name: 'Kabwe Solar Cluster B' },
 ];
 
 export default function PilotDashboard() {
-  const [clusterId, setClusterId] = useState(CLUSTERS[0].clusterId);
+  const [clusterId, setClusterId] = useState(CLUSTERS[0].id);
   const [date, setDate]           = useState(new Date().toISOString().slice(0, 10));
   const [running, setRunning]     = useState(false);
   const [runMsg, setRunMsg]       = useState<string | null>(null);
@@ -50,8 +50,8 @@ export default function PilotDashboard() {
             className="rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
           >
             {CLUSTERS.map(c => (
-              <option key={c.clusterId} value={c.clusterId} className="bg-gray-900">
-                {c.name} — {c.clusterId}
+              <option key={c.id} value={c.id} className="bg-gray-900">
+                {c.name} — {c.id}
               </option>
             ))}
           </select>
