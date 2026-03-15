@@ -1,14 +1,16 @@
 // ─────────────────────────────────────────────────────────────
 //  Enerlectra – Shared API Types
-//  Shapes match what the backend actually returns.
+//  Single source of truth. Must match backend/DB response shapes.
+//  Column casing matches the Supabase clusters table exactly.
 // ─────────────────────────────────────────────────────────────
 
-// Matches backend response shape — note: clusterId (not id), target_kW, location as object
 export interface ClusterLocation {
     district: string;
     province: string;
   }
   
+  // camelCase fields (clusterId, createdAt, updatedAt) match the
+  // actual column names in the Supabase clusters table.
   export interface Cluster {
     clusterId: string;
     name: string;
@@ -22,7 +24,7 @@ export interface ClusterLocation {
     current_usd?: number;
     target_usd?: number;
     deadline?: string;
-    // Hardware spec fields
+    // Hardware spec fields — populated when backend adds them
     target_storage_kwh?: number;
     monthly_kwh?: number;
     // Lifecycle
@@ -47,12 +49,12 @@ export interface ClusterLocation {
   export interface EnergyReading {
     id?: string;
     cluster_id: string;
-    unit_id: string;              // flat / rooftop identifier
-    date: string;                 // YYYY-MM-DD
+    unit_id: string;          // flat / rooftop identifier
+    date: string;             // YYYY-MM-DD
     generation_kwh: number;
     consumption_kwh: number;
-    surplus_kwh?: number;         // computed by backend
-    recorded_by?: string;         // audit trail — admin or participant id
+    surplus_kwh?: number;     // computed by DB as generated column
+    recorded_by?: string;     // audit trail — admin or participant id
     created_at?: string;
   }
   
@@ -62,10 +64,11 @@ export interface ClusterLocation {
     unit_id: string;
     generation_kwh: number;
     consumption_kwh: number;
-    net_kwh: number;              // generation - consumption
+    net_kwh: number;          // generation - consumption
     credit_pcu: number;
     debit_pcu: number;
     status: 'pending' | 'settled' | 'disputed';
+    settled_at?: string;
   }
   
   export interface OwnershipEntry {
