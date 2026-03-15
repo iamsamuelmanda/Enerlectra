@@ -152,7 +152,7 @@ app.get('/api/clusters', async (req, res) => {
     const { data, error } = await supabase
       .from('clusters')
       .select('*')
-      .order('createdAt', { ascending: false });   // camelCase — matches your DB column
+      .order('created_at', { ascending: false });
     if (error) throw error;
     res.json(data || []);
   } catch (error: any) {
@@ -167,7 +167,7 @@ app.get('/api/clusters/:id', async (req, res) => {
     const { data, error } = await supabase
       .from('clusters')
       .select('*')
-      .eq('clusterId', req.params.id)
+      .eq('id', req.params.id)
       .single();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Cluster not found' });
@@ -181,20 +181,20 @@ app.get('/api/clusters/:id', async (req, res) => {
 app.post('/api/clusters', async (req, res) => {
   try {
     if (!supabase) return res.status(503).json({ error: 'Database not available' });
-    const { name, location, target_kW } = req.body;
-    if (!name || !location || !target_kW) {
-      return res.status(400).json({ error: 'Missing required fields: name, location, target_kW' });
+    const { name, location, target_kw, target_usd, deadline } = req.body;
+    if (!name || !location || !target_kw) {
+      return res.status(400).json({ error: 'Missing required fields: name, location, target_kw' });
     }
-    const clusterId = `clu_${Math.random().toString(36).substr(2, 8)}`;
     const { data, error } = await supabase
       .from('clusters')
       .insert([{
-        clusterId,
         name,
         location,
-        target_kW,
-        status: 'open',
-        createdAt: new Date().toISOString(),
+        target_kw,
+        target_usd: target_usd || null,
+        deadline: deadline || null,
+        lifecycle_state: 'open',
+        created_at: new Date().toISOString(),
       }])
       .select()
       .single();
@@ -209,10 +209,12 @@ app.post('/api/clusters', async (req, res) => {
 app.put('/api/clusters/:id', async (req, res) => {
   try {
     if (!supabase) return res.status(503).json({ error: 'Database not available' });
+    // Strip any fields that shouldn't be updated directly
+    const { id, created_at, ...updates } = req.body;
     const { data, error } = await supabase
       .from('clusters')
-      .update({ ...req.body, updatedAt: new Date().toISOString() })
-      .eq('clusterId', req.params.id)
+      .update(updates)
+      .eq('id', req.params.id)
       .select()
       .single();
     if (error) throw error;
