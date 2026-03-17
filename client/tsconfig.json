@@ -14,8 +14,31 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@assets/*": ["src/assets/*"],
+      "@components/*": ["src/components/*"],
+      "@hooks/*": ["src/hooks/*"],
+      "@pages/*": ["src/pages/*"],
+      "@services/*": ["src/services/*"],
+      "@features/*": ["src/features/*"],
+      "@lib/*": ["src/lib/*"],
+      "@types/*": ["src/types/*"],
+
+      "@clusters/*": ["src/features/clusters/*"],
+      "@clusters-components/*": ["src/features/clusters/components/*"],
+      "@contributions/*": ["src/features/contributions/*"],
+      "@contributions-services/*": ["src/features/contributions/services/*"],
+      "@contributions-components/*": ["src/features/contributions/components/*"]
+    },
+
+    "allowJs": true,
+    "checkJs": false,
+    "types": ["vite/client", "node"]
   },
-  "include": ["src"],
+  "include": ["src", "vite.config.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

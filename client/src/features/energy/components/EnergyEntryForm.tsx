@@ -1,6 +1,7 @@
-// Admin form – POST a manual energy reading to /api/energy/readings
 import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { submitReading } from '../services/energyService';
+import { Card } from '../../../components/ui/Card';
 
 interface Props {
   clusterId: string;
@@ -8,79 +9,130 @@ interface Props {
 }
 
 export function EnergyEntryForm({ clusterId, onSuccess }: Props) {
-  const [unitId, setUnitId]           = useState('');
-  const [date, setDate]               = useState('');
-  const [generation, setGeneration]   = useState('');
+  const [unitId, setUnitId] = useState('');
+  const [date, setDate] = useState('');
+  const [generation, setGeneration] = useState('');
   const [consumption, setConsumption] = useState('');
-  const [loading, setLoading]         = useState(false);
-  const [error, setError]             = useState<string | null>(null);
-  const [success, setSuccess]         = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const validate = () => {
+    if (!unitId.trim()) return 'Unit ID is required';
+    if (!date) return 'Date is required';
+    if (!generation || Number(generation) < 0) return 'Generation must be ≥ 0';
+    if (!consumption || Number(consumption) < 0) return 'Consumption must be ≥ 0';
+    return null;
+  };
 
   const handleSubmit = async () => {
-    setError(null);
-    setSuccess(false);
-
-    if (!unitId || !date || !generation || !consumption) {
-      setError('All fields are required.');
+    const err = validate();
+    if (err) {
+      toast.error(err);
       return;
     }
 
     setLoading(true);
+    const toastId = toast.loading('Saving reading...');
+
     try {
       await submitReading({
         cluster_id: clusterId,
-        unit_id: unitId,
+        unit_id: unitId.trim(),
         date,
-        generation_kwh: parseFloat(generation),
-        consumption_kwh: parseFloat(consumption),
+        generation_kwh: Number(generation),
+        consumption_kwh: Number(consumption),
       });
-      setSuccess(true);
-      setUnitId(''); setDate(''); setGeneration(''); setConsumption('');
+
+      toast.success('Reading saved successfully', { id: toastId });
+      setUnitId('');
+      setDate('');
+      setGeneration('');
+      setConsumption('');
       onSuccess?.();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to save reading', { id: toastId });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="space-y-4 p-6 rounded-xl border border-white/10 bg-white/5 backdrop-blur">
+    <Card variant="glass" padding="lg" className="space-y-6">
       <h3 className="text-lg font-semibold text-white">Submit Energy Reading</h3>
 
-      {error   && <p className="text-red-400 text-sm">{error}</p>}
-      {success && <p className="text-emerald-400 text-sm">Reading saved successfully.</p>}
-
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <label className="block text-xs text-white/60 mb-1">Unit ID</label>
-          <input value={unitId} onChange={e => setUnitId(e.target.value)}
+          <label htmlFor="unit-id" className="block text-sm text-gray-300 mb-1">
+            Unit ID
+          </label>
+          <input
+            id="unit-id"
+            value={unitId}
+            onChange={(e) => setUnitId(e.target.value)}
             placeholder="e.g. FLAT-01"
-            className="w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            disabled={loading}
+          />
         </div>
+
         <div>
-          <label className="block text-xs text-white/60 mb-1">Date</label>
-          <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            className="w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <label htmlFor="date" className="block text-sm text-gray-300 mb-1">
+            Date
+          </label>
+          <input
+            id="date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            disabled={loading}
+          />
         </div>
+
         <div>
-          <label className="block text-xs text-white/60 mb-1">Generation (kWh)</label>
-          <input type="number" value={generation} onChange={e => setGeneration(e.target.value)}
+          <label htmlFor="generation" className="block text-sm text-gray-300 mb-1">
+            Generation (kWh)
+          </label>
+          <input
+            id="generation"
+            type="number"
+            step="0.01"
+            min="0"
+            value={generation}
+            onChange={(e) => setGeneration(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            disabled={loading}
+          />
         </div>
+
         <div>
-          <label className="block text-xs text-white/60 mb-1">Consumption (kWh)</label>
-          <input type="number" value={consumption} onChange={e => setConsumption(e.target.value)}
+          <label htmlFor="consumption" className="block text-sm text-gray-300 mb-1">
+            Consumption (kWh)
+          </label>
+          <input
+            id="consumption"
+            type="number"
+            step="0.01"
+            min="0"
+            value={consumption}
+            onChange={(e) => setConsumption(e.target.value)}
             placeholder="0.00"
-            className="w-full rounded-lg bg-white/10 border border-white/10 px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500"
+            disabled={loading}
+          />
         </div>
       </div>
 
-      <button onClick={handleSubmit} disabled={loading}
-        className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-white font-medium text-sm transition-colors">
-        {loading ? 'Saving...' : 'Save Reading'}
-      </button>
-    </div>
+      <div className="flex justify-end">
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center gap-2 min-w-[140px] justify-center"
+        >
+          {loading && <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"/></svg>}
+          {loading ? 'Saving...' : 'Save Reading'}
+        </button>
+      </div>
+    </Card>
   );
 }

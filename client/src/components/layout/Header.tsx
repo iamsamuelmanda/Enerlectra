@@ -1,151 +1,188 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Zap, Menu, X, LogOut, User, Loader } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import { User } from '@supabase/supabase-js';
-import { Menu, LogOut, User as UserIcon } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
+
+const NAV_LINKS = [
+  { to: '/', label: 'Communities' },
+  { to: '/wallet', label: 'My Wallet' },
+  { to: '/trading', label: 'Trading' },
+];
 
 export function Header() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { user, isLoading: authLoading } = useAuth();   // ← added isLoading
   const navigate = useNavigate();
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
+  const location = useLocation();
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
-    navigate('/');
+    navigate('/signin');
   };
 
-  return (
-    <>
-      <header className="sticky top-0 z-50 bg-white/10 backdrop-blur-lg border-b border-white/20">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden text-white hover:text-purple-200"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-            <Link to="/" className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-indigo-400 bg-clip-text text-transparent">
-              Enerlectra
-            </Link>
-          </div>
+  const isActive = (path: string) =>
+    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
 
-          <nav className="hidden md:flex items-center space-x-6">
-            <Link to="/" className="text-white hover:text-purple-300 transition">Communities</Link>
-            <Link to="/wallet" className="text-white hover:text-purple-300 transition">My Wallet</Link>
-            <Link to="/trading" className="text-white hover:text-purple-300 transition">Trading</Link>
+  return (
+    <header
+      className="sticky top-0 z-50"
+      style={{
+        background: 'rgba(13, 13, 26, 0.85)',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+      }}
+    >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link to="/" className="flex items-center gap-3 group">
+            <div
+              className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+              style={{
+                background: 'linear-gradient(135deg, #667eea, #764ba2)',
+                boxShadow: '0 0 16px rgba(102, 126, 234, 0.4)',
+              }}
+            >
+              <Zap size={18} className="text-white" fill="white" />
+            </div>
+            <div className="flex flex-col leading-none">
+              <span
+                className="font-display font-bold text-lg"
+                style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #a78bfa 60%, #764ba2 100%)',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                Enerlectra
+              </span>
+              <span className="text-xs" style={{ color: 'rgba(240,240,255,0.4)', fontSize: '0.65rem', letterSpacing: '0.08em' }}>
+                THE ENERGY INTERNET
+              </span>
+            </div>
+          </Link>
+
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-1">
+            {NAV_LINKS.map(link => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="nav-link"
+                style={isActive(link.to) ? {
+                  color: '#a78bfa',
+                  background: 'rgba(102, 126, 234, 0.12)',
+                } : {}}
+              >
+                {link.label}
+              </Link>
+            ))}
             {user && (
-              <Link to="/admin" className="text-white hover:text-purple-300 transition">Admin</Link>
+              <Link
+                to="/admin"
+                className="nav-link"
+                style={isActive('/admin') ? {
+                  color: '#a78bfa',
+                  background: 'rgba(102, 126, 234, 0.12)',
+                } : {}}
+              >
+                Admin
+              </Link>
             )}
           </nav>
 
-          <div className="flex items-center gap-3">
-            {loading ? (
-              <div className="w-8 h-8 rounded-full bg-purple-500/30 animate-pulse" />
+          {/* Right side - with loading state */}
+          <div className="hidden md:flex items-center gap-3">
+            {authLoading ? (
+              // Loading state (prevents flash)
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <Loader size={16} className="animate-spin text-purple-400" />
+                <span className="text-sm font-medium text-purple-200">Loading...</span>
+              </div>
             ) : user ? (
-              <div className="flex items-center gap-3">
-                <span className="text-sm text-purple-200 hidden sm:inline">
-                  {user.email?.split('@')[0]}
-                </span>
+              <>
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl"
+                  style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <div className="w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}>
+                    <User size={12} className="text-white" />
+                  </div>
+                  <span className="text-sm font-medium" style={{ color: 'rgba(240,240,255,0.8)' }}>
+                    {user.email?.split('@')[0]}
+                  </span>
+                </div>
                 <button
                   onClick={handleSignOut}
-                  className="p-2 text-white hover:bg-white/10 rounded-lg transition"
-                  title="Sign out"
+                  className="btn-ghost flex items-center gap-1.5"
+                  style={{ color: 'rgba(240,240,255,0.4)', fontSize: '0.8rem' }}
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut size={14} />
+                  Sign out
                 </button>
-              </div>
+              </>
             ) : (
-              <Link
-                to="/signin"
-                className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition"
-              >
-                <UserIcon className="w-4 h-4" />
-                <span>Sign In</span>
+              <Link to="/signin" className="btn-primary" style={{ padding: '8px 20px', fontSize: '0.875rem' }}>
+                Sign In
               </Link>
             )}
           </div>
-        </div>
-      </header>
 
-      {/* Mobile menu overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <div
-            className="w-64 h-full bg-purple-900 p-4"
-            onClick={(e) => e.stopPropagation()}
+          {/* Mobile menu toggle */}
+          <button
+            className="md:hidden btn-ghost"
+            onClick={() => setMenuOpen(!menuOpen)}
+            aria-label="Toggle menu"
           >
-            <nav className="flex flex-col gap-2 mt-8">
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Mobile menu (same as before) */}
+      {menuOpen && (
+        <div
+          className="md:hidden"
+          style={{
+            background: 'rgba(13, 13, 26, 0.98)',
+            borderTop: '1px solid rgba(255,255,255,0.06)',
+            padding: '16px',
+          }}
+        >
+          <nav className="flex flex-col gap-1 mb-4">
+            {NAV_LINKS.map(link => (
               <Link
-                to="/"
-                className="text-white hover:bg-purple-800 px-3 py-2 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
+                key={link.to}
+                to={link.to}
+                className="nav-link py-2.5"
+                onClick={() => setMenuOpen(false)}
               >
-                Communities
+                {link.label}
               </Link>
-              <Link
-                to="/wallet"
-                className="text-white hover:bg-purple-800 px-3 py-2 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                My Wallet
+            ))}
+            {user && (
+              <Link to="/admin" className="nav-link py-2.5" onClick={() => setMenuOpen(false)}>
+                Admin
               </Link>
-              <Link
-                to="/trading"
-                className="text-white hover:bg-purple-800 px-3 py-2 rounded-lg"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Trading
-              </Link>
-              {user && (
-                <Link
-                  to="/admin"
-                  className="text-white hover:bg-purple-800 px-3 py-2 rounded-lg"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Admin
-                </Link>
-              )}
-              {!user && (
-                <>
-                  <hr className="border-white/20 my-2" />
-                  <Link
-                    to="/signin"
-                    className="text-white hover:bg-purple-800 px-3 py-2 rounded-lg"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    to="/signup"
-                    className="text-white hover:bg-purple-800 px-3 py-2 rounded-lg"
-                    onClick={() => setMobileMenuOpen(false)}
-                  >
-                    Sign Up
-                  </Link>
-                </>
-              )}
-            </nav>
-          </div>
+            )}
+          </nav>
+
+          {authLoading ? (
+            <div className="py-3 text-center text-purple-200">Loading account...</div>
+          ) : user ? (
+            <button onClick={handleSignOut} className="btn-secondary w-full justify-center">
+              <LogOut size={14} /> Sign Out
+            </button>
+          ) : (
+            <Link to="/signin" className="btn-primary w-full justify-center" onClick={() => setMenuOpen(false)}>
+              Sign In
+            </Link>
+          )}
         </div>
       )}
-    </>
+    </header>
   );
 }

@@ -1,84 +1,159 @@
-import { Link } from 'react-router-dom';
-import { MapPin, Sun, Battery, DollarSign } from 'lucide-react';
-import { Card } from '../../../components/ui/Card';
-import type { Cluster } from '../../../types/api';
-import { cn } from '../../../utils/cn';
+// src/features/clusters/components/ClusterCard.tsx
+import { useNavigate } from 'react-router-dom';
+import { usePCUTrend } from '@/hooks/usePCUTrend';
+import { LineChart, Line, ResponsiveContainer } from 'recharts';
+import { Zap, Battery, DollarSign, Users, Clock } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 
-interface ClusterCardProps {
+interface Cluster {
+  id: string;
+  name: string;
+  location?: string;
+  lifecycle_state: 'FUNDING' | 'ACTIVE' | 'COMPLETED' | 'SETTLED';
+  target_kw: number;
+  target_storage_kwh: number;
+  target_usd: number;
+  current_usd: number;
+  monthly_kwh?: number;
+  participant_count: number;
+  created_at: string;
+  deadline: string;
+}
+
+interface Props {
   cluster: Cluster;
 }
 
-const statusColors: Record<string, string> = {
-  PLANNING: 'bg-gray-500/20 text-gray-300 border border-gray-500/30',
-  FUNDING: 'bg-green-500/20 text-green-300 border border-green-500/30',
-  FUNDED: 'bg-blue-500/20 text-blue-300 border border-blue-500/30',
-  OPERATIONAL: 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-  LOCKED: 'bg-red-500/20 text-red-300 border border-red-500/30',
-  COMPLETED: 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30',
-  active:   'bg-emerald-500/20 text-emerald-300',
-  open:     'bg-sky-500/20 text-sky-300',
-  pending:  'bg-yellow-500/20 text-yellow-300',
-  inactive: 'bg-white/10 text-white/40',
-  // add any lifecycle_state values here as you discover them
-};
+export function ClusterCard({ cluster }: Props) {
+  const navigate = useNavigate();
+  const { data: trendData, loading: trendLoading } = usePCUTrend(cluster.id, 3); // small dataset for sparkline
 
-export function ClusterCard({ cluster }: ClusterCardProps) {
-  const percentFunded = cluster.current_usd && cluster.target_usd
-  ? (cluster.current_usd / cluster.target_usd) * 100
-  : 0;
+  const fundingPct = Math.min(100, Math.round((cluster.current_usd / cluster.target_usd) * 100));
+  const daysLeft = Math.max(0, Math.ceil((new Date(cluster.deadline).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
+
+  const statusColor = {
+    FUNDING: 'bg-amber-500/20 text-amber-300 border-amber-500/30',
+    ACTIVE: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
+    COMPLETED: 'bg-blue-500/20 text-blue-300 border-blue-500/30',
+    SETTLED: 'bg-purple-500/20 text-purple-300 border-purple-500/30',
+  }[cluster.lifecycle_state];
 
   return (
-    <Card variant="glass" padding="md" className="hover:scale-105 transition-transform">
-      <div className="flex justify-between items-start mb-4">
-        <h3 className="text-xl font-semibold text-white">{cluster.name}</h3>
-        <span className={cn(
-  'px-3 py-1 rounded-full text-xs font-medium',
-  statusColors[(cluster.lifecycle_state ?? cluster.status) as string] ?? ""
-)}>
-  {cluster.lifecycle_state ?? cluster.status}
-</span>
-      </div>
+    <div
+      onClick={() => navigate(`/clusters/${cluster.id}`)}
+      className="glass card-hover group cursor-pointer overflow-hidden relative min-h-[420px] flex flex-col"
+    >
+      {/* Status accent bar */}
+      <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${statusColor.split(' ')[0].replace('/20', '')}`} />
 
-      <div className="space-y-2 mb-4">
-        <div className="flex items-center text-sm text-purple-200">
-          <MapPin className="w-4 h-4 mr-2 text-purple-300" />
-          <span>{cluster.location.district}, {cluster.location.province}</span>
+      <div className="p-6 flex flex-col flex-1 space-y-5">
+        {/* Header */}
+        <div className="flex justify-between items-start gap-4">
+          <div>
+            <h3 className="text-xl font-semibold text-white group-hover:text-[var(--brand-primary)] transition-colors">
+              {cluster.name}
+            </h3>
+            <p className="text-sm text-[var(--text-secondary)] mt-1 flex items-center gap-1.5">
+              <span className="inline-block w-2 h-2 rounded-full bg-current" />
+              {cluster.location || 'Unknown'}
+            </p>
+          </div>
+
+          <span className={`px-3 py-1 rounded-full text-xs font-medium border ${statusColor}`}>
+            {cluster.lifecycle_state}
+          </span>
         </div>
-        <div className="flex items-center text-sm">
-          <Sun className="w-4 h-4 mr-2 text-yellow-400" />
-          <span className="text-white">{cluster.target_kw} kW solar</span>
+
+        {/* Stats grid */}
+        <div className="grid grid-cols-2 gap-5">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs uppercase tracking-wider">
+              <Zap className="w-4 h-4" />
+              Solar
+            </div>
+            <p className="text-xl font-bold">{cluster.target_kw} kW</p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs uppercase tracking-wider">
+              <Battery className="w-4 h-4" />
+              Storage
+            </div>
+            <p className="text-xl font-bold">{cluster.target_storage_kwh} kWh</p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs uppercase tracking-wider">
+              <DollarSign className="w-4 h-4" />
+              Goal
+            </div>
+            <p className="text-xl font-bold">${cluster.target_usd.toLocaleString()}</p>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-[var(--text-muted)] text-xs uppercase tracking-wider">
+              <Users className="w-4 h-4" />
+              Members
+            </div>
+            <p className="text-xl font-bold">{cluster.participant_count}</p>
+          </div>
         </div>
-        <div className="flex items-center text-sm">
-          <Battery className="w-4 h-4 mr-2 text-green-400" />
-          <span className="text-white">{cluster.target_storage_kwh ?? '—'} kWh storage</span>
+
+        {/* Sparkline – fixed dimensions */}
+        <div className="pt-2">
+          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-2">
+            <span>Funding Trend</span>
+            <span className={fundingPct > 0 ? 'text-[var(--success)]' : 'text-[var(--text-muted)]'}>
+              {fundingPct > 0 ? `↑ ${fundingPct}%` : '—'}
+            </span>
+          </div>
+
+          <div className="w-full h-24 min-h-[96px] bg-gray-900/30 rounded-lg overflow-hidden">
+            {trendLoading || trendData.length === 0 ? (
+              <div className="h-full flex items-center justify-center text-[var(--text-muted)] text-sm">
+                {trendLoading ? 'Loading...' : 'No data yet'}
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={trendData}>
+                  <Line
+                    type="monotone"
+                    dataKey="cumulative"
+                    stroke="var(--brand-primary)"
+                    strokeWidth={2.5}
+                    dot={false}
+                    activeDot={{ r: 6, strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
+          </div>
         </div>
-        <div className="flex items-center text-sm">
-          <DollarSign className="w-4 h-4 mr-2 text-emerald-400" />
-          <span className="text-white">
-  ${(cluster.current_usd ?? 0).toLocaleString()} / ${(cluster.target_usd ?? 0).toLocaleString()}
-</span>
+
+        {/* Progress & CTA */}
+        <div className="space-y-4 pt-3 border-t border-[var(--border-glass)] mt-auto">
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-[var(--text-secondary)]">Funded</span>
+              <span className="font-medium">{fundingPct}%</span>
+            </div>
+            <div className="progress-track">
+              <div className="progress-fill" style={{ width: `${fundingPct}%` }} />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-1.5 text-[var(--text-muted)]">
+              <Clock className="w-4 h-4" />
+              {daysLeft > 0 ? `${daysLeft} days left` : 'Deadline passed'}
+            </div>
+
+            <button className="text-[var(--brand-primary)] hover:text-[var(--brand-secondary)] font-medium transition-colors flex items-center gap-1.5">
+              View Details →
+            </button>
+          </div>
         </div>
       </div>
-
-      {/* Progress bar */}
-      <div className="mb-4">
-        <div className="w-full bg-white/10 rounded-full h-2">
-          <div
-            className="bg-gradient-to-r from-purple-600 to-indigo-600 h-2 rounded-full transition-all duration-500"
-            style={{ width: `${Math.min(percentFunded, 100)}%` }}
-          />
-        </div>
-        <p className="text-right text-xs mt-1 text-purple-300">
-          {percentFunded.toFixed(1)}% funded
-        </p>
-      </div>
-
-      <Link
-        to={`/clusters/${cluster.id}`}
-        className="block w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-4 rounded-lg text-center transition-all"
-      >
-        View Details
-      </Link>
-    </Card>
+    </div>
   );
 }

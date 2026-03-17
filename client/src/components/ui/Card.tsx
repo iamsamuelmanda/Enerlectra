@@ -1,41 +1,51 @@
-import { cn } from '../../utils/cn';
 import { ReactNode } from 'react';
+import { cn } from '../../utils/cn';
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  children: ReactNode; 
-  variant?: 'default' | 'glass' | 'outline';
+export interface CardProps {
+  children: ReactNode;
+  variant?: 'glass' | 'raised' | 'gradient-border' | 'solid';
   padding?: 'none' | 'sm' | 'md' | 'lg';
+  className?: string;
+  onClick?: () => void;
+  hover?: boolean;
 }
+
+const paddingMap = {
+  none: '',
+  sm:   'p-4',
+  md:   'p-5',
+  lg:   'p-6',
+};
 
 export function Card({
   children,
   variant = 'glass',
   padding = 'md',
   className,
-  ...props
+  onClick,
+  hover = false,
 }: CardProps) {
+  const base = 'rounded-2xl transition-all duration-200';
+
   const variants = {
-    default: 'bg-white/5 border border-white/10',
-    glass: 'bg-white/10 backdrop-blur-lg border border-white/20',
-    outline: 'bg-transparent border border-purple-500/30',
+    glass: 'glass',
+    raised: 'glass-raised',
+    'gradient-border': 'card-gradient-border',
+    solid: '',
   };
 
-  const paddings = {
-    none: 'p-0',
-    sm: 'p-4',
-    md: 'p-6',
-    lg: 'p-8',
-  };
+  const hoverClass = hover || onClick
+    ? 'cursor-pointer hover:-translate-y-1 hover:shadow-card-hover hover:border-glass-borderHover'
+    : '';
 
   return (
     <div
-      className={cn(
-        'rounded-xl shadow-lg transition-all duration-300 hover:shadow-xl',
-        variants[variant],
-        paddings[padding],
-        className
-      )}
-      {...props}
+      className={cn(base, variants[variant], paddingMap[padding], hoverClass, className)}
+      onClick={onClick}
+      style={variant === 'solid' ? {
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      } : undefined}
     >
       {children}
     </div>

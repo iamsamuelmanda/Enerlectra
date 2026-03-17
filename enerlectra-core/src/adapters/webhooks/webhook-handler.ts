@@ -1,7 +1,7 @@
 /**
  * Webhook Handler
  * Secure webhook processing with signature verification
- * Handles MTN, Airtel, and other payment rail callbacks
+ * Handles MTN, Airtel, and Lenco/Broadpay callbacks
  */
 
 import { createHmac } from 'crypto';
@@ -65,21 +65,18 @@ export class WebhookSignatureVerifier {
   }
 
   /**
-   * Generic HMAC verification
+   * Verify Lenco webhook signature
    */
-  static verifyHMAC(
+  static verifyLencoSignature(
     payload: string,
     signature: string,
-    secret: string,
-    algorithm: 'sha256' | 'sha512' = 'sha256',
-    encoding: 'hex' | 'base64' = 'hex'
+    secret: string
   ): boolean {
-    const expectedSignature = createHmac(algorithm, secret)
+    const expectedSignature = createHmac('sha256', secret)
       .update(payload)
-      .digest(encoding);
+      .digest('hex');
 
-    // Timing-safe comparison to prevent timing attacks
-    return this.timingSafeEqual(signature, expectedSignature);
+    return signature === expectedSignature;
   }
 
   /**
@@ -112,10 +109,6 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // MTN WEBHOOK PROCESSING
   // ═══════════════════════════════════════════════════════════
-
-  /**
-   * Process MTN payment webhook
-   */
   async processMTNWebhook(
     payload: string,
     signature: string | undefined,
@@ -193,7 +186,7 @@ export class WebhookHandler {
         webhookId,
         processed: false,
         error: error.message,
-        retry: true // Retry on errors
+        retry: true
       };
     }
   }
@@ -201,10 +194,6 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // AIRTEL WEBHOOK PROCESSING
   // ═══════════════════════════════════════════════════════════
-
-  /**
-   * Process Airtel payment webhook
-   */
   async processAirtelWebhook(
     payload: string,
     signature: string | undefined,
@@ -288,12 +277,90 @@ export class WebhookHandler {
   }
 
   // ═══════════════════════════════════════════════════════════
+  // LENCO / BROADPAY WEBHOOK
+  // ═══════════════════════════════════════════════════════════
+  async processLencoWebhook(
+    payload: string | Buffer,
+    signature: string | undefined,
+    secret: string
+  ): Promise<WebhookProcessingResult> {
+    const webhookId = await this.logWebhook('LENCO', payload.toString());
+
+    try {
+      // Verify signature
+      if (signature) {
+        const valid = WebhookSignatureVerifier.verifyLencoSignature(
+          payload.toString(),
+          signature,
+          secret
+        );
+
+        if (!valid) {
+          await this.updateWebhookStatus(webhookId, 'FAILED', 'Invalid signature');
+          return { success: false, webhookId, processed: false, error: 'Invalid signature' };
+        }
+      }
+
+      // Parse payload
+      const data = typeof payload === 'string' ? JSON.parse(payload) : JSON.parse(payload.toString());
+
+      const reference = data.reference || data.transaction_id || data.data?.reference;
+      const status = data.status || data.transaction?.status || data.data?.status;
+
+      if (!reference) {
+        await this.updateWebhookStatus(webhookId, 'IGNORED', 'No reference found');
+        return { success: true, webhookId, processed: false };
+      }
+
+      // Update contribution status
+      let newStatus = 'PENDING';
+      if (['SUCCESS', 'SUCCESSFUL', 'completed'].includes(status?.toUpperCase())) {
+        newStatus = 'COMPLETED';
+      } else if (['FAILED', 'error'].includes(status?.toUpperCase())) {
+        newStatus = 'FAILED';
+      }
+
+      const { error: updateError } = await this.supabase
+        .from('contributions')
+        .update({
+          status: newStatus,
+          transaction_id: data.transaction_id || data.id,
+          updated_at: new Date().toISOString(),
+          payment_response: data,
+          completed_at: newStatus === 'COMPLETED' ? new Date().toISOString() : null
+        })
+        .eq('id', reference);
+
+      if (updateError) {
+        console.error('Lenco webhook DB update failed:', updateError);
+      }
+
+      await this.updateWebhookStatus(webhookId, newStatus);
+
+      console.log(`✅ Lenco webhook: ${reference} → ${newStatus}`);
+
+      return {
+        success: true,
+        webhookId,
+        processed: true
+      };
+
+    } catch (error: any) {
+      console.error('[LENCO WEBHOOK ERROR]', error);
+      await this.updateWebhookStatus(webhookId, 'ERROR', error.message);
+      return {
+        success: false,
+        webhookId,
+        processed: false,
+        error: error.message,
+        retry: true
+      };
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
   // WEBHOOK LOGGING
   // ═══════════════════════════════════════════════════════════
-
-  /**
-   * Log incoming webhook for audit trail
-   */
   private async logWebhook(
     source: string,
     payload: string
@@ -334,10 +401,6 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // RETRY LOGIC
   // ═══════════════════════════════════════════════════════════
-
-  /**
-   * Get failed webhooks that need retry
-   */
   async getFailedWebhooks(
     maxRetries: number = 3
   ): Promise<Array<{
@@ -357,16 +420,12 @@ export class WebhookHandler {
     return data || [];
   }
 
-  /**
-   * Retry failed webhook
-   */
   async retryWebhook(
     webhookId: string,
     source: string,
     payload: string,
     secret: string
   ): Promise<WebhookProcessingResult> {
-    // Increment retry count
     await this.supabase
       .from('webhook_logs')
       .update({
@@ -375,11 +434,12 @@ export class WebhookHandler {
       })
       .eq('id', webhookId);
 
-    // Retry processing
     if (source === 'MTN') {
       return this.processMTNWebhook(payload, undefined, secret);
     } else if (source === 'AIRTEL') {
       return this.processAirtelWebhook(payload, undefined, secret);
+    } else if (source === 'LENCO') {
+      return this.processLencoWebhook(payload, undefined, secret);
     }
 
     return {
@@ -401,12 +461,10 @@ export class WebhookRetryScheduler {
     private secrets: {
       mtn: string;
       airtel: string;
+      lenco: string;
     }
   ) {}
 
-  /**
-   * Process failed webhooks (run periodically)
-   */
   async processFailedWebhooks(): Promise<{
     processed: number;
     succeeded: number;
@@ -418,7 +476,10 @@ export class WebhookRetryScheduler {
     let stillFailed = 0;
 
     for (const webhook of failed) {
-      const secret = webhook.source === 'MTN' ? this.secrets.mtn : this.secrets.airtel;
+      const secret = 
+        webhook.source === 'MTN' ? this.secrets.mtn :
+        webhook.source === 'AIRTEL' ? this.secrets.airtel :
+        this.secrets.lenco;
 
       const result = await this.handler.retryWebhook(
         webhook.id,
@@ -433,7 +494,6 @@ export class WebhookRetryScheduler {
         stillFailed++;
       }
 
-      // Wait between retries to avoid overwhelming the system
       await this.sleep(1000);
     }
 

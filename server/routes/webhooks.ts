@@ -1,3 +1,4 @@
+// src/routes/webhooks.ts
 import express from 'express';
 import { WebhookHandler } from '../../enerlectra-core/src/adapters/webhooks/webhook-handler';
 import { PaymentOrchestrator } from '../../enerlectra-core/src/domain/payment/payment-orchestrator';
@@ -11,12 +12,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-// Initialize Payment Orchestrator and Webhook Handler
+// Initialize core classes
 const orchestrator = new PaymentOrchestrator(supabase);
 const webhookHandler = new WebhookHandler(supabase, orchestrator);
 
 // ═══════════════════════════════════════════════════════════
-// MTN WEBHOOK ENDPOINT
+// MTN WEBHOOK (existing - unchanged)
 // ═══════════════════════════════════════════════════════════
 router.post('/webhooks/mtn', async (req, res) => {
   try {
@@ -47,7 +48,7 @@ router.post('/webhooks/mtn', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// AIRTEL WEBHOOK ENDPOINT
+// AIRTEL WEBHOOK (existing - unchanged)
 // ═══════════════════════════════════════════════════════════
 router.post('/webhooks/airtel', async (req, res) => {
   try {
@@ -78,7 +79,38 @@ router.post('/webhooks/airtel', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// WEBHOOK STATUS CHECK (for debugging)
+// LENCO / BROADPAY WEBHOOK  ← NEW (this is what we need now)
+// ═══════════════════════════════════════════════════════════
+router.post('/webhooks/lenco', express.raw({ type: 'application/json' }), async (req, res) => {
+  try {
+    const signature = req.headers['x-signature'] as string;
+    const payload = req.body; // raw body for signature verification
+
+    const result = await webhookHandler.processLencoWebhook(
+      payload,
+      signature,
+      process.env.LENCO_WEBHOOK_SECRET!
+    );
+
+    if (result.success) {
+      res.status(200).json({ 
+        message: 'Lenco webhook processed successfully',
+        webhookId: result.webhookId 
+      });
+    } else {
+      res.status(result.retry ? 500 : 400).json({ 
+        error: result.error,
+        webhookId: result.webhookId 
+      });
+    }
+  } catch (error: any) {
+    console.error('[LENCO WEBHOOK ERROR]', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// WEBHOOK STATUS CHECK (for debugging - unchanged)
 // ═══════════════════════════════════════════════════════════
 router.get('/webhooks/status', async (req, res) => {
   try {
@@ -93,7 +125,8 @@ router.get('/webhooks/status', async (req, res) => {
       recentWebhooks,
       endpoints: {
         mtn: `${process.env.MTN_CALLBACK_URL}`,
-        airtel: `${process.env.AIRTEL_CALLBACK_URL}`
+        airtel: `${process.env.AIRTEL_CALLBACK_URL}`,
+        lenco: `${process.env.BASE_URL}/api/webhooks/lenco`   // ← added
       }
     });
   } catch (error: any) {
