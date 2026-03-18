@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Phone, DollarSign, ShieldCheck, Loader2 } from 'lucide-react';
-import { initiateContributionPayment } from '@/features/contributions/services/contributionService';
+import { contributionService } from '@/features/contributions/services/contributionService';
 import { useAuth } from '@/hooks/useAuth';
 
 interface Props {
@@ -18,124 +18,140 @@ export default function ContributeForm({ clusterId, onSuccess }: Props) {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Load Lenco widget script once (production only)
+  useEffect(() => {
+    if (document.getElementById('lenco-inline-js')) return;
+
+    const script = document.createElement('script');
+    script.id = 'lenco-inline-js';
+    script.src = 'https://pay.lenco.co/js/v1/inline.js';
+    script.async = true;
+    script.onload = () => console.log('Lenco production widget loaded');
+    script.onerror = () => console.error('Failed to load Lenco widget');
+    document.body.appendChild(script);
+  }, []);
+
   const amountValid = amountUSD !== '' && amountUSD > 0 && amountUSD <= 10000;
   const phoneValid = phone.length === 9;
   const formValid = amountValid && !!provider && phoneValid && !!user;
 
-  // Debug panel
-  useEffect(() => {
-    console.log('ContributionForm.tsx:26 Form state updated:', {
-      amountUSD,
-      provider,
-      phone,
-      phoneLength: phone.length,
-      phoneValid,
-      amountValid,
-      formValid,
-      userId: user?.id,
-    });
-  }, [amountUSD, provider, phone, formValid, user]);
-
-  const handleProviderClick = (p: 'mtn' | 'airtel') => {
-    console.log(`${p.toUpperCase()} clicked - provider set to ${p}`);
-    setProvider(p);
-  };
-
   const handleSubmit = async () => {
-    console.log('ContributionForm.tsx:46 Request Payment clicked! formValid:', formValid);
-
-    if (!user) return toast.error('Please sign in first');
-    if (!formValid) return toast.error('Please fill all fields correctly');
+    if (!formValid || !user) {
+      toast.error('Please complete all fields');
+      return;
+    }
 
     setLoading(true);
-    const toastId = toast.loading('Initiating payment...');
+    const toastId = toast.loading('Opening secure payment...');
 
     try {
-      const result = await initiateContributionPayment({
+      await contributionService.initiatePayment({
         clusterId,
         amountUsd: Number(amountUSD),
         provider: provider!,
         phoneNumber: phone,
+        onSuccess: (reference) => {
+          toast.success(`Payment processed! Ref: ${reference}`, { id: toastId });
+          onSuccess?.();
+        },
+        onClose: () => {
+          toast.dismiss(toastId);
+          toast('Payment window closed');
+        },
       });
-
-      toast.success(result.message || 'Payment request sent! Check your phone.', { id: toastId });
-      onSuccess?.();
     } catch (err: any) {
-      toast.error(err.message || 'Payment failed', { id: toastId });
+      toast.error(err.message || 'Payment could not be started', { id: toastId });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="glass p-6 rounded-2xl space-y-6">
+    <div className="glass p-6 md:p-10 rounded-2xl space-y-8">
+      <h3 className="text-2xl font-bold text-gradient flex items-center gap-3">
+        <DollarSign className="w-7 h-7" />
+        Contribute Now
+      </h3>
+
       {/* Amount */}
-      <div>
-        <label className="text-sm text-purple-300">Amount (USD)</label>
+      <div className="relative">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">$</div>
         <input
           type="number"
           value={amountUSD}
           onChange={(e) => setAmountUSD(e.target.value === '' ? '' : Number(e.target.value))}
-          className="w-full bg-transparent border-b-2 border-purple-500/30 text-3xl font-semibold focus:outline-none"
+          step="0.01"
+          min="1"
+          max="10000"
+          className={`peer w-full pl-10 pr-4 py-4 bg-transparent border-b-2 ${
+            amountValid ? 'border-[var(--border-glass)]' : 'border-red-500'
+          } text-2xl text-white focus:border-[var(--brand-primary)] outline-none`}
+          placeholder=" "
         />
+        <label className="absolute left-10 top-4 text-[var(--text-secondary)] transition-all peer-focus:-translate-y-5 peer-focus:text-sm peer-focus:text-[var(--brand-primary)]">
+          Amount (USD)
+        </label>
       </div>
 
       {/* Providers */}
-      <div className="flex gap-3">
-        {(['mtn', 'airtel'] as const).map((p) => (
-          <button
-            key={p}
-            onClick={() => handleProviderClick(p)}
-            className={`flex-1 py-3 rounded-xl font-medium transition-all ${
-              provider === p 
-                ? 'bg-purple-600 text-white ring-2 ring-purple-400 scale-105' 
-                : 'bg-white/5 hover:bg-white/10'
-            }`}
-          >
-            {p.toUpperCase()}
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          type="button"
+          onClick={() => setProvider('mtn')}
+          className={`glass py-5 rounded-xl flex flex-col items-center gap-2 transition-all ${
+            provider === 'mtn' ? 'ring-2 ring-purple-500 scale-105' : 'hover:scale-102'
+          }`}
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-500 to-red-600 text-white font-bold flex items-center justify-center">
+            MTN
+          </div>
+          <span>MTN MoMo</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setProvider('airtel')}
+          className={`glass py-5 rounded-xl flex flex-col items-center gap-2 transition-all ${
+            provider === 'airtel' ? 'ring-2 ring-purple-500 scale-105' : 'hover:scale-102'
+          }`}
+        >
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-600 to-pink-600 text-white font-bold flex items-center justify-center">
+            Airtel
+          </div>
+          <span>Airtel Money</span>
+        </button>
       </div>
 
       {/* Phone */}
       <div className="relative">
-        <div className="flex items-center bg-white/5 border-b-2 border-purple-500/30 rounded-t-xl px-4">
-          <span className="text-purple-300">+260</span>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => {
-              const digits = e.target.value.replace(/\D/g, '').slice(0, 9);
-              setPhone(digits);
-              console.log('ContributionForm.tsx:253 Phone input changed:', { value: digits, digits });
-            }}
-            placeholder="977123456"
-            className="flex-1 bg-transparent py-4 text-lg focus:outline-none"
-          />
-        </div>
-        {phone && !phoneValid && (
-          <p className="text-xs text-red-400 mt-1">Must be exactly 9 digits</p>
-        )}
-      </div>
-
-      {/* Debug Panel */}
-      <div className="text-xs bg-purple-950/50 p-3 rounded-xl text-purple-300">
-        <strong>Debug Info:</strong><br />
-        Amount valid: {amountValid ? '✅ YES' : '❌ NO'}<br />
-        Provider: {provider || 'none'}<br />
-        Phone: {phone} ({phone.length} digits) {phoneValid ? '✅' : '❌'}<br />
-        User signed in: {user ? '✅' : '❌'}<br />
-        <strong>Form valid: {formValid ? '✅ READY TO SEND' : '❌ Button disabled'}</strong>
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">+260</div>
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 9))}
+          className={`peer w-full pl-16 pr-4 py-4 bg-transparent border-b-2 ${
+            phoneValid ? 'border-[var(--border-glass)]' : 'border-red-500'
+          } text-lg text-white focus:border-[var(--brand-primary)] outline-none`}
+          placeholder=" "
+        />
+        <label className="absolute left-16 top-4 text-[var(--text-secondary)] transition-all peer-focus:-translate-y-5 peer-focus:text-sm peer-focus:text-[var(--brand-primary)]">
+          Mobile Number (9 digits)
+        </label>
       </div>
 
       <button
         onClick={handleSubmit}
         disabled={loading || !formValid}
-        className="w-full py-4 bg-gradient-to-r from-purple-600 to-violet-600 rounded-xl font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+        className="w-full py-4 bg-gradient-to-r from-[var(--brand-primary)] to-[var(--brand-secondary)] rounded-xl text-white font-semibold disabled:opacity-50 transition-all flex items-center justify-center gap-2"
       >
-        {loading && <Loader2 className="animate-spin" />}
-        {loading ? 'Processing...' : 'Request Payment'}
+        {loading && <Loader2 className="h-5 w-5 animate-spin" />}
+        {loading ? 'Opening payment...' : 'Request Payment'}
       </button>
+
+      <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)]">
+        <ShieldCheck className="w-4 h-4 text-green-400" />
+        Secured by Lenco
+      </div>
     </div>
   );
 }
