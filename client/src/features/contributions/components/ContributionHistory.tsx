@@ -1,3 +1,4 @@
+// client/src/features/contributions/components/ContributionHistory.tsx
 import { useEffect, useState } from 'react';
 import { supabase } from '../../../lib/supabase';
 import { contributionService } from '../services/contributionService';
@@ -21,12 +22,19 @@ export function ContributionHistory({ clusterId }: ContributionHistoryProps) {
 
     const subscription = supabase
       .channel('contributions')
-      .on('postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'contributions', filter: `cluster_id=eq.${clusterId}` },
+      .on(
+        'postgres_changes',
+        { 
+          event: 'INSERT', 
+          schema: 'public', 
+          table: 'contributions', 
+          filter: `cluster_id=eq.${clusterId}` 
+        },
         (payload) => {
           if (payload.new.status === 'COMPLETED') {
-            setContributions(prev => [payload.new as Contribution, ...prev]);
-            setTotal(prev => prev + (payload.new as Contribution).amount_usd);
+            const newContrib = payload.new as Contribution;
+            setContributions(prev => [newContrib, ...prev]);
+            setTotal(prev => prev + (newContrib.amount_usd || 0));
           }
         }
       )
@@ -41,7 +49,7 @@ export function ContributionHistory({ clusterId }: ContributionHistoryProps) {
     try {
       const data = await contributionService.getContributionsByCluster(clusterId);
       setContributions(data);
-      const totalUSD = data.reduce((sum, c) => sum + c.amount_usd, 0);
+      const totalUSD = data.reduce((sum, c) => sum + (c.amount_usd || 0), 0);
       setTotal(totalUSD);
     } catch (error) {
       console.error('Error loading contributions:', error);
