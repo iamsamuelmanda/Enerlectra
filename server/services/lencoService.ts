@@ -4,60 +4,6 @@ import axios from 'axios';
 const LENCO_BASE_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2/';
 const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
 
-export const lencoService = {
-  async createContribution(
-    userId: string,
-    clusterId: string,
-    amountUsd: number,
-    provider: 'mtn' | 'airtel',
-    phoneNumber: string
-  ) {
-    console.log('🚀 [Lenco] Creating payment:', { userId, clusterId, amountUsd, provider, phoneNumber });
-
-    if (!LENCO_SECRET) throw new Error('Missing LENCO_SECRET_KEY in .env');
-    if (!amountUsd || amountUsd <= 0) throw new Error('Amount must be greater than 0');
-
-    try {
-      const res = await axios.post(
-        `${LENCO_BASE_URL}/payments`,
-        {
-          amount: Math.round(amountUsd * 25),
-          currency: 'ZMW',
-          provider: provider.toUpperCase(),
-          phone_number: phoneNumber.replace('+260', ''),
-          reference: `enerlectra-${Date.now()}`,
-          customer_email: 'user@enerlectra.com',
-          metadata: { clusterId, userId },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${LENCO_SECRET}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      const data = res.data;
-
-      return {
-        id: data.transaction_id || `pending-${Date.now()}`,
-        user_id: userId,
-        cluster_id: clusterId,
-        amount_usd: amountUsd,
-        amount_zmw: data.amount || amountUsd * 25,
-        exchange_rate: 25,
-        pcus: amountUsd,
-        status: 'PENDING',
-        payment_method: 'MOBILE_MONEY',
-        transaction_reference: data.transaction_id,
-      };
-    } catch (err: any) {
-      console.error('Lenco error:', err.response?.data || err.message);
-      throw new Error(err.response?.data?.message || 'Payment initiation failed');
-    }
-  },
-};
-
 export async function initiateContributionPayment({
   clusterId,
   amountUsd,
@@ -71,16 +17,57 @@ export async function initiateContributionPayment({
   provider: 'mtn' | 'airtel';
   phoneNumber: string;
 }) {
-  const contribution = await lencoService.createContribution(
-    userId,
+  console.log('[LENCO SERVICE] Initiating payment:', {
     clusterId,
     amountUsd,
     provider,
-    phoneNumber
-  );
+    phoneNumber,
+  });
 
-  return {
-    reference: contribution.id,
-    message: 'Payment request sent! Check your phone for the prompt.',
+  if (!LENCO_SECRET) {
+    throw new Error('LENCO_SECRET_KEY is missing in Render environment variables');
+  }
+
+  // FIXED: Correct production endpoint path
+  const fullUrl = `${LENCO_BASE_URL.endsWith('/') ? LENCO_BASE_URL : LENCO_BASE_URL + '/'}payments`;
+  console.log('[LENCO] Calling exact URL:', fullUrl);
+
+  const payload = {
+    amount: Math.round(amountUsd * 27.5),
+    currency: 'ZMW',
+    provider: provider.toUpperCase(),
+    phone_number: phoneNumber.replace('+260', ''),
+    reference: `enerlectra-${Date.now()}`,
+    customer_email: 'user@enerlectra.com',
+    metadata: { clusterId, userId },
   };
+
+  try {
+    const res = await axios.post(fullUrl, payload, {
+      headers: {
+        Authorization: `Bearer ${LENCO_SECRET}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    console.log('[LENCO] SUCCESS response:', res.data);
+
+    return {
+      reference: res.data.transaction_id || `pending-${Date.now()}`,
+      message: 'Payment request sent! Check your phone for the prompt.',
+    };
+  } catch (error: any) {
+    console.error('[LENCO FULL ERROR]', {
+      status: error.response?.status,
+      data: error.response?.data,
+      url: fullUrl,
+      message: error.message,
+    });
+
+    throw new Error(
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      'Lenco API error - check Render logs for details'
+    );
+  }
 }
