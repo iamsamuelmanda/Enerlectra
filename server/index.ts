@@ -1,12 +1,17 @@
 /**
- * ENERLECTRA PRODUCTION BACKEND v2.2
- * Fixed: column casing, surplus_kwh insert, all new endpoints
+ * ENERLECTRA PRODUCTION BACKEND v2.3
+ * Updated: Full Lenco integration + clean payments route
  */
 
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
+
+// ──────────────────────────────────────────────────────────────
+// NEW: Import Lenco payments route
+// ──────────────────────────────────────────────────────────────
+import paymentRoutes from './routes/payments';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -86,7 +91,7 @@ app.get('/', (req, res) => {
   res.json({
     status: 'OK',
     message: 'Enerlectra Production Backend',
-    version: '2.2.0',
+    version: '2.3.0',
     timestamp: new Date().toISOString(),
   });
 });
@@ -99,6 +104,7 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     services: {
       supabase: !!supabase,
+      lenco: !!process.env.LENCO_SECRET_KEY,
       mtn: !!process.env.MTN_API_KEY,
       airtel: !!process.env.AIRTEL_CLIENT_ID,
       exchangeRate: !!process.env.EXCHANGE_RATE_API_KEY,
@@ -209,7 +215,6 @@ app.post('/api/clusters', async (req, res) => {
 app.put('/api/clusters/:id', async (req, res) => {
   try {
     if (!supabase) return res.status(503).json({ error: 'Database not available' });
-    // Strip any fields that shouldn't be updated directly
     const { id, created_at, ...updates } = req.body;
     const { data, error } = await supabase
       .from('clusters')
@@ -242,7 +247,6 @@ app.post('/api/energy/readings', async (req, res) => {
       });
     }
 
-    // Note: surplus_kwh is NOT inserted — the DB computes it as a generated column
     const { data, error } = await supabase
       .from('energy_readings')
       .insert([{
@@ -403,88 +407,10 @@ app.get('/api/ownership/:clusterId', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// PAYMENTS
+// PAYMENTS - NOW USING LENCO
 // ═══════════════════════════════════════════════════════════
 
-app.post('/api/payments/initiate', async (req, res) => {
-  try {
-    const { provider, phoneNumber, amountUSD, clusterId, userId, externalId } = req.body;
-
-    if (!provider || !phoneNumber || !amountUSD) {
-      return res.status(400).json({
-        error: 'Missing required fields',
-        required: ['provider', 'phoneNumber', 'amountUSD'],
-      });
-    }
-
-    const exchangeRateResult = await getExchangeRate('USD', 'ZMW');
-    const exchangeRate = exchangeRateResult.rate;
-    const amountZMW = amountUSD * exchangeRate;
-    const transactionId = externalId || `TXN-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-    if (supabase) {
-      try {
-        await supabase.from('payment_intents').insert({
-          transaction_id: transactionId,
-          provider,
-          phone_number: phoneNumber,
-          amount_usd: amountUSD,
-          amount_zmw: amountZMW,
-          cluster_id: clusterId,
-          user_id: userId,
-          status: 'PENDING',
-          metadata: { exchange_rate: exchangeRate, exchange_rate_live: exchangeRateResult.live },
-          created_at: new Date().toISOString(),
-        });
-      } catch (dbError) {
-        console.error('[DB ERROR]', dbError);
-      }
-    }
-
-    res.json({
-      success: true,
-      transactionId,
-      status: 'PENDING',
-      provider,
-      amountUSD,
-      amountZMW: amountZMW.toFixed(2),
-      exchangeRate,
-      exchangeRateLive: exchangeRateResult.live,
-      message: `Payment initiated. Please approve on your ${provider.toUpperCase()} phone.`,
-    });
-  } catch (error: any) {
-    console.error('[PAYMENT INITIATION ERROR]', error);
-    res.status(500).json({ error: 'Payment initiation failed', message: error.message });
-  }
-});
-
-app.get('/api/payments/status/:transactionId', async (req, res) => {
-  try {
-    const { transactionId } = req.params;
-
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('payment_intents')
-        .select('*')
-        .eq('transaction_id', transactionId)
-        .single();
-
-      if (data && !error) {
-        return res.json({
-          success: true,
-          status: data.status,
-          transactionId,
-          provider: data.provider,
-          amountZMW: data.amount_zmw,
-        });
-      }
-    }
-
-    res.json({ success: true, status: 'PENDING', transactionId });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to get payment status', message: error.message });
-  }
-});
+app.use('/api/payments', paymentRoutes);   // ← This mounts the new Lenco route
 
 // ═══════════════════════════════════════════════════════════
 // WEBHOOKS
@@ -539,6 +465,7 @@ app.get('/api/webhooks/status', async (req, res) => {
       endpoints: {
         mtn: process.env.MTN_CALLBACK_URL || 'Not configured',
         airtel: process.env.AIRTEL_CALLBACK_URL || 'Not configured',
+        lenco: process.env.BASE_URL + '/api/webhooks/lenco' || 'Not configured',
       },
     });
   } catch (error: any) {
@@ -596,7 +523,7 @@ app.use((req, res) => {
 
 app.listen(PORT, () => {
   console.log('═'.repeat(70));
-  console.log(`⚡ ENERLECTRA PRODUCTION BACKEND v2.2.0`);
+  console.log(`⚡ ENERLECTRA PRODUCTION BACKEND v2.3.0`);
   console.log('═'.repeat(70));
   console.log(`🌐 Server: http://localhost:${PORT}`);
   console.log(`📅 Started: ${new Date().toISOString()}`);
@@ -604,6 +531,7 @@ app.listen(PORT, () => {
   console.log('─'.repeat(70));
   console.log('📊 SERVICES STATUS:');
   console.log(`  Supabase:      ${supabase ? '✅ Connected' : '⚠️  Not configured (demo mode)'}`);
+  console.log(`  Lenco:         ${process.env.LENCO_SECRET_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  MTN MoMo:      ${process.env.MTN_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  Airtel Money:  ${process.env.AIRTEL_CLIENT_ID ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  Exchange Rate: ${process.env.EXCHANGE_RATE_API_KEY ? '✅ Live' : '⚠️  Using fallback'}`);

@@ -1,4 +1,4 @@
-// src/features/contributions/components/ContributionForm.tsx
+// client/src/features/contributions/components/ContributionForm.tsx
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { Phone, DollarSign, ShieldCheck, Loader2 } from 'lucide-react';
@@ -66,23 +66,12 @@ export default function ContributeForm({ clusterId, onSuccess }: Props) {
     const toastId = toast.loading('Initiating payment...');
 
     try {
-      const fullPhone = `+260${phone}`;
-
-      const payload = {
+      const result = await initiateContributionPayment({
         clusterId,
         amountUsd: Number(amountUSD),
-        userId: user.id,
         provider,
-        phoneNumber: fullPhone,
-      };
-
-      console.log('Sending payment request:', payload);
-
-      if (isNaN(payload.amountUsd)) {
-        throw new Error('Invalid amount conversion');
-      }
-
-      const result = await initiateContributionPayment(payload);
+        phoneNumber: phone, // will be prefixed with +260 in service
+      });
 
       console.log('Payment success:', result);
       toast.success(
