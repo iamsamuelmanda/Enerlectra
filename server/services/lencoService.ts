@@ -1,7 +1,7 @@
 // server/services/lencoService.ts
 import axios from 'axios';
 
-const LENCO_BASE_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/v2/';
+const LENCO_BASE_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2/';
 const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
 
 export async function initiateContributionPayment({
@@ -17,7 +17,7 @@ export async function initiateContributionPayment({
   provider: 'mtn' | 'airtel';
   phoneNumber: string;
 }) {
-  console.log('[LENCO SERVICE] Initiating payment:', {
+  console.log('[LENCO SERVICE] Initiating collection:', {
     clusterId,
     amountUsd,
     provider,
@@ -25,19 +25,22 @@ export async function initiateContributionPayment({
   });
 
   if (!LENCO_SECRET) {
-    throw new Error('LENCO_SECRET_KEY is missing in Render environment variables');
+    throw new Error('LENCO_SECRET_KEY missing in Render environment variables');
   }
 
-  // FIXED: Correct production endpoint (this is what fixes the 404)
-  const fullUrl = `${LENCO_BASE_URL.endsWith('/') ? LENCO_BASE_URL : LENCO_BASE_URL + '/'}payments`;
+  // FIXED: Correct production endpoint for collections
+  const fullUrl = `${LENCO_BASE_URL.endsWith('/') ? LENCO_BASE_URL : LENCO_BASE_URL + '/'}collections`;
   console.log('[LENCO] Calling exact URL:', fullUrl);
 
+  // Convert amount to smallest unit (ngwee = ZMW × 100)
+  const amountInNgwee = Math.round(amountUsd * 27.5 * 100);
+
   const payload = {
-    amount: Math.round(amountUsd * 27.5),
+    amount: amountInNgwee,
     currency: 'ZMW',
-    provider: provider.toUpperCase(),
-    phone_number: phoneNumber.replace('+260', ''),
     reference: `enerlectra-${Date.now()}`,
+    phone_number: phoneNumber.replace('+260', ''),
+    provider: provider.toUpperCase(),
     customer_email: 'user@enerlectra.com',
     metadata: { clusterId, userId },
   };
@@ -53,7 +56,7 @@ export async function initiateContributionPayment({
     console.log('[LENCO] SUCCESS response:', res.data);
 
     return {
-      reference: res.data.transaction_id || `pending-${Date.now()}`,
+      reference: res.data.reference || res.data.transaction_id || `pending-${Date.now()}`,
       message: 'Payment request sent! Check your phone for the prompt.',
     };
   } catch (error: any) {
@@ -67,7 +70,7 @@ export async function initiateContributionPayment({
     throw new Error(
       error.response?.data?.message ||
       error.response?.data?.error ||
-      'Lenco API error - check Render logs'
+      'Lenco API error – see Render logs for details'
     );
   }
 }
