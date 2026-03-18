@@ -14,7 +14,7 @@ const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
 const LENCO_VERIFY_BASE = 'https://api.lenco.co/access/v2/collections/status/';
 
 // ═══════════════════════════════════════════════════════════
-// VERIFY PAYMENT (called from widget onSuccess callback)
+// VERIFY PAYMENT (called automatically by Lenco widget onSuccess)
 // ═══════════════════════════════════════════════════════════
 router.post('/verify', async (req, res) => {
   const { reference } = req.body;
@@ -26,12 +26,12 @@ router.post('/verify', async (req, res) => {
   }
 
   if (!LENCO_SECRET) {
-    return res.status(500).json({ error: 'Server configuration error - missing LENCO_SECRET_KEY' });
+    return res.status(500).json({ error: 'Server configuration error - LENCO_SECRET_KEY missing' });
   }
 
   try {
     const verifyUrl = `${LENCO_VERIFY_BASE}${reference}`;
-    console.log('[LENCO VERIFY] Calling:', verifyUrl);
+    console.log('[LENCO VERIFY] Calling URL:', verifyUrl);
 
     const response = await axios.get(verifyUrl, {
       headers: {
@@ -47,24 +47,27 @@ router.post('/verify', async (req, res) => {
       status: data.status,
       amount: data.amount,
       reference: data.reference,
+      lencoReference: data.lencoReference,
     });
 
     if (data.status === 'successful') {
-      // Update contribution in Supabase
+      // Update contribution record
       const { error: updateError } = await supabase
         .from('contributions')
         .update({
           status: 'COMPLETED',
           completed_at: new Date().toISOString(),
           transaction_reference: reference,
-          payment_response: data, // store full response for audit
+          payment_response: data,           // store full Lenco response for audit
         })
-        .eq('transaction_reference', reference) // or eq('reference', reference) if you store it
+        .eq('transaction_reference', reference)
         .single();
 
       if (updateError) {
         console.error('[SUPABASE UPDATE ERROR]', updateError);
-        // Still return success to frontend — webhook will catch it later
+        // We still return success to the frontend - webhook will catch it if needed
+      } else {
+        console.log('[SUPABASE] Contribution marked COMPLETED for reference:', reference);
       }
 
       return res.json({
@@ -74,22 +77,23 @@ router.post('/verify', async (req, res) => {
       });
     }
 
-    // Pending, failed, etc.
-    res.json({
+    // Not yet successful (pending, failed, etc.)
+    return res.json({
       success: true,
       status: data.status || 'PENDING',
       message: data.reasonForFailure || 'Payment status updated',
     });
   } catch (error: any) {
+    const errData = error.response?.data || {};
     console.error('[LENCO VERIFY ERROR]', {
       status: error.response?.status,
-      data: error.response?.data,
+      data: errData,
       message: error.message,
     });
 
-    res.status(error.response?.status || 500).json({
+    return res.status(error.response?.status || 500).json({
       success: false,
-      error: error.response?.data?.message || 'Verification failed',
+      error: errData.message || 'Verification failed',
     });
   }
 });

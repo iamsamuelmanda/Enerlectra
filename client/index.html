@@ -3,31 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Enerlectra – Africa's first community-owned solar energy platform. The Energy Internet." />
+  <meta name="description" content="Enerlectra – Africa's first community-owned solar energy platform." />
   <meta name="theme-color" content="#0d0d1a" />
 
-  <!-- Security: allow Lenco widget + your domains -->
+  <!-- CSP for Lenco widget -->
   <meta http-equiv="Content-Security-Policy" content="
     default-src 'self';
-    script-src 'self' https://pay.lenco.co https://fonts.googleapis.com 'unsafe-inline';
+    script-src 'self' https://pay.lenco.co 'unsafe-inline';
     style-src 'self' https://fonts.googleapis.com 'unsafe-inline';
     font-src 'self' https://fonts.gstatic.com;
-    img-src 'self' data: https:;
+    img-src 'self' data:;
     connect-src 'self' https://api.lenco.co https://*.supabase.co wss://*.supabase.co;
     frame-src 'self' https://pay.lenco.co;
   " />
 
   <title>Enerlectra – The Energy Internet</title>
 
-  <!-- Preconnect for performance -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://pay.lenco.co" />
 
-  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
-  <!-- Favicon: lightning bolt -->
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><rect width='24' height='24' rx='6' fill='%23667eea'/><path d='M13 2L3 14h8l-1 8 10-12h-8l1-8z' fill='white'/></svg>" />
 </head>
 <body>
