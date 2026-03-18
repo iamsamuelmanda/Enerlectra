@@ -1,7 +1,7 @@
 // server/services/lencoService.ts
 import axios from 'axios';
 
-const LENCO_BASE_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2/';
+const LENCO_BASE_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/v2/';
 const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
 
 export async function initiateContributionPayment({
@@ -28,7 +28,7 @@ export async function initiateContributionPayment({
     throw new Error('LENCO_SECRET_KEY is missing in Render environment variables');
   }
 
-  // FIXED: Correct production endpoint path
+  // FIXED: Correct production endpoint (this is what fixes the 404)
   const fullUrl = `${LENCO_BASE_URL.endsWith('/') ? LENCO_BASE_URL : LENCO_BASE_URL + '/'}payments`;
   console.log('[LENCO] Calling exact URL:', fullUrl);
 
@@ -67,7 +67,7 @@ export async function initiateContributionPayment({
     throw new Error(
       error.response?.data?.message ||
       error.response?.data?.error ||
-      'Lenco API error - check Render logs for details'
+      'Lenco API error - check Render logs'
     );
   }
 }
