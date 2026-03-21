@@ -1,6 +1,7 @@
 // server/routes/payments.ts
 import express from 'express';
 import axios from 'axios';
+import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 
 const router = express.Router();
@@ -11,10 +12,12 @@ const supabase = createClient(
 );
 
 const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
+const LENCO_WEBHOOK_SECRET = process.env.LENCO_WEBHOOK_SECRET || 'c0cacc67954b0b5f0db329443f68aa9ba06d5a05632e65a322bd4a61b9227905';
+
 const LENCO_VERIFY_BASE = 'https://api.lenco.co/access/v2/collections/status/';
 
 // ═══════════════════════════════════════════════════════════
-// VERIFY PAYMENT (called automatically by Lenco widget onSuccess)
+// VERIFY ENDPOINT (called by Lenco widget onSuccess)
 // ═══════════════════════════════════════════════════════════
 router.post('/verify', async (req, res) => {
   const { reference } = req.body;
@@ -26,75 +29,90 @@ router.post('/verify', async (req, res) => {
   }
 
   if (!LENCO_SECRET) {
-    return res.status(500).json({ error: 'Server configuration error - LENCO_SECRET_KEY missing' });
+    return res.status(500).json({ error: 'LENCO_SECRET_KEY missing' });
   }
 
   try {
     const verifyUrl = `${LENCO_VERIFY_BASE}${reference}`;
-    console.log('[LENCO VERIFY] Calling URL:', verifyUrl);
-
     const response = await axios.get(verifyUrl, {
-      headers: {
-        Authorization: `Bearer ${LENCO_SECRET}`,
-        Accept: 'application/json',
-      },
+      headers: { Authorization: `Bearer ${LENCO_SECRET}` },
       timeout: 15000,
     });
 
     const data = response.data.data || {};
 
-    console.log('[LENCO VERIFY RESPONSE]', {
-      status: data.status,
-      amount: data.amount,
-      reference: data.reference,
-      lencoReference: data.lencoReference,
-    });
-
     if (data.status === 'successful') {
-      // Update contribution record
-      const { error: updateError } = await supabase
+      const { error } = await supabase
         .from('contributions')
         .update({
           status: 'COMPLETED',
           completed_at: new Date().toISOString(),
           transaction_reference: reference,
-          payment_response: data,           // store full Lenco response for audit
+          payment_response: data,
         })
         .eq('transaction_reference', reference)
         .single();
 
-      if (updateError) {
-        console.error('[SUPABASE UPDATE ERROR]', updateError);
-        // We still return success to the frontend - webhook will catch it if needed
-      } else {
-        console.log('[SUPABASE] Contribution marked COMPLETED for reference:', reference);
-      }
+      if (error) console.error('[SUPABASE UPDATE ERROR]', error);
+      else console.log('[SUPABASE] Contribution marked COMPLETED:', reference);
 
-      return res.json({
-        success: true,
-        status: 'COMPLETED',
-        message: 'Payment verified and contribution completed',
-      });
+      return res.json({ success: true, status: 'COMPLETED' });
     }
 
-    // Not yet successful (pending, failed, etc.)
-    return res.json({
-      success: true,
-      status: data.status || 'PENDING',
-      message: data.reasonForFailure || 'Payment status updated',
-    });
+    return res.json({ success: true, status: data.status || 'PENDING' });
   } catch (error: any) {
-    const errData = error.response?.data || {};
-    console.error('[LENCO VERIFY ERROR]', {
-      status: error.response?.status,
-      data: errData,
-      message: error.message,
-    });
+    console.error('[VERIFY ERROR]', error.response?.data || error.message);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
 
-    return res.status(error.response?.status || 500).json({
-      success: false,
-      error: errData.message || 'Verification failed',
-    });
+// ═══════════════════════════════════════════════════════════
+// LENCO WEBHOOK (real production events from Lenco)
+// ═══════════════════════════════════════════════════════════
+router.post('/webhooks/lenco', express.raw({ type: 'application/json' }), async (req, res) => {
+  const signature = req.headers['x-lenco-signature'];
+  const rawBody = req.body.toString();
+
+  console.log('[LENCO WEBHOOK] Received event');
+
+  // Signature verification
+  if (signature && LENCO_WEBHOOK_SECRET) {
+    const hmac = crypto.createHmac('sha256', LENCO_WEBHOOK_SECRET);
+    const digest = hmac.update(rawBody).digest('hex');
+    if (signature !== digest) {
+      console.error('[WEBHOOK] Invalid signature');
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+  }
+
+  try {
+    const payload = JSON.parse(rawBody);
+    const event = payload.event || payload.type;
+
+    if (event === 'collection.successful') {
+      const reference = payload.data?.reference || payload.reference;
+      console.log('[WEBHOOK] SUCCESSFUL COLLECTION – reference:', reference);
+
+      const { error } = await supabase
+        .from('contributions')
+        .update({
+          status: 'COMPLETED',
+          completed_at: new Date().toISOString(),
+          transaction_reference: reference,
+          payment_response: payload.data,
+        })
+        .eq('transaction_reference', reference)
+        .single();
+
+      if (error) console.error('[SUPABASE UPDATE ERROR]', error);
+      else console.log('[WEBHOOK] Contribution successfully updated in Supabase');
+    }
+
+    // Always return 200 to Lenco
+    res.status(200).json({ received: true });
+  } catch (err: any) {
+    console.error('[WEBHOOK ERROR]', err);
+    res.status(500).json({ error: 'Webhook processing failed' });
   }
 });
 
