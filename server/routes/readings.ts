@@ -22,7 +22,8 @@ router.post('/ingest', async (req, res) => {
       photoUrl,
       confidence,
       period,
-      transactionReference
+      transactionReference,
+      signal
     } = req.body;
 
     if (!clusterId || !unitId) {
@@ -43,7 +44,8 @@ router.post('/ingest', async (req, res) => {
         ocr_confidence: confidence || null,
         reporting_period: reportingPeriod,
         source: 'telegram',
-        transaction_reference: transactionReference || null
+        transaction_reference: transactionReference || null,
+        signal: signal || null
       })
       .select()
       .single();
