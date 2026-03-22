@@ -54,7 +54,7 @@ router.post('/ingest', async (req, res) => {
 
     console.log(`[INGEST SUCCESS] Saved reading for cluster ${clusterId}`);
 
-    // Auto-trigger reconciliation if data is ready
+    // Auto-trigger reconciliation
     const canReconcile = await checkReconciliationReady(clusterId, reportingPeriod);
     if (canReconcile) {
       await triggerReconciliation(clusterId, reportingPeriod);
@@ -91,7 +91,6 @@ router.get('/clusters/:clusterId/status', async (req, res) => {
       readings: readings || []
     });
   } catch (error: any) {
-    console.error('[STATUS ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -105,7 +104,6 @@ router.post('/clusters/:clusterId/reconcile', async (req, res) => {
     const result = await triggerReconciliation(clusterId, period || getCurrentPeriod());
     res.json(result);
   } catch (error: any) {
-    console.error('[RECONCILE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -173,7 +171,7 @@ async function triggerReconciliation(clusterId: string, period: string) {
     period
   });
 
-  console.log(`[RECONCILE] Completed for cluster ${clusterId} in period ${period}`);
+  console.log(`[RECONCILE] Completed for cluster ${clusterId}`);
   return result;
 }
 
