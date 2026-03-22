@@ -1,6 +1,6 @@
 /**
  * ENERLECTRA PRODUCTION BACKEND v2.3
- * Updated: Full Lenco integration + clean payments route
+ * Updated: Full Lenco integration + clean payments route + new readings endpoints
  */
 
 import 'dotenv/config';
@@ -9,9 +9,10 @@ import cors from 'cors';
 import { createClient } from '@supabase/supabase-js';
 
 // ──────────────────────────────────────────────────────────────
-// NEW: Import Lenco payments route
+// IMPORT ALL ROUTES
 // ──────────────────────────────────────────────────────────────
 import paymentRoutes from './routes/payments';
+import readingsRouter from './routes/readings';   // ← NEW: Readings router
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -110,20 +111,6 @@ app.get('/api/health', (req, res) => {
       exchangeRate: !!process.env.EXCHANGE_RATE_API_KEY,
     },
   });
-});
-
-app.get('/api/system/ip', async (req, res) => {
-  try {
-    const axios = (await import('axios')).default;
-    const response = await axios.get('https://api.ipify.org?format=json');
-    res.json({
-      publicIP: response.data.ip,
-      timestamp: new Date().toISOString(),
-      backend: 'enerlectra-backend.onrender.com',
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Failed to get IP address', message: error.message });
-  }
 });
 
 // ═══════════════════════════════════════════════════════════
@@ -232,7 +219,7 @@ app.put('/api/clusters/:id', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// ENERGY READINGS
+// ENERGY READINGS (existing)
 // ═══════════════════════════════════════════════════════════
 
 app.post('/api/energy/readings', async (req, res) => {
@@ -294,6 +281,12 @@ app.get('/api/energy/readings', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+// ═══════════════════════════════════════════════════════════
+// NEW READINGS ROUTER (ingest, status, reconcile)
+// ═══════════════════════════════════════════════════════════
+
+app.use('/api/readings', readingsRouter);
 
 // ═══════════════════════════════════════════════════════════
 // SETTLEMENT
@@ -410,7 +403,7 @@ app.get('/api/ownership/:clusterId', async (req, res) => {
 // PAYMENTS - NOW USING LENCO
 // ═══════════════════════════════════════════════════════════
 
-app.use('/api/payments', paymentRoutes);   // ← This mounts the new Lenco route
+app.use('/api/payments', paymentRoutes);
 
 // ═══════════════════════════════════════════════════════════
 // WEBHOOKS
@@ -504,11 +497,11 @@ app.use((req, res) => {
       'POST /api/clusters',
       'PUT  /api/clusters/:id',
       'POST /api/payments/initiate',
-      'GET  /api/payments/status/:transactionId',
-      'POST /api/webhooks/mtn',
-      'POST /api/webhooks/airtel',
-      'GET  /api/webhooks/status',
-      'POST /api/energy/readings',
+      'POST /api/payments/verify',
+      'POST /api/payments/mock-success',
+      'POST /api/readings/ingest',
+      'GET  /api/readings/clusters/:clusterId/status',
+      'POST /api/readings/clusters/:clusterId/reconcile',
       'GET  /api/energy/readings',
       'GET  /api/settlement/:clusterId/:date',
       'POST /api/settlement/run',

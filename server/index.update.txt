@@ -1,0 +1,12 @@
+// Add to your server/index.ts or app.ts:
+
+import readingsRouter from './routes/readings';
+
+// ... existing routes ...
+
+app.use('/api/readings', readingsRouter);
+
+// Now you have:
+// POST /api/readings/ingest
+// GET  /api/readings/clusters/:clusterId/status
+// POST /api/readings/clusters/:clusterId/reconcile
