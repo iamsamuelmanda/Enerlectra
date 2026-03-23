@@ -10,6 +10,17 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
+// UUID validation helper
+function isValidUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+// Normalize phone number (remove +, spaces, dashes)
+function normalizePhone(phone: string): string {
+  return phone.replace(/[\+\s\-\(\)]/g, '');
+}
+
 // POST /api/readings/ingest
 router.post('/ingest', async (req, res) => {
   try {
@@ -30,6 +41,26 @@ router.post('/ingest', async (req, res) => {
       return res.status(400).json({ error: 'clusterId and unitId are required' });
     }
 
+    // ─── FIX: Handle userId that might be a phone number ───
+    let actualUserId: string | null = null;
+
+    if (userId) {
+      if (isValidUUID(userId)) {
+        actualUserId = userId;
+      } else {
+        // It's a phone number - lookup UUID
+        const normalizedPhone = normalizePhone(userId);
+        
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('phone', normalizedPhone)
+          .single();
+
+        actualUserId = profile?.id || null;
+      }
+    }
+
     const reportingPeriod = period || getCurrentPeriod();
 
     const { data: reading, error } = await supabase
@@ -37,7 +68,7 @@ router.post('/ingest', async (req, res) => {
       .insert({
         cluster_id: clusterId,
         unit_id: unitId,
-        user_id: userId || null,
+        user_id: actualUserId,
         reading_kwh: readingKwh || 0,
         meter_type: meterType || 'unit',
         photo_url: photoUrl || null,
@@ -52,18 +83,11 @@ router.post('/ingest', async (req, res) => {
 
     if (error) throw error;
 
-    console.log(`[INGEST SUCCESS] Saved reading for cluster ${clusterId}`);
-
-    // Auto-trigger reconciliation
-    const canReconcile = await checkReconciliationReady(clusterId, reportingPeriod);
-    if (canReconcile) {
-      await triggerReconciliation(clusterId, reportingPeriod);
-    }
-
     res.json({
       status: 'stored',
       readingId: reading.id,
-      reconciliationTriggered: canReconcile
+      userLinked: !!actualUserId,
+      userId: actualUserId
     });
 
   } catch (error: any) {
@@ -171,7 +195,6 @@ async function triggerReconciliation(clusterId: string, period: string) {
     period
   });
 
-  console.log(`[RECONCILE] Completed for cluster ${clusterId}`);
   return result;
 }
 
