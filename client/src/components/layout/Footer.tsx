@@ -1,4 +1,5 @@
 import { Zap } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export function Footer() {
   return (
