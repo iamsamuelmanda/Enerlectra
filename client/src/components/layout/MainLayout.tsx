@@ -1,4 +1,5 @@
 import { ReactNode, useState } from 'react';
+import { Footer } from './Footer';
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { cn } from '@/lib/utils/cn';

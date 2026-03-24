@@ -1,0 +1,56 @@
+src/components/layout/Footer.tsx(2,1): error TS6133: 'cn' is declared but its value is never read.
+src/components/layout/Header.tsx(7,17): error TS2339: Property 'signOut' does not exist on type '{ user: User | null; isLoading: boolean; }'.
+src/components/layout/MainLayout.tsx(63,8): error TS2304: Cannot find name 'Footer'.
+src/components/ui/Button.tsx(3,20): error TS2307: Cannot find module '../../utils/cn' or its corresponding type declarations.
+src/components/ui/Card.tsx(2,20): error TS2307: Cannot find module '../../utils/cn' or its corresponding type declarations.
+src/components/ui/ExchangeRateDisplay.tsx(5,37): error TS2307: Cannot find module '../../utils/dateTime' or its corresponding type declarations.
+src/components/ui/LogPanel.tsx(2,10): error TS6133: 'X' is declared but its value is never read.
+src/components/ui/Skeleton.tsx(1,20): error TS2307: Cannot find module '../../utils/cn' or its corresponding type declarations.
+src/features/admin/pages/PilotDashboard.tsx(58,37): error TS6133: 'trendLoading' is declared but its value is never read.
+src/features/campaign/components/CampaignProgress.tsx(5,61): error TS2307: Cannot find module '../../../utils/dateTime' or its corresponding type declarations.
+src/features/clusters/components/ClusterCard.tsx(2,24): error TS6133: 'DollarSign' is declared but its value is never read.
+src/features/clusters/components/ClusterList.tsx(8,30): error TS6133: 'error' is declared but its value is never read.
+src/features/clusters/components/FundingChart.tsx(2,10): error TS6133: 'LineChart' is declared but its value is never read.
+src/features/clusters/components/FundingChart.tsx(2,21): error TS6133: 'Line' is declared but its value is never read.
+src/features/clusters/components/FundingChart.tsx(4,10): error TS6133: 'TrendingUp' is declared but its value is never read.
+src/features/clusters/components/FundingChart.tsx(7,17): error TS6133: 'loading' is declared but its value is never read.
+src/features/clusters/components/LiveMonitor.tsx(2,10): error TS6133: 'Activity' is declared but its value is never read.
+src/features/clusters/components/LiveMonitor.tsx(3,20): error TS2307: Cannot find module '@/utils/cn' or its corresponding type declarations.
+src/features/contributions/components/ContributionForm.tsx(4,10): error TS6133: 'Phone' is declared but its value is never read.
+src/features/contributions/components/ContributionHistory.tsx(9,28): error TS2307: Cannot find module '../../../utils/dateTime' or its corresponding type declarations.
+src/features/contributions/services/contributionService.ts(13,5): error TS6133: 'provider' is declared but its value is never read.
+src/features/contributions/services/contributionService.ts(25,17): error TS2339: Property 'LencoPay' does not exist on type 'Window & typeof globalThis'.
+src/features/contributions/services/contributionService.ts(32,12): error TS2339: Property 'LencoPay' does not exist on type 'Window & typeof globalThis'.
+src/features/contributions/services/contributionService.ts(46,19): error TS7006: Parameter 'response' implicitly has an 'any' type.
+src/features/energy/components/EnergyWallet.tsx(16,55): error TS2339: Property 'getUserContributions' does not exist on type '{ initiatePayment({ clusterId, amountUsd, provider, phoneNumber, onSuccess, onClose, }: { clusterId: string; amountUsd: number; provider: "mtn" | "airtel"; phoneNumber: string; onSuccess?: ((reference: string) => void) | undefined; onClose?: (() => void) | undefined; }): void; getContributionsByCluster(clusterId: st...'.
+src/features/energy/components/EnergyWallet.tsx(17,43): error TS7006: Parameter 'sum' implicitly has an 'any' type.
+src/features/energy/components/EnergyWallet.tsx(17,48): error TS7006: Parameter 'c' implicitly has an 'any' type.
+src/features/energy/components/OwnershipBar.tsx(50,25): error TS2741: Property 'ownership_percent' is missing in type '{ participant_id: any; display_name: any; pcus: number; }' but required in type 'OwnershipEntry'.
+src/features/energy/components/OwnershipBar.tsx(69,13): error TS2345: Argument of type '() => () => Promise<"error" | "ok" | "timed out">' is not assignable to parameter of type 'EffectCallback'.
+  Type '() => Promise<"error" | "ok" | "timed out">' is not assignable to type 'void | Destructor'.
+    Type '() => Promise<"error" | "ok" | "timed out">' is not assignable to type 'Destructor'.
+      Type 'Promise<"error" | "ok" | "timed out">' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+src/features/energy/hooks/useIsParticipant.ts(8,13): error TS2345: Argument of type '() => (() => Promise<"error" | "ok" | "timed out">) | undefined' is not assignable to parameter of type 'EffectCallback'.
+  Type '(() => Promise<"error" | "ok" | "timed out">) | undefined' is not assignable to type 'void | Destructor'.
+    Type '() => Promise<"error" | "ok" | "timed out">' is not assignable to type 'void | Destructor'.
+      Type '() => Promise<"error" | "ok" | "timed out">' is not assignable to type 'Destructor'.
+        Type 'Promise<"error" | "ok" | "timed out">' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
+src/pages/Admin.tsx(5,17): error TS2339: Property 'loading' does not exist on type '{ user: User | null; isLoading: boolean; }'.
+src/pages/ClusterDetailPage.tsx(80,30): error TS2339: Property 'current_generation' does not exist on type 'Cluster'.
+src/pages/ClusterDetailPage.tsx(81,31): error TS2339: Property 'current_consumption' does not exist on type 'Cluster'.
+src/pages/ClusterDetailPage.tsx(101,28): error TS2339: Property 'description' does not exist on type 'Cluster'.
+src/pages/Dashboard.tsx(48,23): error TS2304: Cannot find name 'cn'.
+src/pages/EnergyWalletPage.tsx(6,1): error TS6133: 'RealtimeChannel' is declared but its value is never read.
+src/pages/EnergyWalletPage.tsx(9,11): error TS6196: 'Cluster' is declared but never used.
+src/pages/EnergyWalletPage.tsx(54,18): error TS2345: Argument of type '{ id: any; user_id: any; cluster_id: any; energy_credit_kwh: any; energy_debt_kwh: any; updated_at: any; clusters: { name: any; }[]; }[]' is not assignable to parameter of type 'SetStateAction<EnergyWallet[]>'.
+  Type '{ id: any; user_id: any; cluster_id: any; energy_credit_kwh: any; energy_debt_kwh: any; updated_at: any; clusters: { name: any; }[]; }[]' is not assignable to type 'EnergyWallet[]'.
+    Type '{ id: any; user_id: any; cluster_id: any; energy_credit_kwh: any; energy_debt_kwh: any; updated_at: any; clusters: { name: any; }[]; }' is not assignable to type 'EnergyWallet'.
+      Types of property 'clusters' are incompatible.
+        Property 'name' is missing in type '{ name: any; }[]' but required in type '{ name: string; }'.
+src/pages/EnergyWalletPage.tsx(99,57): error TS2339: Property 'reference' does not exist on type 'void'.
+src/pages/TransactionsPage.tsx(23,10): error TS6133: 'error' is declared but its value is never read.
+src/pages/TransactionsPage.tsx(25,13): error TS2345: Argument of type '() => (() => Promise<"error" | "ok" | "timed out">) | undefined' is not assignable to parameter of type 'EffectCallback'.
+  Type '(() => Promise<"error" | "ok" | "timed out">) | undefined' is not assignable to type 'void | Destructor'.
+    Type '() => Promise<"error" | "ok" | "timed out">' is not assignable to type 'void | Destructor'.
+      Type '() => Promise<"error" | "ok" | "timed out">' is not assignable to type 'Destructor'.
+        Type 'Promise<"error" | "ok" | "timed out">' is not assignable to type 'void | { [UNDEFINED_VOID_ONLY]: never; }'.
