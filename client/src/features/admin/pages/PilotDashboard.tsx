@@ -7,7 +7,7 @@ import { SettlementTrace } from '../../energy/components/SettlementTrace';
 import { OwnershipBar } from '../../energy/components/OwnershipBar';
 import { triggerSettlement } from '../../energy/services/settlementService';
 import { useAuth } from '../../../hooks/useAuth';
-import { useClusters } from '../../../features/clusters/hooks/useClusters';
+import { useClusters } from '../../../features/clusters/hooks/useCluster';
 import { usePCUTrend } from '../../../hooks/usePCUTrend';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Sun, Moon, RefreshCw } from 'lucide-react';

@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useClusters } from '../hooks/useClusters';
+import { useClusters } from '../hooks/useCluster';
 import { ClusterCard } from './ClusterCard';
 import { Skeleton } from '../../../components/ui/Skeleton';
 import { Globe, ShieldCheck } from 'lucide-react';

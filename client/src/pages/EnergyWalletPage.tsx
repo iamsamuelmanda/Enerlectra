@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/hooks/useAuth';
-import { useClusters } from '@/features/clusters/hooks/useClusters';
+import { useClusters } from '@/features/clusters/hooks/useCluster';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { initiateContributionPayment } from '@/features/contributions/services/contributionService';
 
