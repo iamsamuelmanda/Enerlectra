@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "main": "server/src/index.ts",
-  "scripts": { "prepare": "husky install",
+  "scripts": {
+    "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { try { require('husky').install() } catch (e) {} }\"",
     "start": "tsx ./server/src/index.ts",
     "dev": "tsx ./server/src/index.ts",
     "build": "npm run build:client",
