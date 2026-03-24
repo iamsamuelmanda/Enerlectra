@@ -1,5 +1,5 @@
+import { LayoutGrid, Wallet, Repeat, Settings, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Wallet, TrendingUp, Settings, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils/cn';
 
 interface SidebarProps {
@@ -8,78 +8,56 @@ interface SidebarProps {
   onNavigate?: () => void;
 }
 
-const navItems = [
-  { path: '/',        label: 'Grid Nodes',  icon: LayoutDashboard },
-  { path: '/wallet',  label: 'My Assets',   icon: Wallet          },
-  { path: '/trading', label: 'P2P Market',  icon: TrendingUp      },
-  { path: '/admin',   label: 'System',      icon: Settings        },
-];
-
-export function Sidebar({ collapsed = false, onToggle, onNavigate }: SidebarProps) {
+export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
   const location = useLocation();
 
-  const isActive = (path: string) =>
-    path === '/' ? location.pathname === '/' : location.pathname.startsWith(path);
+  const menuItems = [
+    { icon: LayoutGrid, label: 'Grid Nodes', path: '/' },
+    { icon: Wallet, label: 'My Assets', path: '/wallet' },
+    { icon: Repeat, label: 'P2P Market', path: '/trading' },
+    { icon: Settings, label: 'System', path: '/admin' },
+  ];
 
   return (
-    <nav
-      className={cn(
-        'hidden md:flex flex-col transition-all duration-300 h-full border-r border-white/5 bg-[#05050a]/80 backdrop-blur-2xl',
-        collapsed ? 'w-[80px]' : 'w-64'
-      )}
-    >
-      <div className={cn(
-        'flex items-center h-20 px-6 border-b border-white/5',
-        collapsed ? 'justify-center' : 'gap-3'
-      )}>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand-primary to-indigo-600 flex items-center justify-center shadow-lg shadow-brand-primary/20">
-          <Zap size={20} className="text-white fill-white/20" />
-        </div>
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="font-display font-black text-lg tracking-tighter text-white uppercase leading-none">Enerlectra</span>
-            <span className="text-[7px] uppercase tracking-[0.3em] text-brand-primary font-bold">Node Operator</span>
-          </div>
-        )}
+    <div className={cn(
+      "h-full flex flex-col bg-[#05050a]/50 backdrop-blur-xl border-r border-white/5 transition-all duration-300",
+      collapsed ? "w-20" : "w-64"
+    )}>
+      {/* MOBILE CLOSE HEADER */}
+      <div className="flex items-center justify-between p-6 md:hidden">
+        <span className="font-bold uppercase tracking-tighter italic">Menu</span>
+        <button onClick={onNavigate} className="p-2 text-white/50 hover:text-white">
+          <X size={20} />
+        </button>
       </div>
 
-      <div className="flex-1 p-4 space-y-2">
-        {navItems.map((item) => {
-          const active = isActive(item.path);
+      <nav className="flex-1 px-3 py-4 space-y-2">
+        {menuItems.map((item) => {
+          const isActive = location.pathname === item.path;
           return (
             <Link
               key={item.path}
               to={item.path}
               onClick={onNavigate}
               className={cn(
-                'flex items-center rounded-2xl transition-all group relative',
-                collapsed ? 'justify-center p-4' : 'gap-4 px-4 py-3',
-                active ? 'bg-white/5 border border-white/10' : 'hover:bg-white/[0.02]'
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all group",
+                isActive ? "bg-brand-primary/10 text-brand-primary" : "text-white/40 hover:text-white hover:bg-white/5"
               )}
             >
-              <item.icon
-                size={20}
-                className={cn("transition-colors", active ? "text-brand-primary" : "text-white/40 group-hover:text-white/70")}
-              />
-              {!collapsed && (
-                <span className={cn("text-sm font-bold tracking-tight", active ? "text-white" : "text-white/50 group-hover:text-white/80")}>
-                  {item.label}
-                </span>
-              )}
-              {active && <div className="absolute left-0 w-1 h-6 bg-brand-primary rounded-r-full shadow-[0_0_10px_#A855F7]" />}
+              <item.icon size={20} className={cn(isActive ? "text-brand-primary" : "text-white/40 group-hover:text-white")} />
+              {!collapsed && <span className="font-medium text-sm tracking-tight">{item.label}</span>}
             </Link>
           );
         })}
-      </div>
+      </nav>
 
-      <div className="p-4 border-t border-white/5">
-        <button
-          onClick={onToggle}
-          className="flex items-center justify-center w-full py-3 rounded-2xl bg-white/[0.03] border border-white/[0.06] text-white/30 hover:bg-white/[0.06] transition-all"
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
-      </div>
-    </nav>
+      {/* DESKTOP TOGGLE */}
+      <button 
+        onClick={onToggle}
+        className="hidden md:flex items-center justify-center p-4 border-t border-white/5 text-white/20 hover:text-white transition-colors"
+      >
+        {collapsed ? <ChevronRight size={20} /> : <ChevronLeft size={20} />}
+      </button>
+    </div>
   );
 }

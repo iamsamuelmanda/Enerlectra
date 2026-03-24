@@ -55,7 +55,7 @@ export default function PilotDashboard() {
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
   // Live Data Hook
-  const { data: trendData, loading: trendLoading } = usePCUTrend(clusterId);
+  const { data: trendData = [], loading: _trendLoading } = usePCUTrend(clusterId);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);

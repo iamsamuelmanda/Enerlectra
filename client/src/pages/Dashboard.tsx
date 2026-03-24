@@ -1,6 +1,7 @@
 import { ClusterList } from '@/features/clusters/components/ClusterList';
 import { Card } from '@/components/ui/Card';
 import { Zap, Battery, DollarSign, Users, Plus } from 'lucide-react';
+import { cn } from '@/lib/utils/cn';
 
 export default function Dashboard() {
   return (

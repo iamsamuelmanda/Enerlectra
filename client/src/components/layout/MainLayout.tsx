@@ -1,5 +1,5 @@
 import { ReactNode, useState } from 'react';
-import { Footer } from './Footer';
+import { Footer } from './Footer'; // Keep only the named import
 import { Header } from '@/components/layout/Header';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { cn } from '@/lib/utils/cn';
@@ -15,7 +15,7 @@ export function MainLayout({ children }: MainLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col bg-[#020205] text-white selection:bg-brand-primary/30">
       {/* 1. HEADER */}
-      <Header />
+      <Header onMenuClick={() => setIsMobileOpen(true)} />
 
       <div className="flex flex-1 relative overflow-hidden">
         
