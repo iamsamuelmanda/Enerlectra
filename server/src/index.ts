@@ -1,7 +1,7 @@
 /**
  * ENERLECTRA PRODUCTION BACKEND v2.4.0
  * Updated: Full Lenco integration + Claude 3.5 Sonnet Simulation Engine
- * Deployment Fix: Integrated Static File Serving for Vercel/Render Monorepo
+ * Deployment Fix: corrected static paths for monorepo structure
  */
 
 import 'dotenv/config';
@@ -19,9 +19,6 @@ const __dirname = path.dirname(__filename);
 
 // ──────────────────────────────────────────────────────────────
 // IMPORT ALL ROUTES
-// Note: In ESM (type: module), local imports often require .js extension 
-// if running the compiled output, but since you use tsx/ts-node, 
-// standard extensionless or .js aliases are used.
 // ──────────────────────────────────────────────────────────────
 import paymentRoutes from './routes/payments.js';
 import readingsRouter from './routes/readings.js';
@@ -478,10 +475,10 @@ app.get('/api/webhooks/status', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════
 // STATIC ASSET SERVING & SPA ROUTING
-// This serves the frontend build from /dist
+// Corrected Path: Go up TWO levels to reach root, then into client/dist
 // ═══════════════════════════════════════════════════════════
 
-const distPath = path.join(__dirname, '../../dist');
+const distPath = path.resolve(__dirname, '../../client/dist');
 app.use(express.static(distPath));
 
 // ═══════════════════════════════════════════════════════════
@@ -495,7 +492,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // ═══════════════════════════════════════════════════════════
 // CATCH-ALL / SPA FALLBACK
-// Must be last to ensure API routes are checked first
 // ═══════════════════════════════════════════════════════════
 
 app.get('*', (req, res) => {
@@ -503,8 +499,22 @@ app.get('*', (req, res) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API Endpoint not found' });
   }
-  // Otherwise, serve the React frontend index.html
-  res.sendFile(path.join(distPath, 'index.html'));
+  
+  // Try to serve index.html for React routing, else send a simple status message
+  const indexPath = path.join(distPath, 'index.html');
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      res.status(200).send(`
+        <html>
+          <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: white;">
+            <h1 style="color: #22c55e;">⚡ Enerlectra API v2.4.0</h1>
+            <p>Production Backend is Live and Healthy.</p>
+            <p style="color: #94a3b8; font-size: 0.8rem;">Note: Frontend is managed via Vercel.</p>
+          </body>
+        </html>
+      `);
+    }
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
