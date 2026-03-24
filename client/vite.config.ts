@@ -8,13 +8,9 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
-  
-  // Define the root of the frontend project relative to this file
   root: './', 
-
   resolve: {
     alias: {
-      // Use path.resolve to create absolute paths from the current directory
       '@': path.resolve(__dirname, './src'),
       '@assets': path.resolve(__dirname, './src/assets'),
       '@components': path.resolve(__dirname, './src/components'),
@@ -25,25 +21,22 @@ export default defineConfig({
       '@lib': path.resolve(__dirname, './src/lib'),
       '@types': path.resolve(__dirname, './src/types'),
       '@clusters': path.resolve(__dirname, './src/features/clusters'),
+      '@clusters-components': path.resolve(__dirname, './src/features/clusters/components'), // Added
       '@simulation': path.resolve(__dirname, './src/features/simulation'),
+      '@simulation-components': path.resolve(__dirname, './src/features/simulation/components'), // Added
     },
   },
-
   server: {
     port: 3000,
     proxy: {
       '/api': {
-        // Points to your local Render-style backend during development
         target: 'http://localhost:4000', 
         changeOrigin: true,
         secure: false,
       },
     },
   },
-
   build: {
-    // This outputs the build to /client/dist
-    // Vercel should be configured to look at 'client/dist' for the output
     outDir: './dist',
     emptyOutDir: true,
     sourcemap: true,

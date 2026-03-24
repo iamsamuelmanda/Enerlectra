@@ -7,13 +7,13 @@ import {
   Wallet, History, Activity, Zap 
 } from 'lucide-react';
 
-// Optimized Aliases
-import { FundingChart } from '@clusters-components/FundingChart';
-import { LiveMonitor } from '@clusters-components/LiveMonitor';
-import { SimulationForm } from '@simulation/components/SimulationForm';
+// Standardized Aliases to resolve Vercel build errors
+import { FundingChart } from '@/features/clusters/components/FundingChart';
+import { LiveMonitor } from '@/features/clusters/components/LiveMonitor';
+import { SimulationForm } from '@/features/simulation/components/SimulationForm';
 import { useCluster } from '@/features/clusters/hooks/useCluster';
 
-// Migration Imports from Legacy View
+// Migration Imports
 import { ContributionHistory } from '@/features/contributions/components/ContributionHistory';
 import ContributeForm from '@/features/contributions/components/ContributionForm';
 
@@ -23,10 +23,9 @@ export default function ClusterDetailPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const { cluster, loading, refresh } = useCluster(clusterId!);
 
-  // Handler to refresh data after a contribution
   const handleContributionSuccess = useCallback(() => {
     setRefreshKey(prev => prev + 1);
-    refresh(); // Refresh the hook data
+    refresh(); 
   }, [refresh]);
 
   if (loading) {
@@ -41,7 +40,7 @@ export default function ClusterDetailPage() {
   return (
     <div className="space-y-12 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 animate-in fade-in duration-700">
       
-      {/* 1. NAVIGATION & IDENTITY HEADER */}
+      {/* NAVIGATION & IDENTITY */}
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => navigate('/')}
@@ -74,13 +73,11 @@ export default function ClusterDetailPage() {
         </div>
       </div>
 
-      {/* 2. REAL-TIME DATA MONITOR (TELEMETRY) */}
       <LiveMonitor 
         generation={cluster?.current_generation ?? 0} 
         consumption={cluster?.current_consumption ?? 0} 
       />
 
-      {/* 3. STRATEGIC OPERATIONS TABS */}
       <Tabs defaultValue="overview" className="space-y-10">
         <TabsList className="bg-surface-glass p-1.5 rounded-2xl border border-glass inline-flex mb-4">
           <TabsTrigger value="overview">Market Analytics</TabsTrigger>
@@ -88,14 +85,13 @@ export default function ClusterDetailPage() {
           <TabsTrigger value="governance">Governance & Funding</TabsTrigger>
         </TabsList>
 
-        {/* TAB: MARKET ANALYTICS */}
         <TabsContent value="overview" className="grid grid-cols-1 lg:grid-cols-3 gap-8 outline-none">
           <div className="lg:col-span-2 space-y-8">
             <FundingChart clusterId={clusterId!} />
             
             <Card variant="glass" padding="lg" className="border-brand-primary/10">
               <div className="flex items-center gap-2 mb-6 text-brand-primary">
-                <Info size={18} />
+                <span className="p-2 bg-brand-primary/10 rounded-lg"><Info size={18} /></span>
                 <h3 className="font-display font-bold uppercase tracking-widest text-sm">Cluster Intelligence</h3>
               </div>
               <p className="text-secondary leading-relaxed text-lg italic opacity-90">
@@ -120,14 +116,12 @@ export default function ClusterDetailPage() {
           </aside>
         </TabsContent>
 
-        {/* TAB: SIMULATION ENGINE (AI) */}
         <TabsContent value="simulate" className="outline-none">
           <div className="max-w-3xl mx-auto">
             <SimulationForm clusterData={cluster} />
           </div>
         </TabsContent>
 
-        {/* TAB: GOVERNANCE & FUNDING (MIGRATED FROM CLUSTERVIEW) */}
         <TabsContent value="governance" className="outline-none">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
@@ -163,7 +157,6 @@ export default function ClusterDetailPage() {
   );
 }
 
-// Reusable Parameter Row Component
 function Param({ label, value, icon }: { label: string; value: string | number; icon?: React.ReactNode }) {
   return (
     <div className="flex justify-between items-center border-b border-glass pb-4 last:border-0 last:pb-0 group">
