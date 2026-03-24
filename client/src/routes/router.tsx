@@ -1,21 +1,21 @@
 import { Routes, Route, Outlet } from "react-router-dom";
-import { MainLayout } from "../components/layout/MainLayout";
+import { MainLayout } from "@/components/layout/MainLayout";
 
-// Page Imports
-import Dashboard from "../pages/Dashboard";
-import ClusterDetailPage from "../pages/ClusterDetailPage"; // Updated import
-import EnergyWalletPage from "../pages/EnergyWalletPage";
-import TradingPage from "../pages/TradingPage";
-import Admin from "../pages/Admin";
-import SignIn from "../pages/SignIn";
-import SignUp from "../pages/SignUp";
-import ForgotPassword from "../pages/ForgotPassword";
-import ResetPassword from "../pages/ResetPassword";
-import PilotDashboard from "../features/admin/pages/PilotDashboard";
-import TransactionsPage from "../pages/TransactionsPage";
+// Page Imports - Using @ Alias for clean resolution
+import Dashboard from "@/pages/Dashboard";
+import ClusterDetailPage from "@/pages/ClusterDetailPage"; 
+import EnergyWalletPage from "@/pages/EnergyWalletPage";
+import TradingPage from "@/pages/TradingPage";
+import Admin from "@/pages/Admin";
+import SignIn from "@/pages/SignIn";
+import SignUp from "@/pages/SignUp";
+import ForgotPassword from "@/pages/ForgotPassword";
+import ResetPassword from "@/pages/ResetPassword";
+import PilotDashboard from "@/features/admin/pages/PilotDashboard";
+import TransactionsPage from "@/pages/TransactionsPage";
 
 // Auth Guard
-import ProtectedRoute from "../components/ProtectedRoute";
+import ProtectedRoute from "@/components/ProtectedRoute";
 
 export default function Router() {
   return (
