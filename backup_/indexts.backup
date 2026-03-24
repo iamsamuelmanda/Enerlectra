@@ -1,31 +1,19 @@
 /**
- * ENERLECTRA PRODUCTION BACKEND v2.4.0
+ * ENERLECTRA PRODUCTION BACKEND v2.4
  * Updated: Full Lenco integration + Claude 3.5 Sonnet Simulation Engine
- * Deployment Fix: Integrated Static File Serving for Vercel/Render Monorepo
  */
 
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 
 // ──────────────────────────────────────────────────────────────
-// ESM PATH CONFIGURATION
-// ──────────────────────────────────────────────────────────────
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// ──────────────────────────────────────────────────────────────
 // IMPORT ALL ROUTES
-// Note: In ESM (type: module), local imports often require .js extension 
-// if running the compiled output, but since you use tsx/ts-node, 
-// standard extensionless or .js aliases are used.
 // ──────────────────────────────────────────────────────────────
-import paymentRoutes from './routes/payments.js';
-import readingsRouter from './routes/readings.js';
-import simulationRouter from './routes/simulation.js';
+import paymentRoutes from './routes/payments';
+import readingsRouter from './routes/readings';
+import simulationRouter from './routes/simulation'; // ← NEW: AI Simulation Engine
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -101,11 +89,11 @@ app.use((req, res, next) => {
 // HEALTH & STATUS
 // ═══════════════════════════════════════════════════════════
 
-app.get('/api/info', (req, res) => {
+app.get('/', (req, res) => {
   res.json({
     status: 'OK',
     message: 'Enerlectra Production Backend',
-    version: '2.4.0',
+    version: '2.4.0', // Incremented version
     timestamp: new Date().toISOString(),
   });
 });
@@ -119,7 +107,7 @@ app.get('/api/health', (req, res) => {
     services: {
       supabase: !!supabase,
       lenco: !!process.env.LENCO_SECRET_KEY,
-      anthropic: !!process.env.ANTHROPIC_API_KEY,
+      anthropic: !!process.env.ANTHROPIC_API_KEY, // Added AI Health Check
       mtn: !!process.env.MTN_API_KEY,
       airtel: !!process.env.AIRTEL_CLIENT_ID,
       exchangeRate: !!process.env.EXCHANGE_RATE_API_KEY,
@@ -297,12 +285,16 @@ app.get('/api/energy/readings', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// ROUTERS
+// READINGS ROUTER
 // ═══════════════════════════════════════════════════════════
 
 app.use('/api/readings', readingsRouter);
+
+// ═══════════════════════════════════════════════════════════
+// AI SIMULATION ENGINE (v2.4 Addition)
+// ═══════════════════════════════════════════════════════════
+
 app.use('/api/simulation', simulationRouter);
-app.use('/api/payments', paymentRoutes);
 
 // ═══════════════════════════════════════════════════════════
 // SETTLEMENT
@@ -416,6 +408,12 @@ app.get('/api/ownership/:clusterId', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
+// PAYMENTS
+// ═══════════════════════════════════════════════════════════
+
+app.use('/api/payments', paymentRoutes);
+
+// ═══════════════════════════════════════════════════════════
 // WEBHOOKS
 // ═══════════════════════════════════════════════════════════
 
@@ -477,38 +475,41 @@ app.get('/api/webhooks/status', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// STATIC ASSET SERVING & SPA ROUTING
-// This serves the frontend build from /dist
-// ═══════════════════════════════════════════════════════════
-
-const distPath = path.join(__dirname, '../../dist');
-app.use(express.static(distPath));
-
-// ═══════════════════════════════════════════════════════════
-// ERROR HANDLING (Global)
+// ERROR HANDLING
 // ═══════════════════════════════════════════════════════════
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('[GLOBAL ERROR]', err);
+  console.error('[ERROR]', err);
   res.status(500).json({ error: 'Internal server error', message: err.message, path: req.path });
 });
 
-// ═══════════════════════════════════════════════════════════
-// CATCH-ALL / SPA FALLBACK
-// Must be last to ensure API routes are checked first
-// ═══════════════════════════════════════════════════════════
-
-app.get('*', (req, res) => {
-  // If request is for an API that doesn't exist, return JSON 404
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API Endpoint not found' });
-  }
-  // Otherwise, serve the React frontend index.html
-  res.sendFile(path.join(distPath, 'index.html'));
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not found',
+    message: `Cannot ${req.method} ${req.path}`,
+    availableEndpoints: [
+      'GET   /',
+      'GET   /api/health',
+      'GET   /api/exchange-rate/:from/:to',
+      'GET   /api/clusters',
+      'GET   /api/clusters/:id',
+      'POST  /api/clusters',
+      'PUT   /api/clusters/:id',
+      'POST  /api/payments/initiate',
+      'POST  /api/payments/verify',
+      'POST  /api/simulation/run',
+      'POST  /api/readings/ingest',
+      'GET   /api/readings/clusters/:clusterId/status',
+      'POST  /api/energy/readings',
+      'GET   /api/settlement/:clusterId/:date',
+      'POST  /api/settlement/run',
+      'GET   /api/ownership/:clusterId',
+    ],
+  });
 });
 
 // ═══════════════════════════════════════════════════════════
-// START SERVER
+// START
 // ═══════════════════════════════════════════════════════════
 
 app.listen(PORT, () => {
@@ -520,7 +521,7 @@ app.listen(PORT, () => {
   console.log(`🔧 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log('─'.repeat(70));
   console.log('📊 SERVICES STATUS:');
-  console.log(`  Supabase:      ${supabase ? '✅ Connected' : '⚠️  Not configured'}`);
+  console.log(`  Supabase:      ${supabase ? '✅ Connected' : '⚠️  Not configured (demo mode)'}`);
   console.log(`  Lenco:         ${process.env.LENCO_SECRET_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  Claude AI:     ${process.env.ANTHROPIC_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  Exchange Rate: ${process.env.EXCHANGE_RATE_API_KEY ? '✅ Live' : '⚠️  Using fallback'}`);

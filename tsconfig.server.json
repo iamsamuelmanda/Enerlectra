@@ -1,0 +1,21 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+      "module": "NodeNext",
+      "moduleResolution": "NodeNext",
+      "outDir": "dist/server",
+      "rootDir": ".",
+      "noEmit": false,
+      "lib": ["ES2022"],
+      "types": ["node"]
+    },
+    "include": [
+      "server/**/*.ts",
+      "enerlectra-core/src/**/*.ts"
+    ],
+    "exclude": [
+      "client",
+      "node_modules",
+      "**/*.test.ts"
+    ]
+  }

@@ -1,18 +1,20 @@
 {
   "name": "enerlectra-mvp",
-  "version": "2.0.0",
-  "description": "Enerlectra Production Backend - Zambia's Energy Internet",
+  "version": "2.4.0",
+  "description": "Enerlectra Production - Zambia's Energy Internet",
   "type": "module",
   "main": "server/src/index.ts",
   "scripts": {
     "start": "tsx ./server/src/index.ts",
     "dev": "tsx ./server/src/index.ts",
-    "build": "tsc && vite build",
+    "build": "npm run build:client",
+    "build:client": "vite build client",
+    "build:server": "tsc -p tsconfig.server.json",
     "db:migrate": "psql \"$DATABASE_URL\" -f enerlectra-core/src/persistence/schema/001_marketplace_schema.sql",
     "db:seed": "psql \"$DATABASE_URL\" -f enerlectra-core/src/persistence/schema/003_seed_data.sql",
     "test": "jest",
-    "lint": "eslint \"src/**/*.ts\"",
-    "clean": "rm -rf dist"
+    "lint": "eslint \"client/src/**/*.ts\" \"server/src/**/*.ts\"",
+    "clean": "rm -rf dist client/dist"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
@@ -38,6 +40,8 @@
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "rate-limiter-flexible": "^5.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.26.0",
     "recharts": "^2.12.0",

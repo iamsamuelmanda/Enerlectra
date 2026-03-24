@@ -1,7 +1,7 @@
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Zap, ChevronRight } from 'lucide-react';
-import { cn } from '../utils/cn';
+import { cn } from '@/lib/utils';
 
 export function Header() {
   const { user, signOut } = useAuth();

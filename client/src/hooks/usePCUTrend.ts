@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import { format, startOfMonth, subMonths, isSameMonth } from 'date-fns';
+import { format, startOfMonth, subMonths } from 'date-fns';
 
-interface TrendPoint {
-  date: string;        // e.g. "Mar 2026"
-  pcu: number;         // total funded PCUs in that month
-  settled: number;     // total settled/completed PCUs in that month
-  cumulative: number;  // running total
+export interface TrendPoint {
+  date: string;       // e.g. "Mar 2026"
+  pcu: number;        // total funded PCUs in that month
+  settled: number;    // total settled/completed PCUs in that month
+  cumulative: number; // running total (Total Grid Capacity)
 }
 
 export function usePCUTrend(clusterId: string, monthsBack: number = 6) {
@@ -14,82 +14,90 @@ export function usePCUTrend(clusterId: string, monthsBack: number = 6) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadTrend = async () => {
+  const loadTrend = useCallback(async () => {
     if (!clusterId) return;
 
-    setLoading(true);
-    setError(null);
-
     try {
+      setLoading(true);
+      setError(null);
+
       const startDate = startOfMonth(subMonths(new Date(), monthsBack));
 
-      const { data: contributions, error } = await supabase
+      // Fetch contributions for this cluster
+      const { data: contributions, error: supabaseError } = await supabase
         .from('contributions')
         .select('created_at, pcus, status')
         .eq('cluster_id', clusterId)
         .gte('created_at', startDate.toISOString())
         .order('created_at', { ascending: true });
 
-      if (error) throw error;
+      if (supabaseError) throw supabaseError;
 
-      // Aggregate by month
+      // 1. Map monthly buckets
       const monthlyMap = new Map<string, { pcu: number; settled: number }>();
 
-      contributions.forEach(c => {
+      contributions?.forEach(c => {
         const monthKey = format(new Date(c.created_at), 'MMM yyyy');
         if (!monthlyMap.has(monthKey)) {
           monthlyMap.set(monthKey, { pcu: 0, settled: 0 });
         }
+        
         const entry = monthlyMap.get(monthKey)!;
-        entry.pcu += c.pcus || 0;
-        if (c.status === 'COMPLETED' || c.status === 'settled') {
-          entry.settled += c.pcus || 0;
+        const pcuValue = Number(c.pcus) || 0;
+        
+        entry.pcu += pcuValue;
+        
+        // Normalize status check (case-insensitive)
+        const status = c.status?.toUpperCase();
+        if (status === 'COMPLETED' || status === 'SETTLED') {
+          entry.settled += pcuValue;
         }
       });
 
-      // Build ordered array + cumulative
+      // 2. Generate ordered time series (Zero-filling missing months)
       const trend: TrendPoint[] = [];
-      let cumulative = 0;
+      let runningCumulative = 0;
 
-      // Fill in missing months with zero
       for (let i = monthsBack; i >= 0; i--) {
-        const d = subMonths(new Date(), i);
-        const key = format(startOfMonth(d), 'MMM yyyy');
+        const dateRef = subMonths(new Date(), i);
+        const key = format(dateRef, 'MMM yyyy');
+        
         const values = monthlyMap.get(key) || { pcu: 0, settled: 0 };
-        cumulative += values.pcu;
+        runningCumulative += values.pcu;
+
         trend.push({
           date: key,
           pcu: values.pcu,
           settled: values.settled,
-          cumulative,
+          cumulative: runningCumulative,
         });
       }
 
       setData(trend);
     } catch (err: any) {
-      console.error('Trend fetch failed:', err);
-      setError('Failed to load funding trend');
+      console.error('[PCU TREND ERROR]:', err);
+      setError(err.message || 'Failed to sync grid trend data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [clusterId, monthsBack]);
 
   useEffect(() => {
     loadTrend();
 
-    // Realtime: new contribution → refresh trend
+    // 3. Robust Realtime: Listen for ALL changes to contributions for this cluster
     const channel = supabase
-      .channel(`pcu-trend:${clusterId}`)
+      .channel(`pcu-trend-live-${clusterId}`)
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'contributions',
-          filter: `cluster_id=eq.${clusterId}`,
+        { 
+          event: '*', // Listen for INSERT, UPDATE, and DELETE
+          schema: 'public', 
+          table: 'contributions', 
+          filter: `cluster_id=eq.${clusterId}` 
         },
         () => {
-          console.log('New contribution → refreshing trend');
+          console.log('⚡ Grid data changed - Refreshing Trend');
           loadTrend();
         }
       )
@@ -98,7 +106,7 @@ export function usePCUTrend(clusterId: string, monthsBack: number = 6) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [clusterId]);
+  }, [clusterId, loadTrend]);
 
   return { data, loading, error, refresh: loadTrend };
 }

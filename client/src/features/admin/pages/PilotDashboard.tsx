@@ -10,74 +10,71 @@ import { useAuth } from '../../../hooks/useAuth';
 import { useClusters } from '../../../features/clusters/hooks/useClusters';
 import { usePCUTrend } from '../../../hooks/usePCUTrend';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { Sun, Moon, RefreshCw, AlertCircle } from 'lucide-react';
+import { Sun, Moon, RefreshCw } from 'lucide-react';
 
-const CLUSTERS = [
-  { id: 'clu_73x96b83', name: 'Ndola Cluster B' },
-  { id: 'clu_l8nydwpo', name: 'Ndola Cluster B (v2)' },
-  { id: 'clu_rct5pbmy', name: 'Kabwe Solar Cluster A' },
-  { id: 'clu_ghkjb95x', name: 'Kabwe Solar Cluster B' },
-];
+// Sub-component for Run Settlement to handle its own loading state
+const RunSettlementButton = ({ clusterId, date, onSuccess }: { clusterId: string, date: string, onSuccess: () => void }) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleRun = async () => {
+    if (!clusterId) return toast.error('Please select a cluster');
+    setLoading(true);
+    const toastId = toast.loading('Processing settlement...');
+    try {
+      await triggerSettlement(clusterId, date);
+      toast.success('Settlement processed successfully', { id: toastId });
+      onSuccess();
+    } catch (err: any) {
+      toast.error(err.message || 'Settlement failed', { id: toastId });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <button
+      onClick={handleRun}
+      disabled={loading || !clusterId}
+      className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-lg font-medium transition-all flex items-center gap-2"
+    >
+      {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+      Run Settlement
+    </button>
+  );
+};
 
 export default function PilotDashboard() {
   const { user, isLoading: authLoading } = useAuth();
   const { clusters, loading: clustersLoading } = useClusters();
-  const [clusterId, setClusterId] = useState<string>(CLUSTERS[0]?.id || '');
+  
+  // Use the actual clusters from your database if available, else fallback to hardcoded list
+  const activeClusters = clusters?.length ? clusters : [];
+  const [clusterId, setClusterId] = useState<string>(activeClusters[0]?.id || '');
   const [settlementDate, setSettlementDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [isRunningSettlement, setIsRunningSettlement] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
 
-  // Theme toggle
+  // Live Data Hook
+  const { data: trendData, loading: trendLoading } = usePCUTrend(clusterId);
+
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
-
-  // Auto-refresh every 45 seconds
-  useEffect(() => {
-    if (!clusterId) return;
-    const interval = setInterval(() => {
-      setRefreshTrigger(prev => prev + 1);
-    }, 45000);
-    return () => clearInterval(interval);
-  }, [clusterId]);
-
-  const handleTriggerSettlement = async () => {
-    if (!clusterId) {
-      toast.error('Select a cluster first');
-      return;
-    }
-
-    setIsRunningSettlement(true);
-    const toastId = toast.loading('Triggering settlement...');
-
-    try {
-      const res = await triggerSettlement(clusterId, settlementDate);
-      toast.success(`Settlement queued (Job: ${res.job_id})`, { id: toastId });
-      setRefreshTrigger(p => p + 1);
-    } catch (err: any) {
-      toast.error(err.message || 'Settlement failed', { id: toastId });
-    } finally {
-      setIsRunningSettlement(false);
-    }
-  };
 
   if (authLoading || clustersLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-gray-400">Loading dashboard...</p>
+          <p className="text-gray-400">Loading Enerlectra Grid...</p>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    return <Navigate to="/signin" replace />;
-  }
+  if (!user) return <Navigate to="/signin" replace />;
 
-  const selectedClusterName = CLUSTERS.find(c => c.id === clusterId)?.name || 'No cluster selected';
+  const selectedCluster = activeClusters.find(c => c.id === clusterId);
 
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] p-4 sm:p-6 lg:p-8 space-y-8 lg:space-y-12">
@@ -86,132 +83,95 @@ export default function PilotDashboard() {
         <div>
           <h1 className="text-2xl lg:text-3xl font-bold">Pilot Dashboard</h1>
           <p className="text-[var(--text-secondary)] text-sm lg:text-base mt-1">
-            Manual readings • Settlement • Ownership • {selectedClusterName}
+            {selectedCluster?.name || 'Select a Cluster'} • Zambia Energy Internet
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-          {/* Theme toggle */}
+        <div className="flex items-center gap-4">
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2.5 rounded-lg bg-[var(--surface-glass)] border border-[var(--border-glass)] hover:border-[var(--border-hover)] transition-colors"
-            aria-label="Toggle dark/light mode"
+            className="p-2.5 rounded-lg bg-[var(--surface-glass)] border border-[var(--border-glass)]"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
 
-          {/* Cluster selector */}
-          <div>
-            <label htmlFor="cluster" className="block text-xs text-[var(--text-muted)] mb-1 uppercase tracking-wider">
-              Cluster
-            </label>
-            <select
-              id="cluster"
-              value={clusterId}
-              onChange={e => setClusterId(e.target.value)}
-              className="w-full sm:w-64 bg-[var(--surface-glass)] border border-[var(--border-glass)] rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-glow)]"
-            >
-              <option value="">Select cluster</option>
-              {CLUSTERS.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.id.slice(0, 8)}...)
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={clusterId}
+            onChange={e => setClusterId(e.target.value)}
+            className="bg-[var(--surface-glass)] border border-[var(--border-glass)] rounded-lg px-4 py-2.5 text-sm"
+          >
+            <option value="">Select cluster</option>
+            {activeClusters.map(c => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
         </div>
       </div>
 
-      {/* Energy Entry */}
-      <section className="space-y-4">
-        <h2 className="section-heading">
-          Submit Energy Reading
-        </h2>
-        {clusterId ? (
-          <EnergyEntryForm
-            clusterId={clusterId}
-            onSuccess={() => setRefreshTrigger(p => p + 1)}
-          />
-        ) : (
-          <div className="glass p-8 text-center text-[var(--text-muted)]">
-            Select a cluster above to enter readings
-          </div>
-        )}
-      </section>
+      {/* Main Grid Content */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        {/* Left Column: Entry & Settlement */}
+        <div className="space-y-8">
+          <section className="glass p-6 rounded-xl space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Sun className="w-5 h-5 text-yellow-500" /> Submit Energy Reading
+            </h2>
+            {clusterId ? (
+              <EnergyEntryForm clusterId={clusterId} onSuccess={() => setRefreshTrigger(p => p + 1)} />
+            ) : (
+              <p className="text-[var(--text-muted)] italic">Please select a cluster to begin.</p>
+            )}
+          </section>
 
-      {/* Ownership + Chart */}
-      <section className="space-y-6">
-        <h2 className="section-heading">
-          Ownership & PCU Trend
-        </h2>
+          <section className="glass p-6 rounded-xl space-y-6">
+            <h2 className="text-lg font-semibold">Settlement Operations</h2>
+            <div className="flex flex-col sm:flex-row gap-4">
+              <input
+                type="date"
+                value={settlementDate}
+                onChange={e => setSettlementDate(e.target.value)}
+                className="bg-[var(--bg-primary)] border border-[var(--border-glass)] rounded-lg px-4 py-2"
+              />
+              <RunSettlementButton 
+                clusterId={clusterId} 
+                date={settlementDate} 
+                onSuccess={() => setRefreshTrigger(p => p + 1)} 
+              />
+            </div>
+          </section>
+        </div>
 
-        {clusterId ? (
-          <div className="space-y-6">
-            <OwnershipBar clusterId={clusterId} refreshTrigger={refreshTrigger} />
-
-            <div className="h-72 lg:h-96 glass p-4 md:p-6">
+        {/* Right Column: Chart & Ownership */}
+        <div className="space-y-8">
+          <section className="glass p-6 rounded-xl">
+            <h2 className="text-lg font-semibold mb-6">Funding & Settlement Trend</h2>
+            <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={mockTrendData /* replace with real data from usePCUTrend */}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
-                  <XAxis dataKey="date" stroke="var(--text-muted)" />
-                  <YAxis stroke="var(--text-muted)" />
-                  <Tooltip
-                    contentStyle={{
-                      background: 'rgba(30,41,59,0.95)',
-                      border: '1px solid rgba(102,126,234,0.3)',
-                      borderRadius: '8px',
-                      color: 'var(--text-primary)'
-                    }}
+                <BarChart data={trendData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} />
+                  <YAxis stroke="#94a3b8" fontSize={12} />
+                  <Tooltip 
+                    contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }}
                   />
-                  <Legend wrapperStyle={{ color: 'var(--text-secondary)' }} />
-                  <Bar dataKey="pcu" fill="var(--brand-primary)" radius={[4, 4, 0, 0]} name="Total PCUs" />
-                  <Bar dataKey="settled" fill="var(--success)" radius={[4, 4, 0, 0]} name="Settled PCUs" />
+                  <Legend />
+                  <Bar dataKey="pcu" fill="#10b981" name="Funded PCUs" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="settled" fill="#6366f1" name="Settled PCUs" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        ) : (
-          <div className="glass p-8 text-center text-[var(--text-muted)]">
-            Select a cluster to view ownership and trends
-          </div>
-        )}
-      </section>
+          </section>
 
-      {/* Settlement */}
-      <section className="space-y-6">
-        <h2 className="section-heading">
-          Run Settlement
-        </h2>
-
-        <div className="flex flex-col sm:flex-row sm:items-end gap-6">
-          <div className="flex-1">
-            <label htmlFor="settlement-date" className="block text-xs text-[var(--text-muted)] mb-1 uppercase tracking-wider">
-              Settlement Date
-            </label>
-            <input
-              id="settlement-date"
-              type="date"
-              value={settlementDate}
-              onChange={e => setSettlementDate(e.target.value)}
-              className="w-full bg-[var(--surface-glass)] border border-[var(--border-glass)] rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-[var(--brand-primary)] focus:ring-2 focus:ring-[var(--brand-glow)]"
-            />
-          </div>
-
-          <RunSettlementButton
-            clusterId={clusterId}
-            date={settlementDate}
-            onSuccess={() => setRefreshTrigger(p => p + 1)}
-          />
+          <OwnershipBar clusterId={clusterId} refreshTrigger={refreshTrigger} />
         </div>
+      </div>
 
-        {clusterId && (
-          <SettlementTrace
-            clusterId={clusterId}
-            date={settlementDate}
-            key={`${clusterId}-${settlementDate}-${refreshTrigger}`}
-          />
-        )}
-      </section>
+      {clusterId && (
+        <section className="glass p-6 rounded-xl">
+          <h2 className="text-lg font-semibold mb-4">Live Settlement Trace</h2>
+          <SettlementTrace clusterId={clusterId} date={settlementDate} key={refreshTrigger} />
+        </section>
+      )}
     </div>
   );
 }
