@@ -2,43 +2,47 @@ import { Zap } from 'lucide-react';
 
 export function Footer() {
   return (
-    <footer
-      className="mt-auto"
-      style={{
-        borderTop: '1px solid rgba(255,255,255,0.06)',
-        background: 'rgba(13, 13, 26, 0.6)',
-        backdropFilter: 'blur(12px)',
-      }}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <div
-            className="w-6 h-6 rounded-lg flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}
-          >
-            <Zap size={12} className="text-white" fill="white" />
+    <footer className="w-full border-t border-white/5 bg-[#05050a]/95 backdrop-blur-2xl">
+      <div className="max-w-7xl mx-auto px-6 py-10 flex flex-col md:flex-row items-center justify-between gap-8">
+        
+        {/* STATUS BAR */}
+        <div className="flex items-center gap-4">
+          <div className="px-3 py-1 rounded-md bg-brand-primary/10 border border-brand-primary/20">
+            <span className="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
+              Early Access
+            </span>
           </div>
-          <span className="text-sm font-display font-semibold" style={{ color: 'rgba(240,240,255,0.6)' }}>
-            Enerlectra
-          </span>
-          <span className="text-sm" style={{ color: 'rgba(240,240,255,0.25)' }}>·</span>
-          <span className="text-xs" style={{ color: 'rgba(240,240,255,0.3)' }}>
-            ⚡ Powered by The Energy Internet
+          <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">
+            v2.4.0
           </span>
         </div>
 
-        <div className="flex items-center gap-4">
-          <span className="text-xs" style={{ color: 'rgba(240,240,255,0.25)' }}>
-            Beta v1.0
-          </span>
-          <span className="text-xs" style={{ color: 'rgba(240,240,255,0.25)' }}>
-            © 2026 Enerlectra
-          </span>
-          <span className="text-xs" style={{ color: 'rgba(240,240,255,0.3)' }}>
-            Made with ♥ for energy democracy
-          </span>
+        {/* THE MISSION (No Jargon) */}
+        <div className="text-center">
+          <p className="text-[12px] text-white/50 font-bold uppercase tracking-[0.2em]">
+            The Fair Energy Ownership Platform
+          </p>
         </div>
+
+        {/* BRANDING */}
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm font-black text-white uppercase tracking-tighter leading-none">
+              Enerlectra
+            </p>
+            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1 font-medium">
+              Africa
+            </p>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
+            <Zap size={18} className="text-brand-primary" fill="currentColor" fillOpacity={0.2} />
+          </div>
+        </div>
+        
       </div>
+
+      {/* SUBTLE ACCENT LINE */}
+      <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent" />
     </footer>
   );
 }
