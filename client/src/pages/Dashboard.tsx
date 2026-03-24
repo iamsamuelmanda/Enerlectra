@@ -31,8 +31,8 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
         <StatItem icon={<Zap />} value="3" label="Active Clusters" color="text-brand-primary" />
         <StatItem icon={<Battery />} value="110 kWh" label="Storage Capacity" color="text-success" />
-        <StatItem icon={<DollarSign />} value="$4,200" label="Trading Volume" color="text-warning" />
-        <StatItem icon={<Users />} value="142" label="Global Operators" color="text-info" />
+        <StatItem icon={<DollarSign />} value="ZMW" label="Mobile Money Ready" color="text-warning" />
+        <StatItem icon={<Users />} value="Pilot" label="Phase · Lusaka" color="text-info" />
       </div>
 
       {/* 3. CLUSTER GRID */}
