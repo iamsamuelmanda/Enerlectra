@@ -1,54 +1,52 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Cluster } from '@/types/api'; // assuming this is where Cluster is defined
+import type { Cluster } from '@/types/api';
 
-export function useClusters() {
-  const [clusters, setClusters] = useState<Cluster[]>([]);
+export function useCluster(id: string) {
+  const [cluster, setCluster] = useState<Cluster | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadClusters = useCallback(async () => {
+  const loadCluster = useCallback(async () => {
+    if (!id) return;
     try {
       setLoading(true);
-      setError(null);
-
       const { data, error } = await supabase
         .from('clusters')
         .select('*')
-        .order('created_at', { ascending: false });
+        .eq('id', id)
+        .single();
 
       if (error) throw error;
-
-      setClusters(data || []);
+      setCluster(data);
     } catch (err: any) {
-      console.error('Error loading clusters:', err);
-      setError(err.message || 'Failed to load communities');
+      console.error('[HOOK ERROR]', err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [id]);
 
   useEffect(() => {
-    loadClusters();
+    loadCluster();
 
-    // Optional: realtime updates when clusters change
+    // REAL-TIME GRID UPDATES: 
+    // Listen for changes specifically to this cluster's generation/consumption
     const channel = supabase
-      .channel('clusters-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'clusters' }, () => {
-        console.log('Clusters updated – reloading');
-        loadClusters();
-      })
+      .channel(`live-grid-${id}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'clusters', filter: `id=eq.${id}` },
+        (payload) => {
+          setCluster(payload.new as Cluster);
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [loadClusters]);
+  }, [id, loadCluster]);
 
-  return {
-    clusters,
-    loading,
-    error,
-    refresh: loadClusters,
-  };
+  return { cluster, loading, error, refresh: loadCluster };
 }

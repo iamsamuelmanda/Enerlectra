@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enerlectra – The Energy Internet</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    /* ===== HEADER ===== */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    
+    h1 {
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    
+    .tagline {
+      color: #6b7280;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+    
+    /* ===== SECTIONS ===== */
+    h2 {
+      font-size: 1.4rem;
+      color: #1f2937;
+      margin: 28px 0 16px;
+      padding-left: 12px;
+      border-left: 4px solid #667eea;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 600;
+    }
+    
+    .icon {
+      font-size: 1.6rem;
+    }
+    
+    /* ===== BANNERS ===== */
+    .banner {
+      padding: 14px 18px;
+      border-radius: 8px;
+      margin: 12px 0;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 500;
+    }
+    
+    .banner-info {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      color: #1e40af;
+    }
+    
+    .banner-warning {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      color: #92400e;
+    }
+    
+    .banner-success {
+      background: #d1fae5;
+      border-left: 4px solid #10b981;
+      color: #065f46;
+    }
+    
+    .banner-loss {
+      background: #fef2f2;
+      border-left: 4px solid #ef4444;
+      color: #7f1d1d;
+    }
+    
+    /* ===== CARDS ===== */
+    .card {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    
+    .card-primary {
+      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+      border: 2px solid #c084fc;
+    }
+    
+    .target-card {
+      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+      border: 2px solid #c084fc;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+    }
+    
+    /* ===== TABLES ===== */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    th {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      padding: 12px;
+      text-align: left;
+    }
+    
+    td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    tbody tr:hover {
+      background: #f9fafb;
+    }
+    
+    /* ===== BUTTONS ===== */
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    button.secondary {
+      background: white;
+      color: #667eea;
+      border: 2px solid #667eea;
+    }
+    
+    button.secondary:hover:not(:disabled) {
+      background: #f3f4f6;
+    }
+    
+    /* ===== INPUTS ===== */
+    input, select {
+      padding: 10px 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      transition: border-color 0.2s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    label {
+      display: inline-block;
+      margin: 0 12px 0 0;
+      font-size: 0.9rem;
+      color: #374151;
+      font-weight: 500;
+    }
+    
+    /* ===== PROGRESS BARS ===== */
+    .progress-container {
+      background: #e5e7eb;
+      height: 14px;
+      border-radius: 7px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+      transition: width 0.4s ease;
+      border-radius: 7px;
+    }
+    
+    /* ===== OWNERSHIP VISUAL BAR ===== */
+    .ownership-bar {
+      display: flex;
+      height: 32px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 12px 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+    }
+    
+    .ownership-segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    
+    .ownership-segment:hover {
+      opacity: 0.85;
+      transform: scale(1.02);
+    }
+    
+    /* ===== LEADERBOARD ===== */
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      padding: 14px;
+      background: white;
+      border-radius: 8px;
+      margin: 10px 0;
+      border: 1px solid #e5e7eb;
+      transition: all 0.2s;
+    }
+    
+    .leaderboard-item:hover {
+      transform: translateX(4px);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .leaderboard-rank {
+      font-size: 1.8rem;
+      font-weight: 700;
+      width: 60px;
+      text-align: center;
+    }
+    
+    .leaderboard-name {
+      flex: 1;
+      font-weight: 600;
+      color: #1f2937;
+      font-size: 1rem;
+    }
+    
+    .leaderboard-value {
+      font-weight: 700;
+      color: #667eea;
+      font-size: 1.2rem;
+    }
+    
+    /* ===== VALUE BOXES ===== */
+    .value-boxes {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 12px 0;
+    }
+    
+    .value-box {
+      background: white;
+      border: 2px solid #667eea;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+      min-width: 160px;
+      transition: all 0.2s;
+    }
+    
+    .value-box:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+    }
+    
+    .value-icon {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 8px;
+    }
+    
+    .value-label {
+      font-size: 0.75rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    
+    .value-amount {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-top: 4px;
+    }
+    
+    /* ===== LOG ===== */
+    #log {
+      background: #1f2937;
+      color: #10b981;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.8rem;
+      max-height: 250px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    
+    /* ===== UTILITIES ===== */
+    .note {
+      font-size: 0.85rem;
+      color: #6b7280;
+      font-style: italic;
+      margin-top: 8px;
+    }
+    
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 12px 0;
+    }
+    
+    .status-healthy { color: #10b981; font-weight: 600; }
+    .status-stressed { color: #f59e0b; font-weight: 600; }
+    .status-offline { color: #ef4444; font-weight: 600; }
+    
+    .target-clock {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #dc2626;
+      margin-bottom: 8px;
+    }
+    
+    .confidence-pill {
+      display: inline-block;
+      padding: 6px 14px;
+      border-radius: 16px;
+      background: #e0e7ff;
+      color: #1e40af;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: #6b7280;
+      font-size: 0.85rem;
+      border-top: 1px solid #e5e7eb;
+      margin-top: 40px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- ===== HEADER ===== -->
+  <div class="header">
+    <h1>⚡ Enerlectra</h1>
+    <p class="tagline">Fair Energy Ownership Through Simple Math</p>
+  </div>
+  
+  <div class="banner banner-info">
+    <span>ℹ️</span>
+    <span><strong>Demo mode:</strong> All contributions reversible. If this doesn't feel fair, we stop.</span>
+  </div>
+  
+  <!-- ===== CLUSTERS ===== -->
+  <section>
+    <h2><span class="icon">🏘️</span> Energy Communities</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Community Name</th>
+          <th>Target Solar</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="clusters-body">
+        <tr><td colspan="5">Loading communities...</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <!-- ===== ACTIVE CAMPAIGN ===== -->
+  <section>
+    <h2><span class="icon">🎯</span> Campaign Progress</h2>
+    <div class="target-card">
+      <div style="font-size: 1.1rem; font-weight: 600; margin-bottom: 8px;">
+        📌 Goal: <span id="campaign-goal">+15 kW solar, +60 kWh battery</span>
+      </div>
+      
+      <div class="target-clock" id="target-clock">⏳ 60 days to unlock procurement</div>
+      
+      <div style="margin: 16px 0;">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+          <span style="font-weight: 600;">Progress:</span>
+          <span id="campaign-progress-pct" style="font-weight: 700; color: #667eea;">0%</span>
+        </div>
+        <div class="progress-container">
+          <div id="campaign-progress-bar" class="progress-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <div style="margin: 12px 0;">
+        <span class="confidence-pill" id="confidence-pill">🎲 Likelihood: 0%</span>
+      </div>
+      
+      <div style="margin-top: 16px; font-size: 0.9rem;">
+        <strong>🔓 What Unlocks Next:</strong>
+        <ul style="margin: 8px 0 0 20px; line-height: 1.8;">
+          <li id="unlock-1">🔒 40%: Feasibility study & supplier quotes</li>
+          <li id="unlock-2">🔒 70%: Solar panel procurement</li>
+          <li id="unlock-3">🔒 100%: Battery expansion</li>
+        </ul>
+      </div>
+      
+      <div id="campaign-failure" class="banner banner-loss" style="display:none; margin-top: 12px;"></div>
+      
+      <div class="note" style="margin-top: 12px;">
+        ⚠️ Installation requires host permission and engineering approval
+      </div>
+    </div>
+  </section>
+  
+  <!-- ===== CONTRIBUTION ===== -->
+  <section>
+    <h2><span class="icon">💰</span> Join This Community</h2>
+    <div class="card">
+      <div class="controls-row">
+        <label>👤 Your Name
+          <input id="pcu-name" type="text" placeholder="Enter your name" style="width: 200px">
+        </label>
+        <label>💵 Amount (PCUs)
+          <input id="pcu-amount" type="number" min="1" max="100" value="10" style="width: 100px">
+        </label>
+        <button id="pcu-submit-btn">
+          <span>✅</span> Add Contribution
+        </button>
+      </div>
+      <p class="note">💡 1 PCU ≈ K1 • Max 100 per contribution • Demo only (no real money)</p>
+    </div>
+  </section>
+  
+  <!-- ===== OWNERSHIP BREAKDOWN ===== -->
+  <section>
+    <h2><span class="icon">📊</span> Who Owns What</h2>
+    
+    <div class="banner banner-info">
+      <span>📐</span>
+      <span><strong>Simple Rule:</strong> Your contribution ÷ Total = Your ownership %</span>
+    </div>
+    
+    <p id="ownership-cluster-label" style="margin: 12px 0; color: #6b7280; font-weight: 500;">
+      Select a community to view ownership
+    </p>
+    
+    <!-- VISUAL OWNERSHIP BAR -->
+    <div id="ownership-visual-section" style="display: none; margin: 20px 0;">
+      <p style="font-weight: 600; margin-bottom: 10px; font-size: 1rem;">📊 Visual Ownership:</p>
+      <div class="ownership-bar" id="ownership-bar-container"></div>
+    </div>
+    
+    <!-- LEADERBOARD -->
+    <div id="leaderboard-section" style="display: none; margin: 24px 0;">
+      <h3 style="font-size: 1.2rem; color: #1f2937; margin-bottom: 14px; font-weight: 600;">
+        🏆 Top Contributors
+      </h3>
+      <div id="leaderboard-container"></div>
+    </div>
+    
+    <!-- DETAILED TABLE -->
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Contributions</th>
+          <th>Total PCUs</th>
+          <th>Ownership %</th>
+          <th>What This Means</th>
+        </tr>
+      </thead>
+      <tbody id="ownership-body">
+        <tr><td colspan="5">No community selected</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <!-- ===== SESSION CONTROLS ===== -->
+  <section>
+    <h2><span class="icon">🔧</span> Session Tools</h2>
+    <div class="controls-row">
+      <button class="secondary" id="undo-last-btn">
+        <span>↩️</span> Undo Last
+      </button>
+      <button class="secondary" id="session-reset-btn">
+        <span>🔄</span> Reset Session
+      </button>
+    </div>
+    <p class="note">💡 Reversibility builds trust. Real deployments follow written agreements.</p>
+  </section>
+  
+  <!-- ===== SIMULATION ===== -->
+  <section>
+    <h2><span class="icon">⚡</span> Energy Simulation</h2>
+    <p id="simulation-cluster-label" class="note" style="margin-bottom: 12px;">
+      Select a community first
+    </p>
+    
+    <div class="controls-row">
+      <label>📅 Days
+        <input id="sim-days" type="number" value="30" min="1" max="90" style="width: 80px">
+      </label>
+      <label>🏠 Households
+        <input id="sim-households" type="number" value="25" min="1" max="250" style="width: 80px">
+      </label>
+      <label>📊 Usage Level
+        <select id="sim-demand-profile">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <button id="run-sim-btn" disabled>
+        <span>▶️</span> Run Simulation
+      </button>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Generated (kWh)</th>
+          <th>Used (kWh)</th>
+          <th>Surplus</th>
+          <th>Deficit</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="simulation-body">
+        <tr><td colspan="5">Run simulation to see results</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <!-- ===== CURRENT vs TARGET ===== -->
+  <section>
+    <h2><span class="icon">📈</span> Current vs Target</h2>
+    <p id="distribution-cluster-label" class="note" style="margin-bottom: 12px;">
+      Select a community first
+    </p>
+    
+    <div class="controls-row">
+      <label>📅 Days
+        <input id="comp-days" type="number" value="30" min="1" max="90" style="width: 80px">
+      </label>
+      <label>📊 Usage Level
+        <select id="comp-demand-profile">
+          <option value="low">Low</option>
+          <option value="medium" selected>Medium</option>
+          <option value="high">High</option>
+        </select>
+      </label>
+      <label>🏠 Households
+        <input id="comp-households" type="number" value="25" min="1" max="50" style="width: 80px">
+      </label>
+      <button id="run-compare-btn" disabled>
+        <span>▶️</span> Compare
+      </button>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Current State</th>
+          <th>Target State</th>
+          <th>Gap</th>
+        </tr>
+      </thead>
+      <tbody id="comparison-body">
+        <tr><td colspan="4">Run comparison to see results</td></tr>
+      </tbody>
+    </table>
+  </section>
+  
+  <!-- ===== SURPLUS DISTRIBUTION ===== -->
+  <section>
+    <h2><span class="icon">⚡</span> Surplus Distribution</h2>
+    <p id="distribution-cluster-label-2" class="note" style="margin-bottom: 12px;">
+      Select a community first
+    </p>
+    
+    <div class="controls-row">
+      <label>⚡ Surplus (kWh)
+        <input id="dist-surplus" type="number" value="100" min="1" style="width: 100px">
+      </label>
+      <button id="run-distribute-btn" disabled>
+        <span>▶️</span> Calculate Shares
+      </button>
+    </div>
+    
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Ownership %</th>
+          <th>Energy Share (kWh)</th>
+          <th>Value (K)</th>
+        </tr>
+      </thead>
+      <tbody id="distribution-body">
+        <tr><td colspan="4">Run distribution to see results</td></tr>
+      </tbody>
+    </table>
+    <p class="note">💡 Energy is distributed based on ownership percentage</p>
+  </section>
+  
+  <!-- ===== ACTIVITY LOG ===== -->
+  <section>
+    <h2><span class="icon">📝</span> Activity Log</h2>
+    <div id="log"></div>
+  </section>
+  
+  <footer>
+    <strong>⚡ Enerlectra</strong> • Fair Energy Ownership<br>
+    If this doesn't feel fair, this pilot stops.
+  </footer>
+  
+</div>
+
+<script>
+/********************************************************************
+ * CONFIGURATION
+ *******************************************************************/
+const CONFIG = {
+  DEMO_RATE: 22.76,
+  GOAL_PCUS: 1000,
+  DEADLINE_DAYS: 60,
+  TARGET_SOLAR_KW: 15,
+  TARGET_STORAGE_KWH: 60,
+  RATE_PER_KWH: 1.5, // K1.50 per kWh
+  FOUNDING_MULT: 1.2,
+  EARLY_MULT: 1.1,
+  STANDARD_MULT: 1.0,
+};
+
+// COLORS for ownership visualization
+const COLORS = [
+  '#667eea', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'
+];
+
+/********************************************************************
+ * STATE
+ *******************************************************************/
+let contributions = [];
+let selectedClusterId = null;
+let clusterTargets = {};
+let clusters = [];
+let deadline = new Date(Date.now() + CONFIG.DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+
+/********************************************************************
+ * UTILITIES
+ *******************************************************************/
+function log(msg) {
+  const el = document.getElementById('log');
+  if (!el) return;
+  el.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+  el.scrollTop = el.scrollHeight;
+}
+
+function daysRemaining() {
+  return Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+}
+
+/********************************************************************
+ * USER AGGREGATION (Frontend-Only - One User, Many Transactions)
+ * 
+ * TODO (Post-Pilot): Replace with backend endpoint
+ * POST /users/:userId/contributions
+ * GET /users/:userId/total
+ *******************************************************************/
+function aggregateByUser(contribs) {
+  const userMap = {};
+  
+  contribs.forEach(c => {
+    if (!userMap[c.name]) {
+      userMap[c.name] = {
+        name: c.name,
+        transactions: [],
+        total: 0,
+        // TODO: Backend should provide userId here
+        // userId: c.userId || generateUserId(c.name)
+      };
+    }
+    
+    userMap[c.name].transactions.push({
+      amount: c.pcus,
+      timestamp: c.timestamp || new Date(),
+      daysBefore: c.daysBefore || daysRemaining()
+    });
+    
+    userMap[c.name].total += c.pcus;
+  });
+  
+  return Object.values(userMap);
+}
+
+/********************************************************************
+ * VALUE TRANSLATION (% → Money → Energy → Earnings)
+ *******************************************************************/
+function calculateValueTranslation(ownershipPct, totalPCUs) {
+  // 1. MONEY: Your share of total cluster value
+  const clusterValue = totalPCUs; // In demo: 1 PCU = K1
+  const yourValue = (ownershipPct / 100) * clusterValue;
+  
+  // 2. ENERGY: Your share of monthly generation
+  const targetKw = clusterTargets.targetSolarKw || CONFIG.TARGET_SOLAR_KW;
+  const monthlyGeneration = targetKw * 4.5 * 30; // kWh per month (4.5 peak hours/day)
+  const yourEnergy = (ownershipPct / 100) * monthlyGeneration;
+  
+  // 3. EARNINGS: Potential income from your energy share
+  const yourEarnings = yourEnergy * CONFIG.RATE_PER_KWH;
+  
+  return {
+    value: yourValue,         // K (kwacha)
+    energy: yourEnergy,       // kWh
+    earnings: yourEarnings    // K per month
+  };
+}
+
+/********************************************************************
+ * CLUSTER MANAGEMENT
+ *******************************************************************/
+async function loadClustersFromAPI() {
+  try {
+    log('🔵 Loading communities...');
+    const response = await fetch('/clusters');
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
+    const data = await response.json();
+    clusters = data.map(c => ({
+      clusterId: c.clusterId,
+      name: c.name,
+      targetSolarKw: c.target_kW || c.targetSolarKw || CONFIG.TARGET_SOLAR_KW,
+      targetStorageKwh: c.targetStorageKwh || CONFIG.TARGET_STORAGE_KWH,
+      status: c.status || 'open'
+    }));
+    
+    renderClusterList();
+    log(`✅ Loaded ${clusters.length} communities`);
+  } catch (error) {
+    log(`❌ Error: ${error.message}`);
+    document.getElementById('clusters-body').innerHTML = 
+      '<tr><td colspan="5">Unable to load communities. Check server connection.</td></tr>';
+  }
+}
+
+function renderClusterList() {
+  const tbody = document.getElementById('clusters-body');
+  
+  if (!clusters.length) {
+    tbody.innerHTML = '<tr><td colspan="5">No communities available</td></tr>';
+    return;
+  }
+  
+  tbody.innerHTML = '';
+  
+  clusters.forEach(c => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${c.clusterId}</strong></td>
+      <td>${c.name}</td>
+      <td>${c.targetSolarKw} kW</td>
+      <td><span style="color: #10b981;">●</span> ${c.status}</td>
+      <td>
+        <button data-id="${c.clusterId}" class="btn-select" style="font-size: 0.85rem; padding: 6px 14px;">
+          ▶️ Select
+        </button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  
+  tbody.onclick = (e) => {
+    if (e.target.classList.contains('btn-select')) {
+      selectCluster(e.target.getAttribute('data-id'));
+    }
+  };
+}
+
+function selectCluster(id) {
+  selectedClusterId = id;
+  const cluster = clusters.find(c => c.clusterId === id);
+  if (!cluster) return;
+  
+  clusterTargets = {
+    targetSolarKw: cluster.targetSolarKw,
+    targetStorageKwh: cluster.targetStorageKwh
+  };
+  
+  document.getElementById('ownership-cluster-label').textContent = 
+    `📍 Community: ${cluster.name} (${id})`;
+  document.getElementById('simulation-cluster-label').textContent = 
+    `📍 Selected: ${cluster.name}`;
+  document.getElementById('distribution-cluster-label').textContent = 
+    `📍 Selected: ${cluster.name}`;
+  document.getElementById('distribution-cluster-label-2').textContent = 
+    `📍 Selected: ${cluster.name}`;
+  
+  document.getElementById('run-sim-btn').disabled = false;
+  document.getElementById('run-compare-btn').disabled = false;
+  document.getElementById('run-distribute-btn').disabled = false;
+  
+  log(`✅ ${cluster.name} selected`);
+  renderOwnership();
+}
+
+/********************************************************************
+ * OWNERSHIP RENDERING (with Visual Bar, Leaderboard, Value Translation)
+ *******************************************************************/
+function renderOwnership() {
+  const tbody = document.getElementById('ownership-body');
+  
+  if (!selectedClusterId) {
+    tbody.innerHTML = '<tr><td colspan="5">No community selected</td></tr>';
+    document.getElementById('ownership-visual-section').style.display = 'none';
+    document.getElementById('leaderboard-section').style.display = 'none';
+    return;
+  }
+  
+  if (!contributions.length) {
+    tbody.innerHTML = '<tr><td colspan="5">No contributions yet. Be the first! 🚀</td></tr>';
+    document.getElementById('ownership-visual-section').style.display = 'none';
+    document.getElementById('leaderboard-section').style.display = 'none';
+    updateCampaign(0);
+    return;
+  }
+  
+  // AGGREGATE BY USER (one person, many transactions)
+  const users = aggregateByUser(contributions);
+  const totalPCUs = users.reduce((sum, u) => sum + u.total, 0);
+  
+  // SORT BY TOTAL (for leaderboard)
+  const sorted = [...users].sort((a, b) => b.total - a.total);
+  
+  // RENDER DETAILED TABLE
+  tbody.innerHTML = '';
+  sorted.forEach(user => {
+    const pct = (user.total / totalPCUs) * 100;
+    const values = calculateValueTranslation(pct, totalPCUs);
+    
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>
+        <strong>${user.name}</strong>
+        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
+          ${user.transactions.length} transaction${user.transactions.length > 1 ? 's' : ''}
+        </div>
+      </td>
+      <td>${user.transactions.length}</td>
+      <td><strong>${user.total}</strong> PCUs</td>
+      <td><strong style="color: #667eea;">${pct.toFixed(1)}%</strong></td>
+      <td>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; font-size: 0.85rem;">
+          <span>💰 K${values.value.toFixed(0)}</span>
+          <span>⚡ ${values.energy.toFixed(0)} kWh/mo</span>
+          <span>💵 ~K${values.earnings.toFixed(0)}/mo</span>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+  
+  // RENDER VISUAL BAR
+  renderOwnershipBar(sorted, totalPCUs);
+  
+  // RENDER LEADERBOARD
+  renderLeaderboard(sorted, totalPCUs);
+  
+  // UPDATE CAMPAIGN
+  updateCampaign(totalPCUs);
+}
+
+function renderOwnershipBar(users, total) {
+  const container = document.getElementById('ownership-bar-container');
+  const section = document.getElementById('ownership-visual-section');
+  
+  if (users.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  
+  section.style.display = 'block';
+  container.innerHTML = '';
+  
+  users.forEach((user, idx) => {
+    const pct = (user.total / total) * 100;
+    
+    // Skip tiny segments
+    if (pct < 1) return;
+    
+    const segment = document.createElement('div');
+    segment.className = 'ownership-segment';
+    segment.style.width = pct + '%';
+    segment.style.background = COLORS[idx % COLORS.length];
+    
+    // Only show name if segment is large enough
+    segment.textContent = pct >= 5 ? `${user.name} ${pct.toFixed(0)}%` : '';
+    segment.title = `${user.name}: ${pct.toFixed(1)}% (${user.total} PCUs)`;
+    
+    container.appendChild(segment);
+  });
+}
+
+function renderLeaderboard(users, total) {
+  const container = document.getElementById('leaderboard-container');
+  const section = document.getElementById('leaderboard-section');
+  
+  if (users.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+  
+  section.style.display = 'block';
+  container.innerHTML = '';
+  
+  const top5 = users.slice(0, 5);
+  const medals = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+  
+  top5.forEach((user, idx) => {
+    const pct = (user.total / total) * 100;
+    
+    const item = document.createElement('div');
+    item.className = 'leaderboard-item';
+    item.innerHTML = `
+      <div class="leaderboard-rank">${medals[idx]}</div>
+      <div class="leaderboard-name">
+        ${user.name}
+        <div style="font-size: 0.75rem; color: #6b7280; margin-top: 2px;">
+          ${user.total} PCUs • ${user.transactions.length} transaction${user.transactions.length > 1 ? 's' : ''}
+        </div>
+      </div>
+      <div class="leaderboard-value">${pct.toFixed(1)}%</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+/********************************************************************
+ * CAMPAIGN PROGRESS & CONFIDENCE
+ *******************************************************************/
+function updateCampaign(totalPCUs) {
+  const pct = Math.min((totalPCUs / CONFIG.GOAL_PCUS) * 100, 100);
+  
+  document.getElementById('campaign-progress-pct').textContent = pct.toFixed(0) + '%';
+  document.getElementById('campaign-progress-bar').style.width = pct + '%';
+  
+  const days = daysRemaining();
+  const timeEl = document.getElementById('target-clock');
+  
+  if (days > 0) {
+    timeEl.textContent = `⏳ ${days} days to unlock procurement`;
+  } else {
+    timeEl.textContent = '⏳ Campaign ended';
+    
+    if (pct < 100) {
+      const loss = document.getElementById('campaign-failure');
+      const lostKwh = (clusterTargets.targetSolarKw || CONFIG.TARGET_SOLAR_KW) * 4.5 * 30;
+      loss.style.display = 'block';
+      loss.innerHTML = `
+        <strong>❌ Target Missed</strong><br>
+        0 kW built • Lost opportunity: ~${lostKwh.toFixed(0)} kWh/month not generated
+      `;
+      document.getElementById('pcu-submit-btn').disabled = true;
+    }
+  }
+  
+  // CONFIDENCE CALCULATION
+  const speedFactor = contributions.length / Math.max(1, CONFIG.DEADLINE_DAYS - days + 1);
+  const confidence = Math.min(95, pct * 0.6 + speedFactor * 15);
+  
+  document.getElementById('confidence-pill').textContent = 
+    `🎲 Likelihood: ${confidence.toFixed(0)}%`;
+  
+  // UNLOCK LADDER
+  document.getElementById('unlock-1').textContent = 
+    pct >= 40 ? '✅ 40%: Feasibility study & supplier quotes' : '🔒 40%: Feasibility study & supplier quotes';
+  document.getElementById('unlock-2').textContent = 
+    pct >= 70 ? '✅ 70%: Solar panel procurement' : '🔒 70%: Solar panel procurement';
+  document.getElementById('unlock-3').textContent = 
+    pct >= 100 ? '✅ 100%: Battery expansion' : '🔒 100%: Battery expansion';
+}
+
+/********************************************************************
+ * CONTRIBUTION HANDLING
+ *******************************************************************/
+function setupContributions() {
+  document.getElementById('pcu-submit-btn').onclick = () => {
+    const name = document.getElementById('pcu-name').value.trim();
+    const pcus = Number(document.getElementById('pcu-amount').value);
+    
+    if (!selectedClusterId) {
+      alert('⚠️ Please select a community first');
+      return;
+    }
+    
+    if (!name || pcus <= 0) {
+      alert('⚠️ Please enter your name and a valid amount');
+      return;
+    }
+    
+    if (pcus > 100) {
+      alert('⚠️ Maximum 100 PCUs per contribution');
+      return;
+    }
+    
+    // TODO (Post-Pilot): Replace with API call
+    // POST /clusters/:clusterId/contributions
+    // { userId: getUserId(name), amount: pcus }
+    
+    contributions.push({
+      name,
+      pcus,
+      timestamp: new Date(),
+      daysBefore: daysRemaining()
+    });
+    
+    document.getElementById('pcu-name').value = '';
+    document.getElementById('pcu-amount').value = 10;
+    
+    log(`✅ ${name} contributed ${pcus} PCUs`);
+    renderOwnership();
+  };
+  
+  document.getElementById('undo-last-btn').onclick = () => {
+    if (!contributions.length) {
+      log('⚠️ No contributions to undo');
+      return;
+    }
+    
+    const last = contributions.pop();
+    log(`↩️ Undid ${last.name}'s ${last.pcus} PCUs`);
+    renderOwnership();
+  };
+  
+  document.getElementById('session-reset-btn').onclick = () => {
+    if (!confirm('⚠️ Reset entire session? This will clear all contributions.')) return;
+    
+    contributions = [];
+    deadline = new Date(Date.now() + CONFIG.DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+    document.getElementById('pcu-submit-btn').disabled = false;
+    document.getElementById('campaign-failure').style.display = 'none';
+    
+    log('🔄 Session reset');
+    renderOwnership();
+  };
+}
+
+/********************************************************************
+ * SIMULATION
+ *******************************************************************/
+function setupSimulation() {
+  document.getElementById('run-sim-btn').onclick = () => {
+    if (!selectedClusterId) {
+      alert('⚠️ Select a community first');
+      return;
+    }
+    
+    const days = Number(document.getElementById('sim-days').value);
+    const households = Number(document.getElementById('sim-households').value);
+    const profile = document.getElementById('sim-demand-profile').value;
+    
+    const avgConsumption = profile === 'high' ? 10 : profile === 'low' ? 6 : 8;
+    const peakKwhPerKW = 4.5;
+    
+    const totalConsumption = households * avgConsumption * days;
+    const totalPCUs = contributions.reduce((s, c) => s + c.pcus, 0);
+    const actualKw = (totalPCUs / CONFIG.GOAL_PCUS) * (clusterTargets.targetSolarKw || CONFIG.TARGET_SOLAR_KW);
+    const totalGeneration = actualKw * peakKwhPerKW * days;
+    
+    const surplus = Math.max(0, totalGeneration - totalConsumption);
+    const deficit = Math.max(0, totalConsumption - totalGeneration);
+    
+    let status = 'offline';
+    if (totalGeneration >= totalConsumption * 0.95) status = 'healthy';
+    else if (totalGeneration >= totalConsumption * 0.7) status = 'stressed';
+    
+    const tbody = document.getElementById('simulation-body');
+    tbody.innerHTML = `
+      <tr>
+        <td>${totalGeneration.toFixed(0)}</td>
+        <td>${totalConsumption.toFixed(0)}</td>
+        <td>${surplus.toFixed(0)}</td>
+        <td>${deficit.toFixed(0)}</td>
+        <td class="status-${status}">${status}</td>
+      </tr>
+    `;
+    
+    log(`⚡ Simulation: ${days} days, ${households} households, ${profile} usage → ${status}`);
+  };
+}
+
+/********************************************************************
+ * COMPARISON (Current vs Target)
+ *******************************************************************/
+function setupComparison() {
+  document.getElementById('run-compare-btn').onclick = () => {
+    if (!selectedClusterId) {
+      alert('⚠️ Select a community first');
+      return;
+    }
+    
+    const days = Number(document.getElementById('comp-days').value);
+    const households = Number(document.getElementById('comp-households').value);
+    const profile = document.getElementById('comp-demand-profile').value;
+    
+    const avgConsumption = profile === 'high' ? 10 : profile === 'low' ? 6 : 8;
+    const peakKwhPerKW = 4.5;
+    
+    const totalConsumption = households * avgConsumption * days;
+    const totalPCUs = contributions.reduce((s, c) => s + c.pcus, 0);
+    const currentKw = (totalPCUs / CONFIG.GOAL_PCUS) * (clusterTargets.targetSolarKw || CONFIG.TARGET_SOLAR_KW);
+    const targetKw = clusterTargets.targetSolarKw || CONFIG.TARGET_SOLAR_KW;
+    
+    const currentGeneration = currentKw * peakKwhPerKW * days;
+    const targetGeneration = targetKw * peakKwhPerKW * days;
+    
+    const currentSurplus = Math.max(0, currentGeneration - totalConsumption);
+    const targetSurplus = Math.max(0, targetGeneration - totalConsumption);
+    
+    const tbody = document.getElementById('comparison-body');
+    tbody.innerHTML = '';
+    
+    const rows = [
+      {
+        metric: '☀️ Solar Capacity',
+        current: currentKw.toFixed(1) + ' kW',
+        target: targetKw.toFixed(1) + ' kW',
+        gap: '+' + (targetKw - currentKw).toFixed(1) + ' kW'
+      },
+      {
+        metric: '🔋 Battery Storage',
+        current: (clusterTargets.targetStorageKwh || CONFIG.TARGET_STORAGE_KWH) + ' kWh',
+        target: (clusterTargets.targetStorageKwh || CONFIG.TARGET_STORAGE_KWH) + ' kWh',
+        gap: '—'
+      },
+      {
+        metric: '⚡ Generation',
+        current: currentGeneration.toFixed(0) + ' kWh',
+        target: targetGeneration.toFixed(0) + ' kWh',
+        gap: '+' + (targetGeneration - currentGeneration).toFixed(0) + ' kWh'
+      },
+      {
+        metric: '📊 Surplus',
+        current: currentSurplus.toFixed(0) + ' kWh',
+        target: targetSurplus.toFixed(0) + ' kWh',
+        gap: '+' + (targetSurplus - currentSurplus).toFixed(0) + ' kWh'
+      }
+    ];
+    
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${r.metric}</strong></td>
+        <td>${r.current}</td>
+        <td>${r.target}</td>
+        <td>${r.gap}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    log(`📈 Comparison: ${days} days, ${households} households`);
+  };
+}
+
+/********************************************************************
+ * SURPLUS DISTRIBUTION
+ *******************************************************************/
+function setupDistribution() {
+  document.getElementById('run-distribute-btn').onclick = () => {
+    if (!selectedClusterId) {
+      alert('⚠️ Select a community first');
+      return;
+    }
+    
+    const surplus = Number(document.getElementById('dist-surplus').value);
+    if (surplus <= 0) {
+      log('⚠️ Surplus must be > 0');
+      return;
+    }
+    
+    const users = aggregateByUser(contributions);
+    const totalPCUs = users.reduce((s, u) => s + u.total, 0);
+    
+    if (!totalPCUs) {
+      log('⚠️ No contributions yet');
+      return;
+    }
+    
+    const tbody = document.getElementById('distribution-body');
+    tbody.innerHTML = '';
+    
+    users.forEach(user => {
+      const pct = (user.total / totalPCUs) * 100;
+      const share = (user.total / totalPCUs) * surplus;
+      const value = share * CONFIG.RATE_PER_KWH;
+      
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${user.name}</strong></td>
+        <td>${pct.toFixed(1)}%</td>
+        <td>${share.toFixed(0)} kWh</td>
+        <td>K${value.toFixed(0)}</td>
+      `;
+      tbody.appendChild(tr);
+    });
+    
+    log(`⚡ Distributed ${surplus} kWh across ${users.length} users`);
+  };
+}
+
+/********************************************************************
+ * INITIALIZATION
+ *******************************************************************/
+console.log('🚀 Enerlectra initializing...');
+
+loadClustersFromAPI()
+  .then(() => {
+    setupContributions();
+    setupSimulation();
+    setupComparison();
+    setupDistribution();
+    log('✅ System ready');
+  })
+  .catch(e => {
+    log('❌ Initialization failed: ' + e.message);
+  });
+</script>
+
+</body>
+</html>

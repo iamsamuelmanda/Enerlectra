@@ -1,138 +1,177 @@
+import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
-import toast from 'react-hot-toast';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
-import { ClusterCard } from '@/components/ClusterCard';
-import { ContributeForm } from '@/components/ContributeForm';
-import { OwnershipBar } from '@/components/OwnershipBar';
-import { SettlementTrace } from '@/components/SettlementTrace';
-import { EnergyEntryForm } from '@/energy/components/EnergyEntryForm';
-import { useAuth } from '@/hooks/useAuth';
-import { useCluster } from '@/features/clusters/hooks/useCluster'; // assume this exists or create it
-import { useIsParticipant } from '@/features/clusters/hooks/useIsParticipant'; // new hook below
-import { ArrowLeft, Zap, Users, BarChart3, FileText } from 'lucide-react';
+import { Card } from '@/components/ui/Card';
+import { 
+  ArrowLeft, MapPin, ShieldCheck, Info, 
+  Wallet, History, Activity, Zap 
+} from 'lucide-react';
+
+// Optimized Aliases
+import { FundingChart } from '@clusters-components/FundingChart';
+import { LiveMonitor } from '@clusters-components/LiveMonitor';
+import { SimulationForm } from '@simulation/components/SimulationForm';
+import { useCluster } from '@/features/clusters/hooks/useCluster';
+
+// Migration Imports from Legacy View
+import { ContributionHistory } from '@/features/contributions/components/ContributionHistory';
+import ContributeForm from '@/features/contributions/components/ContributionForm';
 
 export default function ClusterDetailPage() {
   const { clusterId } = useParams<{ clusterId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const { cluster, loading: clusterLoading, error: clusterError } = useCluster(clusterId!);
-  const { isParticipant, loading: participantLoading } = useIsParticipant(user?.id, clusterId!);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [refreshKey, setRefreshKey] = useState(0);
+  const { cluster, loading, refresh } = useCluster(clusterId!);
 
-  if (clusterLoading || participantLoading) {
-    return (
-      <div className="page-container py-20 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-[var(--brand-primary)] border-t-transparent rounded-full animate-spin"></div>
-      </div>
-    );
-  }
+  // Handler to refresh data after a contribution
+  const handleContributionSuccess = useCallback(() => {
+    setRefreshKey(prev => prev + 1);
+    refresh(); // Refresh the hook data
+  }, [refresh]);
 
-  if (clusterError || !cluster) {
+  if (loading) {
     return (
-      <div className="page-container py-20 text-center">
-        <h2 className="text-2xl font-bold text-red-400 mb-4">Cluster not found</h2>
-        <button
-          onClick={() => navigate('/clusters')}
-          className="btn-primary px-8 py-3"
-        >
-          Back to Communities
-        </button>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
+        <div className="w-12 h-12 border-4 border-brand-primary border-t-transparent rounded-full animate-spin" />
+        <p className="font-display font-bold text-muted animate-pulse uppercase tracking-[0.3em]">Syncing Grid Node...</p>
       </div>
     );
   }
 
   return (
-    <div className="page-container py-8 lg:py-12">
-      {/* Header */}
-      <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-        <div>
-          <button
-            onClick={() => navigate('/clusters')}
-            className="text-[var(--brand-primary)] hover:underline flex items-center gap-2 mb-4 text-sm font-medium"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Communities
-          </button>
-          <h1 className="text-3xl lg:text-4xl font-bold">{cluster.name}</h1>
-        </div>
+    <div className="space-y-12 pb-20 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 animate-in fade-in duration-700">
+      
+      {/* 1. NAVIGATION & IDENTITY HEADER */}
+      <div className="flex flex-col gap-6">
+        <button 
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 text-xs font-bold text-muted hover:text-brand-primary transition-all group w-fit"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          <span>RETURN TO DASHBOARD</span>
+        </button>
 
-        <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[var(--surface-glass)] border border-[var(--border-glass)] text-sm">
-          <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-          Active
-        </span>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-brand-primary">
+              <MapPin size={14} className="animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em]">
+                {cluster?.location?.district || 'Central'}, Zambia // Node {clusterId?.slice(-4)}
+              </span>
+            </div>
+            <h1 className="text-5xl md:text-6xl font-display font-black text-white tracking-tighter uppercase leading-none">
+              {cluster?.name}
+            </h1>
+          </div>
+          
+          <div className="flex items-center gap-3 px-5 py-2.5 glass border-emerald-500/20 rounded-2xl bg-emerald-500/5">
+            <ShieldCheck className="text-emerald-400" size={18} />
+            <div className="flex flex-col">
+              <span className="text-[9px] font-black text-emerald-400/60 uppercase tracking-widest">Status</span>
+              <span className="text-xs font-bold text-white tracking-wide uppercase">P2P Node Active</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Main cluster summary card */}
-      <ClusterCard cluster={cluster} />
+      {/* 2. REAL-TIME DATA MONITOR (TELEMETRY) */}
+      <LiveMonitor 
+        generation={cluster?.current_generation ?? 0} 
+        consumption={cluster?.current_consumption ?? 0} 
+      />
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-10">
-        <TabsList className="glass mb-8 w-full overflow-x-auto flex justify-start">
-          <TabsTrigger value="overview">
-            <Zap className="w-4 h-4 mr-2" />
-            Overview
-          </TabsTrigger>
-          <TabsTrigger value="contribute">
-            <DollarSign className="w-4 h-4 mr-2" />
-            Contribute
-          </TabsTrigger>
-          <TabsTrigger value="ownership">
-            <Users className="w-4 h-4 mr-2" />
-            Ownership
-          </TabsTrigger>
-          <TabsTrigger value="settlement">
-            <BarChart3 className="w-4 h-4 mr-2" />
-            Settlement
-          </TabsTrigger>
-          {isParticipant && (
-            <TabsTrigger value="my-meter">
-              <FileText className="w-4 h-4 mr-2" />
-              My Meter
-            </TabsTrigger>
-          )}
+      {/* 3. STRATEGIC OPERATIONS TABS */}
+      <Tabs defaultValue="overview" className="space-y-10">
+        <TabsList className="bg-surface-glass p-1.5 rounded-2xl border border-glass inline-flex mb-4">
+          <TabsTrigger value="overview">Market Analytics</TabsTrigger>
+          <TabsTrigger value="simulate">Simulation Engine</TabsTrigger>
+          <TabsTrigger value="governance">Governance & Funding</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-10">
-          {/* Add overview content here (stats, description, etc.) */}
-          <Card className="p-8">
-            <h3 className="text-xl font-semibold mb-6">Cluster Details</h3>
-            <p className="text-[var(--text-secondary)]">
-              This is a placeholder overview section. Add description, milestones, or quick stats here.
-            </p>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="contribute">
-          <ContributeForm clusterId={clusterId!} />
-        </TabsContent>
-
-        <TabsContent value="ownership">
-          <OwnershipBar clusterId={clusterId!} />
-        </TabsContent>
-
-        <TabsContent value="settlement">
-          <SettlementTrace clusterId={clusterId!} date={format(new Date(), 'yyyy-MM-dd')} />
-        </TabsContent>
-
-        {isParticipant && (
-          <TabsContent value="my-meter">
-            <div className="space-y-6">
-              <h3 className="text-xl font-semibold flex items-center gap-3">
-                <FileText className="w-6 h-6 text-[var(--brand-primary)]" />
-                Submit Your Meter Reading
-              </h3>
-              <EnergyEntryForm
-                clusterId={clusterId!}
-                onSuccess={() => toast.success('Reading submitted successfully')}
-              />
-              <p className="text-sm text-[var(--text-muted)]">
-                Submit your latest meter reading. Data is used for accurate settlement and ownership calculation.
+        {/* TAB: MARKET ANALYTICS */}
+        <TabsContent value="overview" className="grid grid-cols-1 lg:grid-cols-3 gap-8 outline-none">
+          <div className="lg:col-span-2 space-y-8">
+            <FundingChart clusterId={clusterId!} />
+            
+            <Card variant="glass" padding="lg" className="border-brand-primary/10">
+              <div className="flex items-center gap-2 mb-6 text-brand-primary">
+                <Info size={18} />
+                <h3 className="font-display font-bold uppercase tracking-widest text-sm">Cluster Intelligence</h3>
+              </div>
+              <p className="text-secondary leading-relaxed text-lg italic opacity-90">
+                "{cluster?.description ?? 'No telemetric description available for this community node.'}"
               </p>
+            </Card>
+          </div>
+
+          <aside className="space-y-6">
+            <Card variant="raised" padding="lg" className="border-brand-primary/20 bg-brand-primary/5">
+              <div className="flex items-center gap-2 mb-6">
+                <Activity size={16} className="text-brand-primary" />
+                <h4 className="font-display font-bold text-white uppercase tracking-widest text-xs">Technical Specs</h4>
+              </div>
+              <div className="space-y-6">
+                <Param label="Solar Capacity" value={`${cluster?.target_kw ?? 0} kW`} icon={<Zap size={12}/>} />
+                <Param label="Participants" value={cluster?.participant_count ?? 0} />
+                <Param label="Token Yield" value="4.2% APY" />
+                <Param label="On-Chain ID" value={`0x...${clusterId?.slice(-6).toUpperCase()}`} />
+              </div>
+            </Card>
+          </aside>
+        </TabsContent>
+
+        {/* TAB: SIMULATION ENGINE (AI) */}
+        <TabsContent value="simulate" className="outline-none">
+          <div className="max-w-3xl mx-auto">
+            <SimulationForm clusterData={cluster} />
+          </div>
+        </TabsContent>
+
+        {/* TAB: GOVERNANCE & FUNDING (MIGRATED FROM CLUSTERVIEW) */}
+        <TabsContent value="governance" className="outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-6">
+              <Card variant="glass" padding="lg" className="border-brand-primary/20 bg-brand-primary/5">
+                <div className="flex items-center gap-3 mb-8">
+                  <div className="p-3 bg-brand-primary/20 rounded-xl text-brand-primary">
+                    <Wallet size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold text-xl text-white">Node Contribution</h3>
+                    <p className="text-[10px] text-muted uppercase tracking-widest">Fund renewable expansion</p>
+                  </div>
+                </div>
+                
+                <ContributeForm 
+                  clusterId={clusterId!} 
+                  onSuccess={handleContributionSuccess} 
+                />
+              </Card>
             </div>
-          </TabsContent>
-        )}
+
+            <aside className="space-y-6">
+               <div className="flex items-center gap-2 px-2 mb-2">
+                <History size={14} className="text-brand-primary" />
+                <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Transaction Log</span>
+              </div>
+              <ContributionHistory clusterId={clusterId!} key={refreshKey} />
+            </aside>
+          </div>
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// Reusable Parameter Row Component
+function Param({ label, value, icon }: { label: string; value: string | number; icon?: React.ReactNode }) {
+  return (
+    <div className="flex justify-between items-center border-b border-glass pb-4 last:border-0 last:pb-0 group">
+      <div className="flex items-center gap-2">
+        {icon && <span className="text-brand-primary/50 group-hover:text-brand-primary transition-colors">{icon}</span>}
+        <span className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</span>
+      </div>
+      <span className="text-white font-display font-bold">{value}</span>
     </div>
   );
 }

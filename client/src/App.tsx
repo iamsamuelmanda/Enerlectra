@@ -1,16 +1,15 @@
-import { BrowserRouter } from 'react-router-dom';
-import Router from './routes/router';
-import { Header } from './components/layout/Header';
-import { Footer } from './components/layout/Footer';
-import { LogPanel } from './components/ui/LogPanel';
-
 export default function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <Header />
-      <Router />
-      <Footer />
-      <LogPanel />
+      <div className="flex flex-col min-h-screen">
+        <Header />
+        {/* This "page-container" class from your CSS is the secret sauce */}
+        <main className="flex-grow page-container"> 
+          <Router />
+        </main>
+        <Footer />
+        <LogPanel />
+      </div>
     </BrowserRouter>
   );
 }

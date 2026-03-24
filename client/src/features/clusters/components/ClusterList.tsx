@@ -1,62 +1,50 @@
-import { Card } from '../../../components/ui/Card';
 import { motion } from 'framer-motion';
 import { useClusters } from '../hooks/useClusters';
 import { ClusterCard } from './ClusterCard';
 import { Skeleton } from '../../../components/ui/Skeleton';
+import { Globe, ShieldCheck } from 'lucide-react';
 
 export function ClusterList() {
-  const { clusters, loading, error, refresh } = useClusters();
-
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {[...Array(6)].map((_, i) => (
-          <Skeleton key={i} className="h-64" />
-        ))}
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-400 mb-2">Error: {error}</p>
-        <button
-          onClick={refresh}
-          className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold py-2 px-6 rounded-lg"
-        >
-          Try Again
-        </button>
-      </div>
-    );
-  }
-
-  if (clusters.length === 0) {
-    return (
-      <Card variant="glass" padding="lg" className="text-center">
-        <p className="text-purple-200 mb-4">No communities found.</p>
-        <p className="text-sm text-purple-300">Check back soon or contact the administrator.</p>
-      </Card>
-    );
-  }
+  const { clusters, loading, error } = useClusters();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-    >
-      {clusters.map((cluster, index) => (
-        <motion.div
-          key={cluster.id}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: index * 0.1 }}
+    <section className="space-y-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-glass pb-8">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-brand-primary">
+            <Globe size={16} />
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em]">Global Network</span>
+          </div>
+          <h1 className="text-5xl font-display font-black tracking-tighter text-white">Active Communities</h1>
+          <p className="text-muted text-lg max-w-xl">
+            Verified energy clusters generating peer-to-peer value across Zambia.
+          </p>
+        </div>
+        
+        <div className="glass px-6 py-4 rounded-2xl border-emerald-500/20 flex items-center gap-4">
+          <ShieldCheck className="text-emerald-400" size={24} />
+          <div>
+            <p className="text-[10px] text-muted uppercase font-bold tracking-widest">Network Capacity</p>
+            <p className="text-xl font-display font-bold text-white">1.28 <span className="text-sm text-emerald-400">MW/h</span></p>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {[1, 2, 3].map(i => <Skeleton key={i} className="h-[450px] rounded-[2rem] glass" />)}
+        </div>
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0 }} 
+          animate={{ opacity: 1 }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
         >
-          <ClusterCard cluster={cluster} />
+          {clusters.map((cluster: any) => (
+            <ClusterCard key={cluster.id} cluster={cluster} />
+          ))}
         </motion.div>
-      ))}
-    </motion.div>
+      )}
+    </section>
   );
 }

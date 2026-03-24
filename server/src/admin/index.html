@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enerlectra – Energy Ownership Platform</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    
+    :root {
+      --primary: #667eea;
+      --primary-dark: #5568d3;
+      --secondary: #764ba2;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      padding: 20px;
+      min-height: 100vh;
+      color: var(--gray-900);
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 40px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    
+    /* HEADER */
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 2px solid var(--gray-200);
+    }
+    
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .logo {
+      width: 48px;
+      height: 48px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    h1 {
+      font-size: 2rem;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+    
+    .realtime-bar {
+      display: flex;
+      gap: 20px;
+      font-size: 0.85rem;
+      color: var(--gray-600);
+    }
+    
+    .realtime-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    
+    .realtime-value {
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    
+    /* SECTIONS */
+    h2 {
+      font-size: 1.5rem;
+      color: var(--gray-900);
+      margin: 32px 0 16px;
+      padding-left: 12px;
+      border-left: 4px solid var(--primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+    }
+    
+    .icon {
+      width: 24px;
+      height: 24px;
+      fill: currentColor;
+    }
+    
+    /* BANNERS */
+    .banner {
+      padding: 16px 20px;
+      border-radius: 8px;
+      margin: 16px 0;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 500;
+    }
+    
+    .banner-info { background: #dbeafe; border-left: 4px solid #3b82f6; color: #1e40af; }
+    .banner-warning { background: #fef3c7; border-left: 4px solid var(--warning); color: #92400e; }
+    .banner-success { background: #d1fae5; border-left: 4px solid var(--success); color: #065f46; }
+    .banner-danger { background: #fef2f2; border-left: 4px solid var(--danger); color: #7f1d1d; }
+    
+    /* CLUSTER CARDS */
+    .cluster-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+      margin: 20px 0;
+    }
+    
+    .cluster-card {
+      background: white;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    }
+    
+    .cluster-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
+      transform: translateY(-4px);
+    }
+    
+    .cluster-card.selected {
+      border-color: var(--primary);
+      background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
+    }
+    
+    .cluster-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 12px;
+    }
+    
+    .cluster-name {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    
+    .cluster-id {
+      font-size: 0.75rem;
+      color: var(--gray-600);
+      background: var(--gray-100);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+    
+    .cluster-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
+    }
+    
+    .stat {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .stat-label {
+      font-size: 0.75rem;
+      color: var(--gray-600);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    
+    .cluster-suppliers {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--gray-200);
+    }
+    
+    .supplier-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    
+    .supplier-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      padding: 6px 0;
+    }
+    
+    .supplier-name {
+      color: var(--gray-700);
+      font-weight: 500;
+    }
+    
+    .supplier-capacity {
+      color: var(--gray-600);
+      font-size: 0.8rem;
+    }
+    
+    /* CAMPAIGN EDITOR */
+    .campaign-card {
+      background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+      border: 2px solid #c084fc;
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+    }
+    
+    .campaign-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    
+    .edit-campaign-btn {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .edit-campaign-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .campaign-inputs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin: 16px 0;
+    }
+    
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
+    .input-group label {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+    
+    .input-group input {
+      padding: 10px 12px;
+      border: 2px solid var(--gray-200);
+      border-radius: 6px;
+      font-size: 0.95rem;
+    }
+    
+    .input-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    
+    /* PROGRESS */
+    .progress-section {
+      margin: 20px 0;
+    }
+    
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    
+    .progress-label {
+      font-weight: 600;
+      color: var(--gray-700);
+    }
+    
+    .progress-value {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 1.1rem;
+    }
+    
+    .progress-bar-container {
+      background: var(--gray-200);
+      height: 16px;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--success) 0%, #059669 100%);
+      transition: width 0.5s ease;
+      border-radius: 8px;
+    }
+    
+    /* TABLES */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.9rem;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+    
+    th {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 0.5px;
+      padding: 14px 12px;
+      text-align: left;
+    }
+    
+    td {
+      padding: 14px 12px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    
+    tbody tr {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    tbody tr:hover {
+      background: var(--gray-50);
+    }
+    
+    /* CALCULATION PANEL */
+    .calculation-panel {
+      animation: slideDown 0.3s ease;
+      background: #f0f9ff;
+      border: 2px solid #3b82f6;
+      border-radius: 8px;
+      padding: 20px;
+      margin-top: 12px;
+    }
+    
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .calc-header {
+      margin-bottom: 16px;
+      color: #1e40af;
+      font-size: 1.1rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .calc-step {
+      margin: 16px 0;
+      padding: 12px;
+      background: white;
+      border-radius: 6px;
+      border-left: 3px solid var(--primary);
+    }
+    
+    .calc-step-title {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+    
+    .calc-detail {
+      font-size: 0.9rem;
+      color: var(--gray-700);
+      margin: 4px 0;
+    }
+    
+    .calc-formula {
+      font-size: 0.8rem;
+      color: var(--gray-600);
+      font-family: 'Courier New', monospace;
+      background: var(--gray-50);
+      padding: 6px;
+      border-radius: 4px;
+      margin-top: 8px;
+    }
+    
+    .calc-footer {
+      margin-top: 16px;
+      padding: 12px;
+      background: #fef3c7;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: #92400e;
+    }
+    
+    .explain-btn {
+      background: transparent;
+      color: var(--primary);
+      border: 1px solid var(--primary);
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      margin-top: 8px;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.2s;
+      display: inline-block;
+    }
+    
+    .explain-btn:hover {
+      background: var(--primary);
+      color: white;
+    }
+    
+    .close-calc-btn {
+      width: 100%;
+      margin-top: 16px;
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    
+    .close-calc-btn:hover {
+      background: var(--gray-50);
+    }
+    
+    /* BUTTONS */
+    button {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    button.secondary {
+      background: white;
+      color: var(--primary);
+      border: 2px solid var(--primary);
+    }
+    
+    button.secondary:hover:not(:disabled) {
+      background: var(--gray-50);
+    }
+    
+    /* INPUTS */
+    input, select {
+      padding: 10px 12px;
+      border: 2px solid var(--gray-200);
+      border-radius: 6px;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* LEADERBOARD */
+    .leaderboard-item {
+      display: flex;
+      align-items: center;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      margin: 12px 0;
+      border: 1px solid var(--gray-200);
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    
+    .leaderboard-item:hover {
+      transform: translateX(6px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      border-color: var(--primary);
+    }
+    
+    .leaderboard-rank {
+      width: 50px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    
+    .medal-gold { color: #FFD700; }
+    .medal-silver { color: #C0C0C0; }
+    .medal-bronze { color: #CD7F32; }
+    
+    .leaderboard-info {
+      flex: 1;
+      margin-left: 16px;
+    }
+    
+    .leaderboard-name {
+      font-weight: 600;
+      color: var(--gray-900);
+      font-size: 1rem;
+    }
+    
+    .leaderboard-meta {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      margin-top: 4px;
+    }
+    
+    .leaderboard-value {
+      font-weight: 700;
+      color: var(--primary);
+      font-size: 1.3rem;
+    }
+    
+    /* OWNERSHIP BAR */
+    .ownership-bar {
+      display: flex;
+      height: 40px;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 16px 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+    
+    .ownership-segment {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    
+    .ownership-segment:hover {
+      opacity: 0.85;
+      filter: brightness(1.1);
+    }
+    
+    /* AI SIMULATION */
+    .simulation-chart {
+      background: white;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    
+    .chart-canvas {
+      width: 100%;
+      height: 300px;
+    }
+    
+    /* USER PORTFOLIO */
+    .portfolio-card {
+      background: linear-gradient(135deg, #fff 0%, var(--gray-50) 100%);
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 24px;
+      margin: 20px 0;
+    }
+    
+    .portfolio-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 20px;
+      margin: 16px 0;
+    }
+    
+    .portfolio-stat {
+      text-align: center;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      border: 1px solid var(--gray-200);
+    }
+    
+    .portfolio-stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--primary);
+    }
+    
+    .portfolio-stat-label {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* LOG */
+    #log {
+      background: var(--gray-900);
+      color: var(--success);
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85rem;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+    
+    .note {
+      font-size: 0.85rem;
+      color: var(--gray-600);
+      font-style: italic;
+      margin-top: 8px;
+    }
+    
+    .controls-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      align-items: center;
+      margin: 16px 0;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 32px;
+      color: var(--gray-600);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--gray-200);
+      margin-top: 48px;
+    }
+    
+    /* RESPONSIVE */
+    @media (max-width: 768px) {
+      .container { padding: 24px; }
+      .header { flex-direction: column; gap: 16px; }
+      .cluster-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.5rem; }
+      .realtime-bar { flex-direction: column; gap: 8px; }
+    }
+
+    #auth-status-small { font-size: 0.85rem; font-weight: 500; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <!-- HEADER -->
+  <div class="header">
+    <div class="brand">
+      <div class="logo">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="white">
+          <path d="M13 2L3 14h8l-1 8 10-12h-8l1-8z"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Enerlectra</h1>
+        <p style="color: var(--gray-600); font-size: 0.95rem;">Fair Energy Ownership Platform</p>
+      </div>
+    </div>
+    
+    <div class="realtime-bar">
+      <div class="realtime-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm4.2 14.2L11 13V7h1.5v5.2l4.5 2.7-.8 1.3z"/>
+        </svg>
+        <span class="realtime-value" id="current-time">--:--</span>
+      </div>
+      <div class="realtime-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z"/>
+        </svg>
+        <span class="realtime-value" id="current-date">--/--/----</span>
+      </div>
+      <div class="realtime-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M11.8 10.9c-2.27-.59-3-1.2-3-2.15 0-1.09 1.01-1.85 2.7-1.85 1.78 0 2.44.85 2.5 2.1h2.21c-.07-1.72-1.12-3.3-3.21-3.81V3h-3v2.16c-1.94.42-3.5 1.68-3.5 3.61 0 2.31 1.91 3.46 4.7 4.13 2.5.6 3 1.48 3 2.41 0 .69-.49 1.79-2.7 1.79-2.06 0-2.87-.92-2.98-2.1h-2.2c.12 2.19 1.76 3.42 3.68 3.83V21h3v-2.15c1.95-.37 3.5-1.5 3.5-3.55 0-2.84-2.43-3.81-4.7-4.4z"/>
+        </svg>
+        <span class="realtime-value" id="usd-zmw-rate">1 USD = -- ZMW</span>
+        <span id="live-rate-indicator" style="font-size: 0.7rem; color: var(--success); display:none;">● Live</span>
+      </div>
+    </div>
+  </div>
+  
+  <div class="banner banner-info">
+    <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+    </svg>
+    <span><strong>Demo Mode:</strong> All contributions are reversible. If this doesn't feel fair, we stop.</span>
+  </div>
+
+  <!-- AUTH SECTION -->
+  <div class="banner banner-info" style="margin: 20px 0;">
+    <h3 style="margin-bottom: 12px;">Sign in to Contribute</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px;">
+      <input id="email-input" type="email" placeholder="your@email.com" style="flex: 1; min-width: 220px; padding: 10px;">
+      <input id="password-input" type="password" placeholder="Password" style="flex: 1; min-width: 180px; padding: 10px;">
+    </div>
+    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+      <button id="sign-in-btn" class="secondary">Sign In</button>
+      <button id="sign-up-btn">Sign Up</button>
+      <button id="sign-out-btn" style="display:none;" class="secondary">Sign Out</button>
+    </div>
+    <p id="auth-status" style="margin-top: 12px; font-weight: 500;"></p>
+  </div>
+  
+  <!-- USER PORTFOLIO -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+      </svg>
+      Your Portfolio
+    </h2>
+    <div class="portfolio-card">
+      <div class="portfolio-summary">
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value" id="user-total-contributions">0</div>
+          <div class="portfolio-stat-label">Total Contributions</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value" id="user-total-pcus">$0</div>
+          <div class="portfolio-stat-label">Total Investment</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value" id="user-communities">0</div>
+          <div class="portfolio-stat-label">Communities</div>
+        </div>
+        <div class="portfolio-stat">
+          <div class="portfolio-stat-value" id="user-total-ownership">0%</div>
+          <div class="portfolio-stat-label">Avg Ownership</div>
+        </div>
+      </div>
+    </div>
+  </section>
+  
+  <!-- ENERGY COMMUNITIES -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 2l-5.5 9h11L12 2zm0 3.84L13.93 9h-3.87L12 5.84zM17.5 13c-2.49 0-4.5 2.01-4.5 4.5s2.01 4.5 4.5 4.5 4.5-2.01 4.5-4.5-2.01-4.5-4.5-4.5zm0 7c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5zM3 21.5h8v-8H3v8zm2-6h4v4H5v-4z"/>
+      </svg>
+      Energy Communities
+    </h2>
+    <div class="cluster-grid" id="clusters-container">
+      <!-- Clusters rendered here -->
+    </div>
+    <p id="clusters-loading" style="font-size:0.9rem; color:var(--gray-600);">Loading communities...</p>
+  </section>
+  
+  <!-- CAMPAIGN -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3c1.93 0 3.5 1.57 3.5 3.5S13.93 13 12 13s-3.5-1.57-3.5-3.5S10.07 6 12 6zm7 13H5v-.23c0-.62.28-1.2.76-1.58C7.47 15.82 9.64 15 12 15s4.53.82 6.24 2.19c.48.38.76.97.76 1.58V19z"/>
+      </svg>
+      Campaign Settings
+    </h2>
+    <div class="campaign-card" id="campaign-card">
+      <div class="campaign-header">
+        <div>
+          <h3 style="font-size: 1.2rem; margin-bottom: 8px;">Active Campaign</h3>
+          <p style="font-size: 0.9rem; color: var(--gray-700);" id="campaign-goal-text">+15 kW solar, +60 kWh battery</p>
+        </div>
+        <button class="edit-campaign-btn" id="edit-campaign-btn">Edit Campaign</button>
+      </div>
+      
+      <div class="campaign-inputs" id="campaign-inputs" style="display: none;">
+        <div class="input-group">
+          <label>Target Solar (kW)</label>
+          <input type="number" id="target-solar" value="15" min="1">
+        </div>
+        <div class="input-group">
+          <label>Target Storage (kWh)</label>
+          <input type="number" id="target-storage" value="60" min="1">
+        </div>
+        <div class="input-group">
+          <label>Target PCUs</label>
+          <input type="number" id="target-pcus" value="1000" min="100">
+        </div>
+        <div class="input-group">
+          <label>Days Remaining</label>
+          <input type="number" id="target-days" value="60" min="1">
+        </div>
+      </div>
+      
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">Progress</span>
+          <span class="progress-value" id="campaign-progress-pct">0%</span>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="campaign-progress-bar" style="width: 0%"></div>
+        </div>
+      </div>
+      
+      <div style="margin-top: 16px;">
+        <div style="display: inline-block; padding: 8px 16px; background: #e0e7ff; border-radius: 16px; font-size: 0.9rem; font-weight: 600; color: #1e40af;">
+          <svg style="width: 16px; height: 16px; display: inline-block; vertical-align: middle; margin-right: 6px;" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          </svg>
+          Likelihood: <span id="confidence-pct">0%</span>
+        </div>
+      </div>
+      
+      <div style="margin-top: 20px;">
+        <strong style="font-size: 1rem;">Unlock Milestones:</strong>
+        <ul style="margin: 12px 0 0 20px; line-height: 2;">
+          <li id="unlock-1" style="color: var(--gray-600);">40%: Feasibility study & supplier quotes</li>
+          <li id="unlock-2" style="color: var(--gray-600);">70%: Solar panel procurement</li>
+          <li id="unlock-3" style="color: var(--gray-600);">100%: Battery expansion</li>
+        </ul>
+      </div>
+
+      <div id="campaign-failure" class="banner banner-danger" style="display:none; margin-top: 16px;"></div>
+    </div>
+  </section>
+  
+  <!-- CONTRIBUTE -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M11 9h2V6h3V4h-3V1h-2v3H8v2h3v3zm-4 9c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zm10 0c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2zm-9.83-3.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.86-7.01L19.42 4h-.01l-1.1 2-2.76 5H8.53l-.13-.27L6.16 6l-.95-2-.94-2H1v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.13 0-.25-.11-.25-.25z"/>
+      </svg>
+      Make Contribution
+    </h2>
+    <div style="background: var(--gray-50); border: 2px solid var(--gray-200); border-radius: 12px; padding: 24px;">
+      <div class="controls-row">
+        <div style="flex: 1; min-width: 150px;">
+          <label style="display: block; margin-bottom: 6px; font-weight: 600;">Amount (USD)</label>
+          <input id="pcu-amount" type="number" min="1" max="1000" value="10" style="width: 100%;">
+          <p style="font-size: 0.8rem; color: var(--gray-600); margin-top: 4px;">
+            ≈ <span id="pcu-zmw-equivalent">--</span> ZMW 
+            <span id="live-rate-indicator-inline" style="font-size: 0.7rem; color: var(--success); display:none;">● Live</span>
+          </p>
+        </div>
+        <div style="align-self: flex-end;">
+          <button id="pcu-submit-btn" disabled>
+            <svg style="width: 20px; height: 20px;" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/>
+            </svg>
+            Add Contribution
+          </button>
+        </div>
+      </div>
+      <p class="note" style="margin-top: 12px;">
+        <svg style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
+        </svg>
+        1 PCU = 1 USD • Max 1000 per contribution • Sign in required (demo only)
+      </p>
+    </div>
+  </section>
+
+  <!-- OWNERSHIP -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M12 7l-5 9h10z"/>
+      </svg>
+      Ownership & Fairness
+    </h2>
+    <p id="ownership-cluster-label" style="font-size:0.9rem; color:var(--gray-600); margin-bottom: 8px;">
+      Select a community to see ownership.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Contributor</th>
+          <th>Transactions</th>
+          <th>Total PCUs (USD)</th>
+          <th>Value (ZMW)</th>
+          <th>Ownership</th>
+          <th>Explain</th>
+        </tr>
+      </thead>
+      <tbody id="ownership-body">
+        <tr><td colspan="6">No community selected</td></tr>
+      </tbody>
+    </table>
+
+    <div id="ownership-visual-section" style="display:none;">
+      <div class="ownership-bar" id="ownership-bar-container"></div>
+    </div>
+
+    <section id="leaderboard-section" style="display:none;">
+      <h2>
+        <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M7 21h4V10H7v11zm6 0h4V3h-4v18z"/>
+        </svg>
+        Top Supporters
+      </h2>
+      <div id="leaderboard-container"></div>
+    </section>
+  </section>
+
+  <!-- AI SIMULATION -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 17h18v2H3zm0-7h18v2H3zm0-7h18v2H3z"/>
+      </svg>
+      AI Income Simulation
+    </h2>
+    <div class="simulation-chart">
+      <div class="controls-row">
+        <div>
+          <label style="font-size:0.85rem; font-weight:600; color:var(--gray-700);">Timeframe (months)</label>
+          <select id="sim-timeframe">
+            <option value="6">6 months</option>
+            <option value="12" selected>12 months</option>
+            <option value="24">24 months</option>
+          </select>
+        </div>
+        <div>
+          <button id="run-ai-sim-btn" disabled>Run Projection</button>
+        </div>
+      </div>
+      <canvas id="simulation-canvas" class="chart-canvas"></canvas>
+    </div>
+  </section>
+
+  <!-- ACTIVITY LOG -->
+  <section>
+    <h2>
+      <svg class="icon" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M3 5h18v2H3zm0 6h18v2H3zm0 6h18v2H3z"/>
+      </svg>
+    Activity Log
+    </h2>
+    <div id="log"></div>
+  </section>
+  
+  <footer>
+    <strong>Enerlectra</strong> • Fair Energy Ownership Platform<br>
+    If this doesn't feel fair, this pilot stops. | <span id="auth-status-small">Not signed in</span>
+  </footer>
+  
+</div>
+
+<script>
+/********************************************************************
+ * CONFIGURATION
+ *******************************************************************/
+const CONFIG = {
+  GOAL_PCUS: 1000,
+  DEADLINE_DAYS: 60,
+  TARGET_SOLAR_KW: 15,
+  TARGET_STORAGE_KWH: 60,
+};
+
+const COLORS = [
+  '#667eea', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+  '#ec4899', '#14b8a6', '#f97316', '#06b6d4', '#84cc16'
+];
+
+/********************************************************************
+ * SUPABASE CONFIG (LIVE PROJECT)
+ *******************************************************************/
+const SUPABASE_URL = 'https://tlaqxnblzerlegezekml.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsYXF4bmJsemVybGVnZXpla21sIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjkyNzQ5NTYsImV4cCI6MjA4NDg1MDk1Nn0.VtMnzSuboZYEmHjalglK21v1g-xVeTt_BCmPYW-5_Yk';
+
+const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/********************************************************************
+ * STATE
+ *******************************************************************/
+let contributions = [];
+let selectedClusterId = null;
+let clusters = [];
+let currentUser = null;
+let currentExchangeRate = 27.5;
+
+/********************************************************************
+ * LIVE EXCHANGE RATE (USD→ZMW) VIA BACKEND
+ *******************************************************************/
+async function fetchLiveRate() {
+  try {
+    const response = await fetch('http://localhost:3000/api/exchange-rate/USD/ZMW');
+    const data = await response.json();
+    currentExchangeRate = data.rate;
+    const rateText = `1 USD = ${currentExchangeRate.toFixed(2)} ZMW`;
+    document.getElementById('usd-zmw-rate').textContent = rateText;
+    document.getElementById('live-rate-indicator').style.display = 'inline';
+    document.getElementById('live-rate-indicator-inline').style.display = 'inline';
+    return currentExchangeRate;
+  } catch (error) {
+    const rateText = `1 USD = ${currentExchangeRate.toFixed(2)} ZMW`;
+    document.getElementById('usd-zmw-rate').textContent = rateText;
+    log(`Using fallback rate: ${currentExchangeRate.toFixed(2)} ZMW/USD`);
+    return currentExchangeRate;
+  }
+}
+
+/********************************************************************
+ * REALTIME BAR
+ *******************************************************************/
+async function updateRealtimeBar() {
+  const now = new Date();
+  const timeEl = document.getElementById('current-time');
+  const dateEl = document.getElementById('current-date');
+  if (timeEl) {
+    timeEl.textContent = now.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+  if (dateEl) {
+    dateEl.textContent = now.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    });
+  }
+
+  // Occasionally refresh rate (~2 times per minute)
+  if (Math.random() < 0.033) {
+    await fetchLiveRate();
+  }
+}
+setInterval(updateRealtimeBar, 1000);
+fetchLiveRate();
+updateRealtimeBar();
+
+/********************************************************************
+ * AUTH
+ *******************************************************************/
+supabase.auth.onAuthStateChange((event, session) => {
+  currentUser = session?.user ?? null;
+  
+  const statusEls = [
+    document.getElementById('auth-status'),
+    document.getElementById('auth-status-small')
+  ];
+  const signOutBtn = document.getElementById('sign-out-btn');
+  const contributeBtn = document.getElementById('pcu-submit-btn');
+  
+  if (currentUser) {
+    statusEls.forEach(el => {
+      if (!el) return;
+      el.textContent = `Signed in as ${currentUser.email.split('@')[0]}`;
+      el.style.color = 'var(--success)';
+    });
+    if (signOutBtn) signOutBtn.style.display = 'inline-block';
+    if (contributeBtn) contributeBtn.disabled = false;
+  } else {
+    statusEls.forEach(el => {
+      if (!el) return;
+      el.textContent = 'Not signed in – please sign in to contribute';
+      el.style.color = 'var(--warning)';
+    });
+    if (signOutBtn) signOutBtn.style.display = 'none';
+    if (contributeBtn) contributeBtn.disabled = true;
+  }
+});
+
+document.getElementById('sign-up-btn')?.addEventListener('click', async () => {
+  const email = document.getElementById('email-input')?.value.trim();
+  const password = document.getElementById('password-input')?.value;
+  if (!email || !password) return alert('Enter email and password');
+  const fullName = prompt('Your full name:', email.split('@')[0]) || email.split('@')[0];
+  const { error } = await supabase.auth.signUp({
+    email,
+    password,
+    options: { data: { full_name: fullName } }
+  });
+  if (error) alert(error.message);
+  else alert('Check your email to confirm signup!');
+});
+
+document.getElementById('sign-in-btn')?.addEventListener('click', async () => {
+  const email = document.getElementById('email-input')?.value.trim();
+  const password = document.getElementById('password-input')?.value;
+  if (!email || !password) return alert('Enter email and password');
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) alert(error.message);
+});
+
+document.getElementById('sign-out-btn')?.addEventListener('click', async () => {
+  await supabase.auth.signOut();
+});
+
+/********************************************************************
+ * LOAD CLUSTERS FROM SUPABASE
+ *******************************************************************/
+async function loadClustersFromAPI() {
+  const loadingEl = document.getElementById('clusters-loading');
+  const container = document.getElementById('clusters-container');
+  
+  if (loadingEl) loadingEl.textContent = 'Loading communities...';
+  
+  try {
+    const { data, error } = await supabase
+      .from('clusters')
+      .select('id, name, target_solar_kw, target_storage_kwh')
+      .order('name', { ascending: true });
+    
+    if (error) throw error;
+    clusters = data || [];
+    
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (container) container.style.display = 'grid';
+    
+    renderClusterCards();
+    log(`✅ Loaded ${clusters.length} clusters from Supabase`);
+  } catch (err) {
+    log(`❌ Clusters load failed: ${err.message}`);
+    if (loadingEl) loadingEl.textContent = 'Failed to load communities: ' + err.message;
+  }
+}
+
+function renderClusterCards() {
+  const container = document.getElementById('clusters-container');
+  if (!container) return;
+  
+  container.innerHTML = '';
+  if (!clusters.length) {
+    container.innerHTML = '<p style="text-align:center; color:var(--gray-600);">No communities found</p>';
+    return;
+  }
+  
+  clusters.forEach(cluster => {
+    const card = document.createElement('div');
+    card.className = 'cluster-card';
+    if (selectedClusterId === cluster.id) card.classList.add('selected');
+    
+    card.innerHTML = `
+      <div class="cluster-header">
+        <div class="cluster-name">${cluster.name}</div>
+        <div class="cluster-id">${cluster.id.substring(0,8)}...</div>
+      </div>
+      <div class="cluster-stats">
+        <div class="stat">
+          <div class="stat-label">Target Solar</div>
+          <div class="stat-value">${cluster.target_solar_kw || '?'} kW</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Target Storage</div>
+          <div class="stat-value">${cluster.target_storage_kwh || '?'} kWh</div>
+        </div>
+      </div>
+      <button onclick="selectCluster('${cluster.id}')">Select Community</button>
+    `;
+    container.appendChild(card);
+  });
+}
+
+/********************************************************************
+ * PCU INPUT WITH LIVE CONVERSION
+ *******************************************************************/
+document.getElementById('pcu-amount')?.addEventListener('input', (e) => {
+  const usd = Number(e.target.value) || 0;
+  const zmw = usd * currentExchangeRate;
+  document.getElementById('pcu-zmw-equivalent').textContent =
+    `K${zmw.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+});
+document.getElementById('pcu-amount')?.dispatchEvent(new Event('input'));
+
+/********************************************************************
+ * CONTRIBUTION HANDLER (BACKEND JOIN ENDPOINT)
+ *******************************************************************/
+document.getElementById('pcu-submit-btn').onclick = async () => {
+  if (!currentUser) return alert('Please sign in first');
+  if (!selectedClusterId) return alert('Please select a community first');
+  
+  const usdAmount = Number(document.getElementById('pcu-amount')?.value);
+  if (usdAmount < 1 || usdAmount > 1000 || !Number.isFinite(usdAmount)) {
+    return alert('Amount must be between 1 and 1000 USD');
+  }
+  
+  const pcus = usdAmount * 100; // 1 USD = 100 PCUs
+  const amountZMW = usdAmount * currentExchangeRate;
+  
+  try {
+    log(`⏳ Contributing ${usdAmount} USD (${pcus} PCUs) to ${selectedClusterId}...`);
+    
+    const response = await fetch(
+      `http://localhost:3000/contributions/clusters/${selectedClusterId}/join`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add Authorization header if your backend requires JWT:
+          // 'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({
+          contributor_id: currentUser.id || currentUser.email.split('@')[0],
+          pcus: pcus
+        })
+      }
+    );
+    
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error || `Server error ${response.status}`);
+    }
+    
+    const result = await response.json();
+    log(`✅ ${result.userId || currentUser.email} contributed $${usdAmount} (K${amountZMW.toFixed(2)}) to ${result.clusterId || selectedClusterId}`);
+    
+    // Reset
+    document.getElementById('pcu-amount').value = '10';
+    document.getElementById('pcu-amount').dispatchEvent(new Event('input'));
+    
+    await refreshContributions(selectedClusterId);
+  } catch (error) {
+    log(`❌ Contribution failed: ${error.message}`);
+    alert(`Contribution failed: ${error.message}`);
+  }
+};
+
+/********************************************************************
+ * CLUSTER SELECTION
+ *******************************************************************/
+function selectCluster(id) {
+  selectedClusterId = id;
+  const cluster = clusters.find(c => c.id === id);
+  const label = document.getElementById('ownership-cluster-label');
+  if (label) {
+    label.textContent = cluster
+      ? `Selected: ${cluster.name}`
+      : `Selected community: ${id}`;
+  }
+
+  const simBtn = document.getElementById('run-ai-sim-btn');
+  if (simBtn) simBtn.disabled = false;
+
+  const contributeBtn = document.getElementById('pcu-submit-btn');
+  if (contributeBtn) contributeBtn.disabled = !currentUser;
+
+  renderClusterCards();
+  refreshContributions(id);
+}
+
+/********************************************************************
+ * REFRESH CONTRIBUTIONS FROM SUPABASE (READ SIDE)
+ *******************************************************************/
+async function refreshContributions(clusterId) {
+  if (!clusterId) return;
+  log(`🔄 Loading contributions for ${clusterId.substring(0,8)}...`);
+  
+  try {
+    const { data, error } = await supabase
+      .from('contributions')
+      .select('*, profiles(full_name)')
+      .eq('cluster_id', clusterId);
+    
+    if (error) throw error;
+    contributions = (data || []).map(c => ({
+      ...c,
+      name: c.profiles?.full_name || c.contributor_id || 'Anonymous',
+      amount_usd: (c.pcus || 0) / 100
+    }));
+    
+    renderOwnership();
+    updateUserPortfolio();
+    log(`✅ Loaded ${contributions.length} contributions`);
+  } catch (err) {
+    log(`❌ Refresh failed: ${err.message}`);
+  }
+}
+
+/********************************************************************
+ * RENDER OWNERSHIP
+ *******************************************************************/
+function renderOwnership() {
+  const tbody = document.getElementById('ownership-body');
+  if (!tbody) return;
+
+  if (!selectedClusterId || !contributions.length) {
+    tbody.innerHTML = '<tr><td colspan="6">No contributions yet</td></tr>';
+    document.getElementById('ownership-visual-section').style.display = 'none';
+    document.getElementById('leaderboard-section').style.display = 'none';
+    return;
+  }
+  
+  const totalPCUs = contributions.reduce((sum, c) => sum + (c.pcus || 0), 0);
+  const userMap = {};
+  
+  contributions.forEach(c => {
+    const name = c.name;
+    if (!userMap[name]) userMap[name] = { name, total: 0, tx: 0, pcus: 0 };
+    userMap[name].total += (c.pcus || 0) / 100;
+    userMap[name].pcus += c.pcus || 0;
+    userMap[name].tx++;
+  });
+  
+  const sorted = Object.values(userMap).sort((a, b) => b.pcus - a.pcus);
+  tbody.innerHTML = '';
+  
+  sorted.forEach(user => {
+    const pct = totalPCUs > 0 ? (user.pcus / totalPCUs) * 100 : 0;
+    const zmwValue = user.total * currentExchangeRate;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><strong>${user.name}</strong><div style="font-size: 0.75rem; color: var(--gray-600);">${user.tx} tx</div></td>
+      <td>${user.tx}</td>
+      <td>$${user.total.toFixed(2)}</td>
+      <td>K${zmwValue.toFixed(0)}</td>
+      <td><strong style="color: var(--primary);">${pct.toFixed(1)}%</strong></td>
+      <td><button class="explain-btn" onclick="showCalculation('${user.name}', event)">Details</button></td>`;
+    tbody.appendChild(tr);
+  });
+
+  renderOwnershipBar(sorted, totalPCUs);
+  renderLeaderboard(sorted, totalPCUs);
+  document.getElementById('ownership-visual-section').style.display = 'block';
+  document.getElementById('leaderboard-section').style.display = 'block';
+}
+
+function renderOwnershipBar(users, total) {
+  const container = document.getElementById('ownership-bar-container');
+  if (!container) return;
+  container.innerHTML = '';
+  users.forEach((user, idx) => {
+    const pct = total > 0 ? (user.pcus / total) * 100 : 0;
+    if (pct < 1) return;
+    const segment = document.createElement('div');
+    segment.className = 'ownership-segment';
+    segment.style.width = pct + '%';
+    segment.style.background = COLORS[idx % COLORS.length];
+    segment.textContent = pct >= 5 ? `${user.name} ${pct.toFixed(0)}%` : '';
+    segment.title = `${user.name}: ${pct.toFixed(1)}%`;
+    container.appendChild(segment);
+  });
+}
+
+function renderLeaderboard(users, total) {
+  const container = document.getElementById('leaderboard-container');
+  if (!container) return;
+  container.innerHTML = '';
+  const top5 = users.slice(0, 5);
+  top5.forEach((user, idx) => {
+    const pct = total > 0 ? (user.pcus / total) * 100 : 0;
+    let rankDisplay = idx + 1;
+    let medalClass = '';
+    if (idx === 0) { rankDisplay = '🥇'; medalClass = 'medal-gold'; }
+    else if (idx === 1) { rankDisplay = '🥈'; medalClass = 'medal-silver'; }
+    else if (idx === 2) { rankDisplay = '🥉'; medalClass = 'medal-bronze'; }
+
+    const item = document.createElement('div');
+    item.className = 'leaderboard-item';
+    item.innerHTML = `
+      <div class="leaderboard-rank ${medalClass}">${rankDisplay}</div>
+      <div class="leaderboard-info">
+        <div class="leaderboard-name">${user.name}</div>
+        <div class="leaderboard-meta">$${user.total.toFixed(2)} • ${user.tx} transaction(s)</div>
+      </div>
+      <div class="leaderboard-value">${pct.toFixed(1)}%</div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+/********************************************************************
+ * USER PORTFOLIO SUMMARY
+ *******************************************************************/
+function updateUserPortfolio() {
+  if (!currentUser) return;
+
+  const myContribs = contributions.filter(
+    c => c.contributor_id === currentUser.id || c.contributor_id === currentUser.email
+  );
+
+  const totalUsd = myContribs.reduce((s, c) => s + (c.pcus || 0) / 100, 0);
+  const totalPCUs = myContribs.reduce((s, c) => s + (c.pcus || 0), 0);
+  const communities = new Set(myContribs.map(c => c.cluster_id)).size;
+  const totalPCUsAll = contributions.reduce((s, c) => s + (c.pcus || 0), 0);
+  const ownershipPct = totalPCUsAll > 0 ? (totalPCUs / totalPCUsAll) * 100 : 0;
+
+  const totalContribEl = document.getElementById('user-total-contributions');
+  const totalPcusEl = document.getElementById('user-total-pcus');
+  const communitiesEl = document.getElementById('user-communities');
+  const ownershipEl = document.getElementById('user-total-ownership');
+
+  if (totalContribEl) totalContribEl.textContent = myContribs.length.toString();
+  if (totalPcusEl) totalPcusEl.textContent = `$${totalUsd.toFixed(2)}`;
+  if (communitiesEl) communitiesEl.textContent = communities.toString();
+  if (ownershipEl) ownershipEl.textContent = `${ownershipPct.toFixed(1)}%`;
+}
+
+/********************************************************************
+ * AI SIMULATION
+ *******************************************************************/
+function setupAISimulation() {
+  const btn = document.getElementById('run-ai-sim-btn');
+  if (!btn) return;
+  btn.onclick = () => {
+    if (!selectedClusterId) return alert('Select a community first');
+    const months = Number(document.getElementById('sim-timeframe').value);
+    const canvas = document.getElementById('simulation-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const currentTotalPCUs = contributions.reduce((s, c) => s + (c.pcus || 0), 0);
+    if (currentTotalPCUs === 0) {
+      ctx.fillStyle = '#666';
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Make a contribution first', canvas.width / 2, canvas.height / 2);
+      return;
+    }
+
+    const monthlyKwh = CONFIG.TARGET_SOLAR_KW * 4.8 * 30;
+    const feedInRate = 1.80;
+    const efficiency = 0.92;
+    const yourShare = currentTotalPCUs / CONFIG.GOAL_PCUS;
+
+    let dataPoints = [];
+    let cumulative = 0;
+    for (let i = 0; i <= months; i++) {
+      const monthlyIncome = monthlyKwh * yourShare * feedInRate * efficiency;
+      cumulative += monthlyIncome;
+      dataPoints.push({ month: i, income: cumulative });
+    }
+
+    const maxIncome = dataPoints[months].income || 1;
+    const padding = 50;
+    const w = canvas.width - 2 * padding;
+    const h = canvas.height - 2 * padding;
+    const xStep = w / months;
+    const yScale = h / maxIncome;
+
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, canvas.height - padding);
+    ctx.lineTo(canvas.width - padding, canvas.height - padding);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    dataPoints.forEach((d, i) => {
+      const x = padding + i * xStep;
+      const y = canvas.height - padding - d.income * yScale;
+      if (i === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    ctx.fillStyle = '#10b981';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(
+      `Projected ${months}-month income: K${dataPoints[months].income.toFixed(0)}`,
+      canvas.width / 2,
+      50
+    );
+
+    log(`AI Simulation: ${months} months → K${dataPoints[months].income.toFixed(0)} cumulative income`);
+  };
+}
+
+/********************************************************************
+ * EXPLANATION PANEL (PLACEHOLDER)
+ *******************************************************************/
+function showCalculation(name, event) {
+  alert(`Ownership breakdown explanation for ${name} will appear here.`);
+}
+
+/********************************************************************
+ * LOGGING
+ *******************************************************************/
+function log(msg) {
+  const el = document.getElementById('log');
+  if (el) {
+    el.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+    el.scrollTop = el.scrollHeight;
+  }
+  console.log(msg);
+}
+
+/********************************************************************
+ * INIT
+ *******************************************************************/
+console.log('🚀 Enerlectra initializing...');
+loadClustersFromAPI()
+  .then(() => {
+    setupAISimulation();
+    log('✅ PILOT READY - Ndola Cluster B target: 1000 PCUs');
+  })
+  .catch(e => {
+    log('❌ Initialization failed: ' + e.message);
+  });
+
+</script>
+
+</body>
+</html>

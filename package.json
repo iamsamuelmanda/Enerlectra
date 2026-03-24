@@ -19,6 +19,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.94.1",
     "aws-sdk": "^2.1692.0",

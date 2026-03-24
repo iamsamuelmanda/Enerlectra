@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Enerlectra – The Energy Internet (Production)</title>
+  <style>
+    * { box-sizing: border-box }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container {
+      max-width: 900px;
+      margin: auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,.25);
+    }
+    h1 {
+      background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-size: 1.8rem;
+      margin: 0 0 8px;
+    }
+    h2 {
+      margin: 16px 0 8px;
+      font-size: 1.3rem;
+      color: #1f2937;
+      border-left: 4px solid #667eea;
+      padding-left: 8px;
+    }
+    .banner {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin: 8px 0;
+    }
+    .rule-banner {
+      background: #dbeafe;
+      border-left: 4px solid #3b82f6;
+      color: #1e40af;
+    }
+    .loss-banner {
+      background: #fef2f2;
+      border-left: 4px solid rgb(216,25,25);
+      color: #7f1d1d;
+    }
+    .target-card {
+      background: linear-gradient(135deg,#f3e8ff 0%,#e9d5ff 100%);
+      border: 2px solid #c084fc;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      margin: 8px 0;
+    }
+    .caps-note {
+      font-size: 11px;
+      color: #6b7280;
+      font-style: italic;
+      margin-top: 6px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 8px 0;
+      font-size: 13px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 10px 12px;
+      text-align: left;
+      border: none;
+    }
+    th {
+      background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      color: #fff;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+    }
+    tbody tr { border-bottom: 1px solid #e5e7eb; }
+    button {
+      padding: 8px 14px;
+      font-size: 13px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: linear-gradient(135deg,#667eea 0%,#764ba2 100%);
+      color: #fff;
+      transition: all .2s;
+    }
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102,126,234,.4);
+    }
+    button:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+    input[type=number], input[type=text], select {
+      padding: 8px 10px;
+      border: 2px solid #e5e7eb;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+    input[type=number], input[type=text] {
+      width: 120px;
+    }
+    input:focus, select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    #log {
+      font-size: 11px;
+      background: #1f2937;
+      color: #10b981;
+      padding: 12px;
+      margin-top: 12px;
+      border-radius: 8px;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+    .status-healthy { color: #10b981; font-weight: 600; }
+    .status-stressed { color: #f59e0b; font-weight: 600; }
+    .status-offline { color: #ef4444; font-weight: 600; }
+    .status-failed  { color: #6b7280; font-weight: 600; }
+    .target-clock { font-size: 18px; font-weight: 700; color: #dc2626; margin-bottom: 6px; }
+    .confidence-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 12px;
+      background: #e0e7ff;
+      color: #1e40af;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .panel { margin-top: 16px; }
+  </style>
+  <base target="_blank">
+</head>
+<body>
+<div class="container">
+
+<h1>Enerlectra – Cluster-Aware + Current vs Target (Production)</h1>
+<div class="banner rule-banner">
+  This is reversible. No money is collected. If anyone says “this isn’t fair”, we stop.
+</div>
+
+<!-- ===== CLUSTER SELECTION ===== -->
+<div class="panel">
+  <h2>Clusters</h2>
+  <table id="clusters-table">
+    <thead>
+      <tr>
+        <th>Cluster ID</th>
+        <th>Name</th>
+        <th>Target kW</th>
+        <th>Status</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="clusters-body">
+      <tr><td colspan="5">Loading clusters…</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== ACTIVE CAMPAIGN ===== -->
+<div class="panel">
+  <h2>Active Campaign</h2>
+  <div class="target-card">
+    <strong>🎯 Goal</strong>
+    <div id="campaign-goal">+15 kW solar, +60 kWh battery storage</div>
+    <div class="target-clock" id="target-clock">⏳ 60 days left to unlock procurement</div>
+    <div><strong>Time remaining:</strong> <span id="campaign-time">60 days</span></div>
+
+    <div style="margin-top:8px;">
+      <div><strong>Progress:</strong> <span id="campaign-progress-pct">0%</span></div>
+      <div style="background:#e9d5ff;height:8px;border-radius:4px;overflow:hidden;">
+        <div id="campaign-progress-bar" style="height:100%;width:0%;background:#9333ea;transition:width .3s"></div>
+      </div>
+    </div>
+
+    <div style="margin-top:8px;">
+      <span class="confidence-pill" id="confidence-pill">Likelihood of hitting target: 0%</span>
+    </div>
+
+    <div style="margin-top:10px;font-size:12px;">
+      <strong>What unlocks next:</strong>
+      <ul>
+        <li id="unlock-1">🔒 Target 1: Feasibility & supplier quote (40 %)</li>
+        <li id="unlock-2">🔒 Target 2: Panel procurement (70 %)</li>
+        <li id="unlock-3">🔒 Target 3: Battery expansion (100 %)</li>
+        <li id="unlock-4">🔒 Target 4: Stable surplus (ongoing)</li>
+      </ul>
+    </div>
+
+    <div id="campaign-failure" class="loss-banner" style="display:none;"></div>
+    <div class="caps-note">
+      ⚠️ Physical installation requires separate host permission and engineering approval.
+    </div>
+  </div>
+</div>
+
+<!-- ===== OWNERSHIP ===== -->
+<div class="panel">
+  <h2>Ownership (Derived)</h2>
+  <div class="banner rule-banner">
+    Ownership = contribution ÷ total contributions. This rule cannot be overridden.
+  </div>
+  <p id="ownership-cluster-label">No cluster selected.</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>PCUs</th>
+        <th>Ownership %</th>
+        <th>Effective Ownership % (Preview)</th>
+      </tr>
+    </thead>
+    <tbody id="ownership-body">
+      <tr><td colspan="4">No cluster selected.</td></tr>
+    </tbody>
+  </table>
+  <div class="caps-note">
+    Effective ownership preview rewards earlier contributions (speed matters). This does NOT replace real ownership.
+  </div>
+</div>
+
+<!-- ===== CONTRIBUTE ===== -->
+<div class="panel">
+  <h2>Live Contribution (PCUs)</h2>
+  <label>Name <input id="pcu-name" type="text" placeholder="Your name"></label>
+  <label>PCUs <input id="pcu-amount" type="number" min="1" max="100" value="10"></label>
+  <button id="pcu-submit-btn">Add contribution</button>
+  <div class="caps-note">Max 100 PCUs per person · 1 000 PCUs per cluster · Demo only</div>
+</div>
+
+<!-- ===== SESSION TOOLS ===== -->
+<div class="panel">
+  <h2>Session Tools</h2>
+  <button id="undo-last-btn">Undo last contribution</button>
+  <button id="session-reset-btn">Reset session</button>
+  <div class="caps-note">Reversibility is shown for trust. Real pilots follow written rules.</div>
+</div>
+
+<!-- ===== 30-DAY SIMULATION ===== -->
+<div class="panel">
+  <h2>30-Day Simulation (Outcome)</h2>
+  <p id="simulation-cluster-label" style="font-size:12px;color:#6b7280">No cluster selected.</p>
+  <div class="controls-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <label>Days <input id="sim-days" type="number" value="30" min="1" max="90"></label>
+    <label>Demand profile
+      <select id="sim-demand-profile">
+        <option value="low">low</option>
+        <option value="medium" selected>medium</option>
+        <option value="high">high</option>
+      </select>
+    </label>
+    <label>Households <input id="sim-households" type="number" value="25" min="1" max="50"></label>
+    <button id="run-sim-btn" disabled>Run simulation</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Total Generation (kWh)</th>
+        <th>Total Consumption (kWh)</th>
+        <th>Surplus (kWh)</th>
+        <th>Deficit (kWh)</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody id="simulation-body">
+      <tr><td colspan="5">Run simulation to see outcomes.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== CURRENT vs TARGET COMPARISON ===== -->
+<div class="panel">
+  <h2>Compare Current vs Target</h2>
+  <p id="distribution-cluster-label" style="font-size:12px;color:#6b7280">No cluster selected.</p>
+  <div class="controls-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <label>Days <input id="comp-days" type="number" value="30" min="1" max="90"></label>
+    <label>Demand profile
+      <select id="comp-demand-profile">
+        <option value="low">low</option>
+        <option value="medium" selected>medium</option>
+        <option value="high">high</option>
+      </select>
+    </label>
+    <label>Households <input id="comp-households" type="number" value="25" min="1" max="50"></label>
+    <button id="run-compare-btn" disabled>Run comparison</button>
+  </div>
+
+  <table id="comparison-table">
+    <thead>
+      <tr>
+        <th>Metric</th>
+        <th>Current State</th>
+        <th>Target State</th>
+        <th>Gap</th>
+      </tr>
+    </thead>
+    <tbody id="comparison-body">
+      <tr><td colspan="4">Select a cluster and run comparison.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== SURPLUS DISTRIBUTION PREVIEW ===== -->
+<div class="panel">
+  <h2>Surplus Distribution (Preview)</h2>
+  <p id="distribution-cluster-label-2" style="font-size:12px;color:#6b7280">No cluster selected.</p>
+  <label>Surplus (kWh)
+    <input id="dist-surplus" type="number" value="100" min="1">
+  </label>
+  <button id="run-distribute-btn" disabled>Run distribution</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Ownership %</th>
+        <th>Share (kWh)</th>
+      </tr>
+    </thead>
+    <tbody id="distribution-body">
+      <tr><td colspan="3">No cluster selected.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== ADMIN TOOLS (hidden by default) ===== -->
+<div id="admin-tools" class="panel" style="display:none">
+  <h2>Admin tools</h2>
+  <label>Test installed kW <input id="admin-kw" type="number" value="15" min="0"></label>
+  <p>
+    Realistic adoption: <span id="realistic-adoption">0</span> households<br>
+    Lost kWh if not built: <span id="admin-loss">0</span> kWh
+  </p>
+</div>
+
+<!-- ===== ACTIVITY LOG ===== -->
+<div class="panel">
+  <h2>Activity log (this session)</h2>
+  <div id="log"></div>
+</div>
+
+<footer style="text-align:center;font-size:12px;color:#6b7280;margin-top:20px">
+  If this does not feel fair, this pilot does not proceed.
+</footer>
+
+</div>
+
+<script>
+/********************************************************************
+ *  0.  CONFIG + GLOBALS
+ *******************************************************************/
+const DEMO_RATE = 22.76;
+const FOUNDING_MULT = 1.2;
+const EARLY_MULT = 1.1;
+const STANDARD_MULT = 1.0;
+const GOAL_PCUS = 1000;
+const DEADLINE_DAYS = 60;
+const TARGET_SOLAR_KW = 15;
+const TARGET_STORAGE_KWH = 60;
+
+let contributions = [];
+let selectedClusterId = null;
+let clusterTargets = {};
+let deadline = new Date(Date.now() + DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+let clusters = [];
+
+function daysRemaining() {
+  return Math.ceil((deadline - new Date()) / (1000 * 60 * 60 * 24));
+}
+
+function ensureLog() {
+  let el = document.getElementById('log');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'log';
+    document.body.appendChild(el);
+  }
+  return el;
+}
+
+function log(msg) {
+  const el = ensureLog();
+  el.textContent += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+}
+
+/********************************************************************
+ *  1.  CLUSTER LIST  (real data from /clusters)
+ *******************************************************************/
+function mapClusterFromAPI(apiCluster) {
+  return {
+    clusterId: apiCluster.clusterId,
+    name: apiCluster.name,
+    targetSolarKw: apiCluster.target_kW ?? apiCluster.targetSolarKw ?? TARGET_SOLAR_KW,
+    targetStorageKwh: apiCluster.targetStorageKwh ?? TARGET_STORAGE_KWH,
+    why:
+      (apiCluster.location && (apiCluster.location.district || apiCluster.location.province)) ||
+      'Community need',
+    status: apiCluster.status ?? 'open',
+  };
+}
+
+function renderClusterList() {
+  const tbody = document.getElementById('clusters-body');
+  tbody.innerHTML = '';
+
+  if (!clusters.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="5">No clusters found. Please add one in the backend.</td></tr>';
+    return;
+  }
+
+  clusters.forEach((c) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.clusterId}</td>
+      <td>${c.name}</td>
+      <td>${c.targetSolarKw}</td>
+      <td>${c.status}</td>
+      <td class="row-actions">
+        <button data-id="${c.clusterId}" class="btn-ownership">Ownership</button>
+        <button data-id="${c.clusterId}" class="btn-simulate">Simulate</button>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  tbody.onclick = (e) => {
+    const btn = e.target;
+    if (!(btn instanceof HTMLButtonElement)) return;
+    const id = btn.getAttribute('data-id');
+    if (!id) return;
+
+    if (btn.classList.contains('btn-ownership')) {
+      selectCluster(id);
+      loadOwnership(id);
+    }
+    if (btn.classList.contains('btn-simulate')) {
+      selectCluster(id);
+    }
+  };
+}
+
+/********************************************************************
+ *  2.  LOAD CLUSTERS FROM BACKEND
+ *******************************************************************/
+async function loadClustersFromAPI() {
+  try {
+    console.log('🔵 Fetching /clusters...');
+    log('Requesting clusters from /clusters ...');
+
+    const response = await fetch('/clusters');
+    console.log('🔵 Response received:', response.status);
+    log(`Clusters API responded: ${response.status}`);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    console.log('🔵 Clusters data:', data);
+
+    clusters = data.map(mapClusterFromAPI);
+    renderClusterList();
+    log(`✅ Loaded ${clusters.length} cluster(s) from backend`);
+  } catch (error) {
+    console.error('❌ Error loading clusters:', error);
+    log(`❌ Error loading clusters: ${error.message}`);
+    const tbody = document.getElementById('clusters-body');
+    tbody.innerHTML =
+      '<tr><td colspan="5">Error loading clusters from server.</td></tr>';
+  }
+}
+
+/********************************************************************
+ *  3.  CLUSTER SELECTION + OWNERSHIP
+ *******************************************************************/
+function selectCluster(id) {
+  selectedClusterId = id;
+  const c = clusters.find((x) => x.clusterId === id);
+  if (!c) {
+    log(`⚠️ Cluster ${id} not found in local list`);
+    return;
+  }
+
+  clusterTargets = {
+    targetSolarKw: c.targetSolarKw,
+    targetStorageKwh: c.targetStorageKwh,
+    targetWhy: c.why,
+  };
+
+  const ownershipLabel = document.getElementById('ownership-cluster-label');
+  if (ownershipLabel) ownershipLabel.textContent = 'Cluster: ' + id;
+
+  const simLabel = document.getElementById('simulation-cluster-label');
+  if (simLabel) simLabel.textContent = 'Cluster: ' + id;
+
+  const distLabel = document.getElementById('distribution-cluster-label');
+  if (distLabel) distLabel.textContent = 'Cluster: ' + id;
+
+  const distLabel2 = document.getElementById('distribution-cluster-label-2');
+  if (distLabel2) distLabel2.textContent = 'Cluster: ' + id;
+
+  const runSimBtn = document.getElementById('run-sim-btn');
+  if (runSimBtn) runSimBtn.disabled = false;
+
+  const runCompareBtn = document.getElementById('run-compare-btn');
+  if (runCompareBtn) runCompareBtn.disabled = false;
+
+  const runDistBtn = document.getElementById('run-distribute-btn');
+  if (runDistBtn) runDistBtn.disabled = false;
+
+  const simBody = document.getElementById('simulation-body');
+  if (simBody)
+    simBody.innerHTML =
+      '<tr><td colspan="5">Ready to run simulation for ' + id + '.</td></tr>';
+
+  const compBody = document.getElementById('comparison-body');
+  if (compBody)
+    compBody.innerHTML =
+      '<tr><td colspan="4">Ready to run comparison for ' + id + '.</td></tr>';
+
+  const distBody = document.getElementById('distribution-body');
+  if (distBody)
+    distBody.innerHTML =
+      '<tr><td colspan="3">Ready to run distribution for ' + id + '.</td></tr>';
+
+  log('Cluster ' + id + ' selected');
+  renderOwnership();
+  updateCampaign(0);
+}
+
+function loadOwnership(id) {
+  log('Ownership view opened for ' + id + ' (session-only demo)');
+}
+
+function renderOwnership() {
+  const tbody = document.getElementById('ownership-body');
+  tbody.innerHTML = '';
+
+  if (!selectedClusterId) {
+    tbody.innerHTML =
+      '<tr><td colspan="4">No cluster selected.</td></tr>';
+    return;
+  }
+
+  if (!contributions.length) {
+    tbody.innerHTML =
+      '<tr><td colspan="4">No contributions yet.</td></tr>';
+    updateCampaign(0);
+    return;
+  }
+
+  const totalPCUs = contributions.reduce((s, c) => s + c.pcus, 0);
+  const enriched = contributions.map((c) => {
+    const mult =
+      c.daysBefore > 30 ? 1.2 : c.daysBefore > 14 ? 1.1 : 1.0;
+    return { ...c, mult, eff: c.pcus * mult };
+  });
+  const totalEff = enriched.reduce((s, c) => s + c.eff, 0);
+
+  enriched.forEach((c) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${c.name}</td>
+      <td>${c.pcus}</td>
+      <td>${((c.pcus / totalPCUs) * 100).toFixed(2)}%</td>
+      <td>${((c.eff / totalEff) * 100).toFixed(2)}%</td>`;
+    tbody.appendChild(tr);
+  });
+
+  updateCampaign(totalPCUs);
+}
+
+/********************************************************************
+ *  4.  CONTRIBUTE + SESSION TOOLS
+ *******************************************************************/
+function wireSessionControls() {
+  const submitBtn = document.getElementById('pcu-submit-btn');
+  const undoBtn = document.getElementById('undo-last-btn');
+  const resetBtn = document.getElementById('session-reset-btn');
+
+  if (submitBtn) {
+    submitBtn.onclick = () => {
+      const nameInput = document.getElementById('pcu-name');
+      const amountInput = document.getElementById('pcu-amount');
+      if (!nameInput || !amountInput) return;
+
+      const name = nameInput.value.trim();
+      const pcus = Number(amountInput.value);
+
+      if (!selectedClusterId) {
+        alert('Select a cluster first');
+        log('⚠️ Contribution blocked: no cluster selected');
+        return;
+      }
+      if (!name || !pcus || pcus <= 0) {
+        log('⚠️ Contribution blocked: invalid name or PCUs');
+        return;
+      }
+      if (pcus > 100) {
+        alert('Max 100 PCUs per person');
+        log(`⚠️ Contribution blocked: ${name} tried ${pcus} PCUs (over 100)`);
+        return;
+      }
+
+      contributions.push({ name, pcus, daysBefore: daysRemaining() });
+      nameInput.value = '';
+      amountInput.value = 10;
+
+      log(`✅ ${name} contributed ${pcus} PCUs to ${selectedClusterId}`);
+      renderOwnership();
+    };
+  }
+
+  if (undoBtn) {
+    undoBtn.onclick = () => {
+      if (!contributions.length) {
+        log('⚠️ Undo requested but no contributions in session');
+        return;
+      }
+      const last = contributions.pop();
+      log(`↩️ Undid ${last.name}'s ${last.pcus} PCUs`);
+      renderOwnership();
+    };
+  }
+
+  if (resetBtn) {
+    resetBtn.onclick = () => {
+      if (!confirm('Reset entire session?')) return;
+      contributions = [];
+      deadline = new Date(Date.now() + DEADLINE_DAYS * 24 * 60 * 60 * 1000);
+      if (submitBtn) submitBtn.disabled = false;
+      const failure = document.getElementById('campaign-failure');
+      if (failure) failure.style.display = 'none';
+      log('🔄 Session reset');
+      renderOwnership();
+    };
+  }
+}
+
+/********************************************************************
+ *  5.  CAMPAIGN + CONFIDENCE + UNLOCK LADDER
+ *******************************************************************/
+function updateCampaign(totalPCUs) {
+  const pct = Math.min((totalPCUs / GOAL_PCUS) * 100, 100);
+  document.getElementById('campaign-progress-pct').textContent =
+    pct.toFixed(0) + '%';
+  document.getElementById('campaign-progress-bar').style.width =
+    pct + '%';
+
+  const days = daysRemaining();
+  const timeEl = document.getElementById('campaign-time');
+  if (days > 0) {
+    timeEl.textContent = days + ' days';
+    document.getElementById(
+      'target-clock',
+    ).textContent = `⏳ ${days} days left to unlock procurement`;
+  } else {
+    timeEl.textContent = 'Ended';
+    document.getElementById('target-clock').textContent =
+      '⏳ Campaign ended';
+    if (pct < 100) {
+      const lostKwh =
+        (clusterTargets.targetSolarKw || TARGET_SOLAR_KW) * 4.5 * 30;
+      const loss = document.getElementById('campaign-failure');
+      loss.style.display = 'block';
+      loss.textContent = `❌ Target missed. 0 kW built. Opportunity cost: ~${lostKwh.toFixed(
+        0,
+      )} kWh not generated.`;
+      const submitBtn = document.getElementById('pcu-submit-btn');
+      if (submitBtn) submitBtn.disabled = true;
+    }
+  }
+
+  const speedFactor =
+    contributions.length /
+    Math.max(1, DEADLINE_DAYS - days + 1);
+  const confidence = Math.min(
+    95,
+    pct * 0.6 + speedFactor * 15,
+  );
+  document.getElementById(
+    'confidence-pill',
+  ).textContent = `Likelihood of hitting target: ${confidence.toFixed(
+    0,
+  )}%`;
+
+  document.getElementById('unlock-1').textContent =
+    pct >= 40
+      ? '✅ Target 1: Feasibility & supplier quote (40 %)'
+      : '🔒 Target 1: Feasibility & supplier quote (40 %)';
+  document.getElementById('unlock-2').textContent =
+    pct >= 70
+      ? '✅ Target 2: Panel procurement (70 %)'
+      : '🔒 Target 2: Panel procurement (70 %)';
+  document.getElementById('unlock-3').textContent =
+    pct >= 100
+      ? '✅ Target 3: Battery expansion (100 %)'
+      : '🔒 Target 3: Battery expansion (100 %)';
+
+  const adminRealistic = document.getElementById('realistic-adoption');
+  if (adminRealistic)
+    adminRealistic.textContent = Math.ceil(
+      contributions.length * 0.25,
+    );
+
+  const adminKwInput = document.getElementById('admin-kw');
+  const adminLossEl = document.getElementById('admin-loss');
+  if (adminKwInput && adminLossEl) {
+    const testKw = Number(adminKwInput.value || 0);
+    adminLossEl.textContent = (testKw * 4.5 * 30).toFixed(0);
+  }
+}
+
+/********************************************************************
+ *  6.  30-DAY SIMULATION
+ *******************************************************************/
+function wireSimulation() {
+  const runSimBtn = document.getElementById('run-sim-btn');
+  if (!runSimBtn) return;
+
+  runSimBtn.onclick = () => {
+    if (!selectedClusterId) {
+      alert('Select a cluster first');
+      log('⚠️ Simulation blocked: no cluster selected');
+      return;
+    }
+
+    const days = Number(document.getElementById('sim-days').value);
+    const households = Number(
+      document.getElementById('sim-households').value,
+    );
+    const profile = document.getElementById('sim-demand-profile').value;
+
+    const avgConsumption =
+      profile === 'high' ? 10 : profile === 'low' ? 6 : 8;
+    const peakKwhPerKW = 4.5;
+
+    const totalConsumption = households * avgConsumption * days;
+    const totalPCUs = contributions.reduce((s, c) => s + c.pcus, 0);
+    const actualKw =
+      (totalPCUs / GOAL_PCUS) * (clusterTargets.targetSolarKw || TARGET_SOLAR_KW);
+    const totalGeneration = actualKw * peakKwhPerKW * days;
+    const surplus = Math.max(0, totalGeneration - totalConsumption);
+    const deficit = Math.max(0, totalConsumption - totalGeneration);
+    let status = 'offline';
+    if (totalGeneration >= totalConsumption * 0.95) status = 'healthy';
+    else if (totalGeneration >= totalConsumption * 0.7) status = 'stressed';
+
+    const tbody = document.getElementById('simulation-body');
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td>${totalGeneration.toFixed(0)}</td>
+          <td>${totalConsumption.toFixed(0)}</td>
+          <td>${surplus.toFixed(0)}</td>
+          <td>${deficit.toFixed(0)}</td>
+          <td class="status-${status}">${status}</td>
+        </tr>
+      `;
+    }
+
+    log(
+      `📊 Simulation for ${selectedClusterId}: ${days} days, ${households} households, profile=${profile}, ` +
+        `generation=${totalGeneration.toFixed(0)} kWh, consumption=${totalConsumption.toFixed(0)} kWh`,
+    );
+  };
+}
+
+/********************************************************************
+ *  7.  CURRENT vs TARGET COMPARISON
+ *******************************************************************/
+function wireComparison() {
+  const runCompareBtn = document.getElementById('run-compare-btn');
+  if (!runCompareBtn) return;
+
+  runCompareBtn.onclick = () => {
+    if (!selectedClusterId) {
+      alert('Select a cluster first');
+      log('⚠️ Comparison blocked: no cluster selected');
+      return;
+    }
+
+    const days = Number(document.getElementById('comp-days').value);
+    const households = Number(
+      document.getElementById('comp-households').value,
+    );
+    const profile = document.getElementById('comp-demand-profile').value;
+
+    const avgConsumption =
+      profile === 'high' ? 10 : profile === 'low' ? 6 : 8;
+    const peakKwhPerKW = 4.5;
+
+    const totalConsumption = households * avgConsumption * days;
+    const totalPCUs = contributions.reduce((s, c) => s + c.pcus, 0);
+    const currentKw =
+      (totalPCUs / GOAL_PCUS) * (clusterTargets.targetSolarKw || TARGET_SOLAR_KW);
+    const targetKw =
+      currentKw + (clusterTargets.targetSolarKw || TARGET_SOLAR_KW);
+    const currentGeneration = currentKw * peakKwhPerKW * days;
+    const targetGeneration = targetKw * peakKwhPerKW * days;
+    const currentSurplus = Math.max(
+      0,
+      currentGeneration - totalConsumption,
+    );
+    const targetSurplus = Math.max(
+      0,
+      targetGeneration - totalConsumption,
+    );
+    const currentDeficit = Math.max(
+      0,
+      totalConsumption - currentGeneration,
+    );
+    const targetDeficit = Math.max(
+      0,
+      totalConsumption - targetGeneration,
+    );
+
+    const tbody = document.getElementById('comparison-body');
+    if (tbody) {
+      tbody.innerHTML = '';
+      const rows = [
+        {
+          metric: 'Solar Capacity',
+          current: currentKw.toFixed(1) + ' kW',
+          target: targetKw.toFixed(1) + ' kW',
+          gap:
+            '+' +
+            (clusterTargets.targetSolarKw || TARGET_SOLAR_KW).toFixed(1) +
+            ' kW',
+        },
+        {
+          metric: 'Battery Storage',
+          current: TARGET_STORAGE_KWH + ' kWh',
+          target:
+            TARGET_STORAGE_KWH +
+            (clusterTargets.targetStorageKwh || 0) +
+            ' kWh',
+          gap:
+            '+' +
+            (clusterTargets.targetStorageKwh || 0).toFixed(0) +
+            ' kWh',
+        },
+        {
+          metric: 'Total Generation',
+          current: currentGeneration.toFixed(0) + ' kWh',
+          target: targetGeneration.toFixed(0) + ' kWh',
+          gap:
+            '+' +
+            (targetGeneration - currentGeneration).toFixed(0) +
+            ' kWh',
+        },
+        {
+          metric: 'Total Consumption',
+          current: totalConsumption.toFixed(0) + ' kWh',
+          target: totalConsumption.toFixed(0) + ' kWh',
+          gap: '—',
+        },
+        {
+          metric: 'Surplus',
+          current: currentSurplus.toFixed(0) + ' kWh',
+          target: targetSurplus.toFixed(0) + ' kWh',
+          gap:
+            '+' +
+            (targetSurplus - currentSurplus).toFixed(0) +
+            ' kWh',
+        },
+        {
+          metric: 'Deficit',
+          current: currentDeficit.toFixed(0) + ' kWh',
+          target: targetDeficit.toFixed(0) + ' kWh',
+          gap: (targetDeficit - currentDeficit).toFixed(0) + ' kWh',
+        },
+      ];
+      rows.forEach((r) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td><strong>${r.metric}</strong></td><td>${r.current}</td><td>${r.target}</td><td>${r.gap}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    log(
+      `📈 Comparison for ${selectedClusterId}: days=${days}, households=${households}, profile=${profile}`,
+    );
+  };
+}
+
+/********************************************************************
+ *  8.  SURPLUS DISTRIBUTION PREVIEW
+ *******************************************************************/
+function wireDistribution() {
+  const runDistBtn = document.getElementById('run-distribute-btn');
+  if (!runDistBtn) return;
+
+  runDistBtn.onclick = () => {
+    if (!selectedClusterId) {
+      alert('Select a cluster first');
+      log('⚠️ Distribution blocked: no cluster selected');
+      return;
+    }
+
+    const surplusInput = document.getElementById('dist-surplus');
+    if (!surplusInput) return;
+    const surplus = Number(surplusInput.value);
+    if (surplus <= 0) {
+      log('⚠️ Distribution blocked: surplus <= 0');
+      return;
+    }
+
+    const totalPCUs = contributions.reduce((s, c) => s + c.pcus, 0);
+    if (!totalPCUs) {
+      log('⚠️ Distribution blocked: no contributions');
+      return;
+    }
+
+    const tbody = document.getElementById('distribution-body');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    contributions.forEach((c) => {
+      const share = (c.pcus / totalPCUs) * surplus;
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${c.name}</td>
+        <td>${((c.pcus / totalPCUs) * 100).toFixed(2)}%</td>
+        <td>${share.toFixed(0)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    log(
+      `⚡ Distribution preview for ${selectedClusterId}: surplus=${surplus} kWh shared across ${contributions.length} contribution(s)`,
+    );
+  };
+}
+
+/********************************************************************
+ *  9.  ADMIN TOOLS
+ *******************************************************************/
+if (new URLSearchParams(window.location.search).has('admin')) {
+  const adminTools = document.getElementById('admin-tools');
+  if (adminTools) adminTools.style.display = 'block';
+}
+const adminKwInput = document.getElementById('admin-kw');
+if (adminKwInput) {
+  adminKwInput.oninput = () =>
+    updateCampaign(contributions.reduce((s, c) => s + c.pcus, 0));
+}
+
+/********************************************************************
+ * 10.  INIT
+ *******************************************************************/
+console.log('🚀 JavaScript is running!');
+console.log('🔵 Page loaded, about to fetch clusters...');
+
+loadClustersFromAPI()
+  .then(() => {
+    wireSessionControls();
+    wireSimulation();
+    wireComparison();
+    wireDistribution();
+    log('✅ UI controls wired and ready');
+  })
+  .catch((e) => {
+    log('❌ Failed initial load: ' + e.message);
+  });
+</script>
+
+</body>
+</html>

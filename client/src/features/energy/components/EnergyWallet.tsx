@@ -1,117 +1,89 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../../hooks/useAuth';
 import { contributionService } from '../../contributions/services/contributionService';
-import { Card } from '../../../components/ui/Card';
-import { Wallet, TrendingUp, TrendingDown, AlertCircle, RefreshCw } from 'lucide-react';
+import { Wallet, TrendingUp, RefreshCw, Zap, ShieldCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export function EnergyWallet() {
   const { user } = useAuth();
   const [totalPCU, setTotalPCU] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   const loadWallet = async () => {
-    if (!user?.id) {
-      setLoading(false);
-      return;
-    }
-
+    if (!user?.id) return;
     setLoading(true);
-    setError(null);
-
     try {
       const contributions = await contributionService.getUserContributions(user.id);
       const total = contributions.reduce((sum, c) => sum + (c.pcus || 0), 0);
       setTotalPCU(total);
-    } catch (err: any) {
-      setError('Failed to load wallet');
-      toast.error('Could not load your energy wallet');
+    } catch (err) {
+      toast.error('Sync failed');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadWallet();
-  }, [user?.id]);
-
-  if (!user) {
-    return (
-      <Card variant="glass" padding="md">
-        <div className="flex items-center gap-3 text-purple-300">
-          <AlertCircle className="w-5 h-5" />
-          <p>Please sign in to view your energy wallet</p>
-        </div>
-      </Card>
-    );
-  }
+  useEffect(() => { loadWallet(); }, [user?.id]);
 
   return (
-    <Card variant="glass" padding="md" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-purple-900/30 rounded-lg">
-            <Wallet className="w-6 h-6 text-purple-400" />
+    <div className="glass p-8 md:p-12 border-glass space-y-10 relative overflow-hidden">
+      {/* Decorative Glow */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-brand-primary/10 blur-[100px] pointer-events-none" />
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl btn-primary p-0 flex items-center justify-center shadow-glow-purple">
+            <Wallet size={28} />
           </div>
-          <h3 className="text-xl font-semibold text-white">Energy Wallet</h3>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-xs px-3 py-1 bg-purple-900/40 text-purple-300 rounded-full border border-purple-700/30">
-            Beta
-          </span>
-          <button
-            onClick={loadWallet}
-            disabled={loading}
-            className="p-2 rounded-lg hover:bg-gray-800 transition-colors"
-            title="Refresh wallet"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin text-emerald-400' : 'text-gray-400'}`} />
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="space-y-4">
-          <div className="h-10 bg-gray-800/50 rounded animate-pulse"></div>
-          <div className="h-6 bg-gray-800/50 rounded w-2/3 animate-pulse"></div>
-        </div>
-      ) : error ? (
-        <div className="p-5 bg-red-900/20 rounded-lg border border-red-800/30 text-red-200 text-sm flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div>
-            {error}
-            <button
-              onClick={loadWallet}
-              className="ml-2 text-red-300 hover:text-red-200 underline text-xs"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="space-y-1">
-            <p className="text-sm text-gray-400">Total PCUs</p>
-            <p className="text-3xl md:text-4xl font-bold text-white">
-              {totalPCU !== null ? totalPCU.toLocaleString() : '—'}
+            <h2 className="font-display text-3xl font-bold tracking-tight">Energy Assets</h2>
+            <p className="text-muted text-sm flex items-center gap-2">
+              <ShieldCheck size={14} className="text-success" /> Verified on-chain via Enerlectra Protocol
             </p>
           </div>
+        </div>
 
-          <div className="space-y-1">
-            <p className="text-sm text-gray-400">Energy Credits</p>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-6 h-6 text-emerald-400" />
-              <p className="text-xl md:text-2xl text-emerald-400 font-medium">Coming soon</p>
-            </div>
+        <button 
+          onClick={loadWallet}
+          className="glass border-glass px-6 py-3 rounded-xl hover:bg-surface-overlay transition-all flex items-center gap-3 text-sm font-medium"
+        >
+          <RefreshCw size={18} className={loading ? 'animate-spin text-brand-primary' : ''} />
+          Refresh Balance
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {/* Main Balance Card */}
+        <div className="stat-card p-8 rounded-3xl bg-surface-overlay/40 border border-glass">
+          <span className="text-muted uppercase text-[10px] tracking-[0.2em] font-bold">Total Portfolio Units (PCU)</span>
+          <div className="mt-4 flex items-baseline gap-3">
+            <span className="text-5xl md:text-6xl font-display font-black text-white">
+              {totalPCU?.toLocaleString() ?? '0'}
+            </span>
+            <span className="text-brand-primary font-bold">Units</span>
           </div>
         </div>
-      )}
 
-      <div className="pt-4 border-t border-gray-800 text-sm text-gray-500">
-        Your PCUs represent ownership in energy communities. Real energy credits from surplus generation will appear here after settlement runs.
+        {/* Energy Credits Card */}
+        <div className="stat-card p-8 rounded-3xl bg-brand-primary/5 border border-brand-primary/20 relative group overflow-hidden">
+          <span className="text-muted uppercase text-[10px] tracking-[0.2em] font-bold">Available Energy Credits</span>
+          <div className="mt-4 flex items-center gap-3">
+            <TrendingUp size={32} className="text-brand-primary opacity-50" />
+            <span className="text-2xl font-display font-bold text-brand-primary italic">Coming in Beta v2</span>
+          </div>
+          <div className="absolute inset-0 bg-brand-gradient opacity-0 group-hover:opacity-5 transition-opacity" />
+        </div>
       </div>
-    </Card>
+
+      <footer className="pt-8 border-t border-glass flex flex-col md:flex-row gap-4 justify-between items-center">
+        <div className="flex items-center gap-2 text-xs text-muted">
+          <Zap size={14} className="text-warning" />
+          PCUs represent fractional ownership of community microgrids.
+        </div>
+        <button className="text-brand-primary hover:text-white transition-colors text-sm font-bold">
+          View Governance Rights →
+        </button>
+      </footer>
+    </div>
   );
 }

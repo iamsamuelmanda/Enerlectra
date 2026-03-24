@@ -1,5 +1,7 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Outlet } from "react-router-dom";
+import { MainLayout } from "../components/layout/MainLayout";
 
+// Page Imports
 import Dashboard from "../pages/Dashboard";
 import ClusterView from "../pages/ClusterView";
 import EnergyWalletPage from "../pages/EnergyWalletPage";
@@ -12,24 +14,42 @@ import ResetPassword from "../pages/ResetPassword";
 import PilotDashboard from "../features/admin/pages/PilotDashboard";
 import TransactionsPage from "../pages/TransactionsPage";
 
-// ← NEW: Import the guard
+// Auth Guard
 import ProtectedRoute from "../components/ProtectedRoute";
 
 export default function Router() {
   return (
     <Routes>
-      <Route path="/" element={<Dashboard />} />
-      <Route path="/clusters/:id" element={<ClusterView />} />
-      
-      {/* Protected routes */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/wallet" element={<EnergyWalletPage />} />
-        <Route path="/transactions" element={<TransactionsPage />} />
-        <Route path="/trading" element={<TradingPage />} />
-        <Route path="/admin" element={<Admin />} />
-        <Route path="/admin/pilot" element={<PilotDashboard />} />
+      {/* 1. PUBLIC ROUTES WITH GLOBAL LAYOUT */}
+      <Route
+        element={
+          <MainLayout>
+            <Outlet />
+          </MainLayout>
+        }
+      >
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/clusters/:id" element={<ClusterView />} />
       </Route>
 
+      {/* 2. PROTECTED ROUTES WITH GLOBAL LAYOUT */}
+      <Route element={<ProtectedRoute />}>
+        <Route
+          element={
+            <MainLayout>
+              <Outlet />
+            </MainLayout>
+          }
+        >
+          <Route path="/wallet" element={<EnergyWalletPage />} />
+          <Route path="/transactions" element={<TransactionsPage />} />
+          <Route path="/trading" element={<TradingPage />} />
+          <Route path="/admin" element={<Admin />} />
+          <Route path="/admin/pilot" element={<PilotDashboard />} />
+        </Route>
+      </Route>
+
+      {/* 3. AUTH ROUTES (NO SIDEBAR/HEADER) */}
       <Route path="/signin" element={<SignIn />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
