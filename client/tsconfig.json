@@ -28,6 +28,7 @@
       "@lib/*": ["src/lib/*"],
       "@types/*": ["src/types/*"],
       "@clusters/*": ["src/features/clusters/*"],
+      "@simulation/*": ["src/features/simulation/*"],
       "@clusters-components/*": ["src/features/clusters/components/*"],
       "@contributions/*": ["src/features/contributions/*"],
       "@contributions-services/*": ["src/features/contributions/services/*"],
@@ -38,7 +39,7 @@
     "checkJs": false,
     "types": ["vite/client", "node"]
   },
-  "include": ["src"], 
-  "exclude": ["node_modules", "vite.config.ts"],
+  "include": ["src", "src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"], 
+  "exclude": ["node_modules", "dist"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
