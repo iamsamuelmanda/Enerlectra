@@ -1,7 +1,10 @@
 import { useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+
+// FIXED: Case-sensitive imports to match physical filenames (Tabs.tsx, Card.tsx)
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { Card } from '@/components/ui/Card';
+
 import { 
   ArrowLeft, MapPin, ShieldCheck, Info, 
   Wallet, History, Activity, Zap 
@@ -44,7 +47,7 @@ export default function ClusterDetailPage() {
       <div className="flex flex-col gap-6">
         <button 
           onClick={() => navigate('/')}
-          className="flex items-center gap-2 text-xs font-bold text-muted hover:text-brand-primary transition-all group w-fit"
+          className="flex items-center gap-2 text-xs font-bold text-white/40 hover:text-brand-primary transition-all group w-fit"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
           <span>RETURN TO DASHBOARD</span>
@@ -63,7 +66,7 @@ export default function ClusterDetailPage() {
             </h1>
           </div>
           
-          <div className="flex items-center gap-3 px-5 py-2.5 glass border-emerald-500/20 rounded-2xl bg-emerald-500/5">
+          <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-sm">
             <ShieldCheck className="text-emerald-400" size={18} />
             <div className="flex flex-col">
               <span className="text-[9px] font-black text-emerald-400/60 uppercase tracking-widest">Status</span>
@@ -79,7 +82,7 @@ export default function ClusterDetailPage() {
       />
 
       <Tabs defaultValue="overview" className="space-y-10">
-        <TabsList className="bg-surface-glass p-1.5 rounded-2xl border border-glass inline-flex mb-4">
+        <TabsList className="bg-white/[0.03] p-1.5 rounded-2xl border border-white/10 inline-flex mb-4">
           <TabsTrigger value="overview">Market Analytics</TabsTrigger>
           <TabsTrigger value="simulate">Simulation Engine</TabsTrigger>
           <TabsTrigger value="governance">Governance & Funding</TabsTrigger>
@@ -92,9 +95,9 @@ export default function ClusterDetailPage() {
             <Card variant="glass" padding="lg" className="border-brand-primary/10">
               <div className="flex items-center gap-2 mb-6 text-brand-primary">
                 <span className="p-2 bg-brand-primary/10 rounded-lg"><Info size={18} /></span>
-                <h3 className="font-display font-bold uppercase tracking-widest text-sm">Cluster Intelligence</h3>
+                <h3 className="font-display font-bold uppercase tracking-widest text-sm text-white">Cluster Intelligence</h3>
               </div>
-              <p className="text-secondary leading-relaxed text-lg italic opacity-90">
+              <p className="text-white/70 leading-relaxed text-lg italic opacity-90">
                 "{cluster?.description ?? 'No telemetric description available for this community node.'}"
               </p>
             </Card>
@@ -132,7 +135,7 @@ export default function ClusterDetailPage() {
                   </div>
                   <div>
                     <h3 className="font-display font-bold text-xl text-white">Node Contribution</h3>
-                    <p className="text-[10px] text-muted uppercase tracking-widest">Fund renewable expansion</p>
+                    <p className="text-[10px] text-white/40 uppercase tracking-widest">Fund renewable expansion</p>
                   </div>
                 </div>
                 
@@ -146,7 +149,7 @@ export default function ClusterDetailPage() {
             <aside className="space-y-6">
                <div className="flex items-center gap-2 px-2 mb-2">
                 <History size={14} className="text-brand-primary" />
-                <span className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">Transaction Log</span>
+                <span className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Transaction Log</span>
               </div>
               <ContributionHistory clusterId={clusterId!} key={refreshKey} />
             </aside>
@@ -159,10 +162,10 @@ export default function ClusterDetailPage() {
 
 function Param({ label, value, icon }: { label: string; value: string | number; icon?: React.ReactNode }) {
   return (
-    <div className="flex justify-between items-center border-b border-glass pb-4 last:border-0 last:pb-0 group">
+    <div className="flex justify-between items-center border-b border-white/5 pb-4 last:border-0 last:pb-0 group">
       <div className="flex items-center gap-2">
         {icon && <span className="text-brand-primary/50 group-hover:text-brand-primary transition-colors">{icon}</span>}
-        <span className="text-[10px] font-bold text-muted uppercase tracking-widest">{label}</span>
+        <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">{label}</span>
       </div>
       <span className="text-white font-display font-bold">{value}</span>
     </div>
