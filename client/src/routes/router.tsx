@@ -3,7 +3,7 @@ import { MainLayout } from "../components/layout/MainLayout";
 
 // Page Imports
 import Dashboard from "../pages/Dashboard";
-import ClusterView from "../pages/ClusterView";
+import ClusterDetailPage from "../pages/ClusterDetailPage"; // Updated import
 import EnergyWalletPage from "../pages/EnergyWalletPage";
 import TradingPage from "../pages/TradingPage";
 import Admin from "../pages/Admin";
@@ -29,7 +29,8 @@ export default function Router() {
         }
       >
         <Route path="/" element={<Dashboard />} />
-        <Route path="/clusters/:id" element={<ClusterView />} />
+        {/* Pointing the old ClusterView path to the new Detail Page */}
+        <Route path="/clusters/:id" element={<ClusterDetailPage />} />
       </Route>
 
       {/* 2. PROTECTED ROUTES WITH GLOBAL LAYOUT */}
