@@ -1,57 +1,60 @@
 // integrations/telegram-bot/src/bot.ts
-import { Telegraf, session } from 'telegraf';
-import { handleMeterPhoto, handleMeterTypeCallback } from './handlers/meterReading';
+import { Telegraf } from 'telegraf';
+import axios from 'axios';
+import dotenv from 'dotenv';
 
-const bot = new Telegraf(process.env.BOT_TOKEN || '');
+dotenv.config();
 
-// Session middleware
-bot.use(session());
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!);
+const BACKEND_URL = 'https://enerlectra-backend.onrender.com';
 
-// Commands
-bot.command('start', (ctx) => {
+// Start
+bot.start((ctx) => {
   ctx.reply(
-    '👋 Hello! I am *Ellie*, your energy meter assistant.\n\n' +
-    'Send me a photo of your electricity meter to record your usage.\n\n' +
-    'Commands:\n' +
-    '/status - Check submission status\n' +
-    '/manual <number> - Enter reading manually',
+    '👋 Hello! I am *Ellie*, your Enerlectra meter assistant.\n\n' +
+    '📸 Send me a photo of your electricity meter\n' +
+    'or type: LOW / NORMAL / HIGH',
     { parse_mode: 'Markdown' }
   );
 });
 
-bot.command('status', async (ctx) => {
-  // TODO: Fetch status from API
-  await ctx.reply('📊 Checking your cluster status...');
-});
-
-bot.command('manual', (ctx) => {
-  const text = ctx.message.text;
-  const reading = text.split(' ')[1];
-  
-  if (!reading || isNaN(Number(reading))) {
-    return ctx.reply('Usage: /manual 12345');
+// Handle signals
+bot.on('text', async (ctx) => {
+  const text = ctx.message.text.toUpperCase().trim();
+  if (['LOW', 'NORMAL', 'HIGH'].includes(text)) {
+    await axios.post(`${BACKEND_URL}/api/readings/ingest`, {
+      clusterId: 'clu_l8nydwpo',
+      unitId: `unit-${ctx.from.id}`,
+      userId: ctx.from.id.toString(),
+      readingKwh: 0,
+      meterType: 'unit',
+      signal: text,
+      source: 'telegram'
+    });
+    ctx.reply(`✅ Signal recorded: ${text}`);
   }
-  
-  // TODO: Send to API as manual entry
-  ctx.reply(`✅ Manual reading recorded: ${reading} kWh`);
 });
 
-// Photo handler
-bot.on('photo', handleMeterPhoto);
+// Handle photos
+bot.on('photo', async (ctx) => {
+  try {
+    const photo = ctx.message.photo[ctx.message.photo.length - 1];
+    const fileLink = await ctx.telegram.getFileLink(photo.file_id);
 
-// Callback queries (meter type selection)
-bot.on('callback_query', handleMeterTypeCallback);
+    await axios.post(`${BACKEND_URL}/api/readings/ingest`, {
+      clusterId: 'clu_l8nydwpo',
+      unitId: `unit-${ctx.from.id}`,
+      userId: ctx.from.id.toString(),
+      photoUrl: fileLink.href,
+      meterType: 'unit',
+      source: 'telegram'
+    });
 
-// Error handler
-bot.catch((err, ctx) => {
-  console.error('Bot error:', err);
-  ctx.reply('⚠️ Something went wrong. Please try again.');
+    ctx.reply('📸 Photo received! Processing reading...');
+  } catch (err) {
+    ctx.reply('❌ Failed to process photo.');
+  }
 });
 
-// Start
-console.log('🤖 Ellie is starting...');
 bot.launch();
-
-// Graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+console.log('🚀 Ellie Telegram Bot started successfully!');

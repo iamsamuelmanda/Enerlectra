@@ -17,9 +17,11 @@ export default defineConfig({
       '@lib': path.resolve(__dirname, './src/lib'),
       '@types': path.resolve(__dirname, './src/types'),
 
+      // Feature Specific Aliases
       '@clusters': path.resolve(__dirname, './src/features/clusters'),
       '@clusters-components': path.resolve(__dirname, './src/features/clusters/components'),
-
+      '@simulation': path.resolve(__dirname, './src/features/simulation'), // New Alias
+      
       '@contributions': path.resolve(__dirname, './src/features/contributions'),
       '@contributions-services': path.resolve(__dirname, './src/features/contributions/services'),
       '@contributions-components': path.resolve(__dirname, './src/features/contributions/components'),
@@ -31,10 +33,11 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'https://enerlectra-backend.onrender.com',
+        // Change this to 'http://localhost:4000' during local dev 
+        // to match your server/index.ts port
+        target: 'http://localhost:4000', 
         changeOrigin: true,
         secure: false,
-        cors: true,
       },
     },
     hmr: {
