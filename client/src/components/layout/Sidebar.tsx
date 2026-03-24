@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Wallet, TrendingUp, Settings, ChevronLeft, ChevronRight, Zap } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { cn } from '@/lib/utils/cn';
 
 interface SidebarProps {
   collapsed?: boolean;
