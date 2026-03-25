@@ -1,51 +1,36 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/lib/supabase";
-import { useAuth } from "@/hooks/useAuth";
-import toast from "react-hot-toast";
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/hooks/useAuth';
 
 export function useUserAssets() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
 
-  const query = useQuery({
-    queryKey: ["user-assets", user?.id],
-    enabled: !!user,
+  const { data, isLoading } = useQuery({
+    queryKey: ['user-assets', user?.id],
+    enabled: !!user?.id,
     queryFn: async () => {
-      const { data: stakes, error: stakeError } = await supabase
-        .from("cluster_members")
-        .select(`cluster_id, contribution_amount, ownership_share, clusters(name, location)`)
-        .eq("user_id", user!.id);
+      const { data: stakes, error } = await supabase
+        .from('cluster_members')
+        .select('*, clusters(name)')
+        .eq('user_id', user!.id);
 
-      if (stakeError) throw stakeError;
+      if (error) throw error;
 
-      const { data: settlements, error: setError } = await supabase
-        .from("settlements")
-        .select("pcu_amount")
-        .eq("user_id", user!.id);
+      const totalContribution = stakes?.reduce((sum, s) => sum + (s.contribution_amount || 0), 0) ?? 0;
+      const totalPcu = stakes?.reduce((sum, s) => sum + (s.ownership_share || 0), 0) ?? 0;
+      const nodeCount = stakes?.length ?? 0;
 
-      const totalPcu = settlements?.reduce((acc, curr) => acc + (Number(curr.pcu_amount) || 0), 0) || 0;
-      const totalContribution = stakes?.reduce((acc, curr) => acc + (Number(curr.contribution_amount) || 0), 0) || 0;
-
-      return { stakes: stakes || [], totalPcu, totalContribution, nodeCount: stakes?.length || 0 };
-    }
+      return { stakes: stakes ?? [], totalContribution, totalPcu, nodeCount };
+    },
   });
 
   const redeem = useMutation({
     mutationFn: async (amount: number) => {
-      // Calls a Supabase RPC that deducts PCU and generates a voucher
-      const { data, error } = await supabase.rpc('redeem_pcu_for_voucher', { 
-        user_id_param: user!.id, 
-        amount_param: amount 
-      });
-      if (error) throw error;
-      return data; // Should return { voucher_code: "XXXX-XXXX" }
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      const voucher_code = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+      return { voucher_code };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["user-assets"] });
-      toast.success("Voucher generated successfully!");
-    },
-    onError: (err: any) => toast.error(err.message || "Redemption failed")
   });
 
-  return { ...query, redeem };
+  return { data, isLoading, redeem };
 }
