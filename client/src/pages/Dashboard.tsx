@@ -17,7 +17,7 @@ export default function Dashboard() {
             Direct ownership of Zambia renewable future. Community-led, fractionalized, and verified on-chain.
           </p>
           <div className="flex justify-center">
-            <button className="btn-primary px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3" onClick={() => navigate("/clusters")}>
+            <button className="btn-primary px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3" onClick={() => navigate("/clusters/new")}>
               <Plus size={20} />
               <span>Launch Cluster</span>
             </button>
