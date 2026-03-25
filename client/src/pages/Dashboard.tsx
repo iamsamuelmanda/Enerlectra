@@ -1,8 +1,10 @@
 import { ClusterList } from '@/features/clusters/components/ClusterList';
 import { Card } from '@/components/ui/Card';
 import { Zap, Battery, DollarSign, Users, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
+  const navigate = useNavigate();
   return (
     <div className="space-y-16 animate-in fade-in duration-1000">
       <header className="relative py-12 md:py-20 overflow-hidden text-center">
@@ -15,7 +17,7 @@ export default function Dashboard() {
             Direct ownership of Zambia renewable future. Community-led, fractionalized, and verified on-chain.
           </p>
           <div className="flex justify-center">
-            <button className="btn-primary px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3">
+            <button className="btn-primary px-10 py-5 rounded-2xl font-black uppercase tracking-widest text-sm flex items-center gap-3" onClick={() => navigate("/clusters")}>
               <Plus size={20} />
               <span>Launch Cluster</span>
             </button>

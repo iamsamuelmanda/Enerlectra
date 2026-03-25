@@ -1,10 +1,9 @@
-// client/src/features/contributions/services/contributionService.ts
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
 import type { Contribution } from '@/types/contribution';
 
 const BACKEND_URL = 'https://enerlectra-backend.onrender.com';
-const LENCO_PUBLIC_KEY = 'pub-1187e2020c8d8657438033d87387af85bf4259d72f89c58d'; // ← Your live public key
+const LENCO_PUBLIC_KEY = 'pub-1187e2020c8d8657438033d87387af85bf4259d72f89c58d';
 
 export const contributionService = {
   initiatePayment({
@@ -12,6 +11,7 @@ export const contributionService = {
     amountUsd,
     provider,
     phoneNumber,
+    userId,
     onSuccess,
     onClose,
   }: {
@@ -19,11 +19,11 @@ export const contributionService = {
     amountUsd: number;
     provider: 'mtn' | 'airtel';
     phoneNumber: string;
+    userId: string;
     onSuccess?: (reference: string) => void;
     onClose?: () => void;
   }) {
     if (!window.LencoPay) {
-      console.error('LencoPay not loaded');
       throw new Error('Lenco widget not available');
     }
 
@@ -36,18 +36,39 @@ export const contributionService = {
       amount: amountUsd,
       currency: 'ZMW',
       channels: ['mobile-money'],
-      label: `Contribution to Cluster`,
+      label: 'Contribution to Cluster',
       customer: {
         firstName: 'User',
         lastName: 'Enerlectra',
         phone: phoneNumber.replace('+260', ''),
       },
       bearer: 'merchant',
-      onSuccess: (response) => {
+      onSuccess: async (response: any) => {
         console.log('[LENCO] onSuccess:', response);
-        axios.post(`${BACKEND_URL}/api/payments/verify`, { reference: response.reference })
-          .then(() => onSuccess?.(response.reference))
-          .catch(console.error);
+        try {
+          // 1. Verify payment with backend
+          await axios.post(`${BACKEND_URL}/api/payments/verify`, {
+            reference: response.reference,
+          });
+
+          // 2. Record ownership — this is the bridge that closes the loop
+          const { error: rpcError } = await supabase.rpc('increment_cluster_funding', {
+            row_id: clusterId,
+            inc_amount: amountUsd,
+            user_uuid: userId,
+          });
+
+          if (rpcError) {
+            console.error('[OWNERSHIP] Failed to record stake:', rpcError);
+          } else {
+            console.log('[OWNERSHIP] Stake recorded successfully');
+          }
+
+          onSuccess?.(response.reference);
+        } catch (err) {
+          console.error('[PAYMENT] Verification failed:', err);
+          onSuccess?.(response.reference);
+        }
       },
       onClose: () => {
         console.log('[LENCO] onClose');

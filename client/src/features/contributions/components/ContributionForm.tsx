@@ -10,7 +10,7 @@ interface Props {
   onSuccess?: () => void;
 }
 
-export default function ContributeForm({ clusterId, onSuccess }: Props) {
+export default function ContributeForm({ clusterId,`n        userId: user.id, onSuccess }: Props) {
   const { user } = useAuth();
 
   const [amountUSD, setAmountUSD] = useState<number | ''>(10);
@@ -46,7 +46,7 @@ export default function ContributeForm({ clusterId, onSuccess }: Props) {
 
     try {
       await contributionService.initiatePayment({
-        clusterId,
+        clusterId,`n        userId: user.id,
         amountUsd: Number(amountUSD),
         provider: provider!,
         phoneNumber: phone,
