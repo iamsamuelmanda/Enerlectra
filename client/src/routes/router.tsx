@@ -3,6 +3,7 @@ import { MainLayout } from "@/components/layout/MainLayout";
 
 // Page Imports - Using @ Alias for clean resolution
 import Dashboard from "@/pages/Dashboard";
+import LaunchClusterPage from "@/pages/LaunchClusterPage";
 import ClusterDetailPage from "@/pages/ClusterDetailPage"; 
 import EnergyWalletPage from "@/pages/EnergyWalletPage";
 import TradingPage from "@/pages/TradingPage";
@@ -28,7 +29,7 @@ export default function Router() {
           </MainLayout>
         }
       >
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Dashboard />} />`n        <Route path="/clusters/new" element={<LaunchClusterPage />} />
         {/* Pointing the old ClusterView path to the new Detail Page */}
         <Route path="/clusters/:id" element={<ClusterDetailPage />} />
       </Route>
