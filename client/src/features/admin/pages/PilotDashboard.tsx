@@ -5,7 +5,7 @@ import { Zap, Users, BarChart3, Send, ShieldAlert, Loader2 } from 'lucide-react'
 import { Card } from '@/components/ui/Card';
 
 export default function PilotDashboard() {
-  const { clusters, loading } = useClusters();
+  const { data: clusters = [], isLoading: loading } = useClusters();
   const { distributeYield } = useAdminActions();
   const [selectedCluster, setSelectedCluster] = useState('');
   const [yieldAmount, setYieldAmount] = useState(0);
