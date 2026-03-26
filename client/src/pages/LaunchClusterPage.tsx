@@ -38,7 +38,7 @@ export default function LaunchClusterPage() {
         target_kw: Number(form.target_kw),
         target_usd: Number(form.target_usd),
         location: form.location,
-        lifecycle_state: 'fundraising',
+        lifecycle_state: 'FUNDING',
         current_usd: 0,
 
       });
