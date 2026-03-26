@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
-import { useAuth } from '@/hooks/useAuth';
 import { Shield, Zap, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LaunchClusterPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
     target_kw: '',
     target_usd: '',
+    monthly_kwh: '',
     location: '',
+    deadline: '',
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -21,31 +21,27 @@ export default function LaunchClusterPage() {
   };
 
   const handleDeploy = async () => {
-    if (!form.name || !form.target_kw || !form.target_usd || !form.location) {
+    if (!form.name || !form.target_kw || !form.target_usd || !form.location || !form.monthly_kwh || !form.deadline) {
       toast.error('Please complete all fields');
-      return;
-    }
-    if (!user) {
-      toast.error('You must be signed in');
       return;
     }
     setLoading(true);
     try {
-      const id = `clu_${Math.random().toString(36).slice(2, 10)}`;
-      const { error } = await supabase.from('clusters').insert({
-        id,
+      const { data, error } = await supabase.from('clusters').insert({
         name: form.name,
+        location: form.location,
         target_kw: Number(form.target_kw),
         target_usd: Number(form.target_usd),
-        location: form.location,
+        monthly_kwh: Number(form.monthly_kwh),
+        deadline: new Date(form.deadline).toISOString(),
         lifecycle_state: 'FUNDING',
         current_usd: 0,
-        monthly_kwh: 0,
-
-      });
+        funding_pct: 0,
+        target_storage_kwh: 0,
+      }).select('id').single();
       if (error) throw error;
       toast.success('Cluster deployed to the Enerlectra network!');
-      navigate(`/clusters/${id}`);
+      navigate(`/clusters/${data.id}`);
     } catch (err: any) {
       toast.error(err.message || 'Deployment failed');
     } finally {
@@ -62,10 +58,10 @@ export default function LaunchClusterPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 glass p-8 rounded-2xl space-y-6">
-          <h3 className="text-lg font-bold text-white/80 uppercase tracking-widest text-sm">Cluster Configuration</h3>
+          <h3 className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Cluster Configuration</h3>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
+            <div className="space-y-2 md:col-span-2">
               <label className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Cluster Name</label>
               <input name="name" value={form.name} onChange={handleChange}
                 placeholder="e.g. Kabwe North Hub"
@@ -84,6 +80,18 @@ export default function LaunchClusterPage() {
                 className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-primary outline-none transition-all" />
             </div>
             <div className="space-y-2">
+              <label className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Monthly Output (kWh)</label>
+              <input name="monthly_kwh" value={form.monthly_kwh} onChange={handleChange}
+                type="number" placeholder="1200"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-primary outline-none transition-all" />
+            </div>
+            <div className="space-y-2">
+              <label className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Funding Deadline</label>
+              <input name="deadline" value={form.deadline} onChange={handleChange}
+                type="date"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-brand-primary outline-none transition-all" />
+            </div>
+            <div className="space-y-2 md:col-span-2">
               <label className="text-[10px] text-white/40 uppercase tracking-widest font-bold">Location</label>
               <input name="location" value={form.location} onChange={handleChange}
                 placeholder="Kabwe, Central Province"
