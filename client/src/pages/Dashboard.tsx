@@ -1,4 +1,4 @@
-import { ClusterList } from '@/features/clusters/components/ClusterList';
+import ClusterList from '@/features/clusters/components/ClusterList';
 import { Card } from '@/components/ui/Card';
 import { Zap, Battery, DollarSign, Users, Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
