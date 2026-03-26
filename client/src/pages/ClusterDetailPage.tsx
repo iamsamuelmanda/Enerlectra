@@ -13,7 +13,7 @@ export default function ClusterDetailPage() {
   const { id: clusterId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [refreshKey, setRefreshKey] = useState(0);
-  const { cluster, loading, refresh } = useCluster(clusterId!);
+  const { data: cluster, isLoading: loading, refetch: refresh } = useCluster(clusterId!);
 
   const handleContributionSuccess = useCallback(() => {
     setRefreshKey(prev => prev + 1);
