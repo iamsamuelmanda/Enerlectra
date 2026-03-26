@@ -40,7 +40,7 @@ export default function LaunchClusterPage() {
         location: form.location,
         lifecycle_state: 'fundraising',
         current_usd: 0,
-        created_by: user.id,
+
       });
       if (error) throw error;
       toast.success('Cluster deployed to the Enerlectra network!');
