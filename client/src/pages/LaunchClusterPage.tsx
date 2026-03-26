@@ -40,6 +40,7 @@ export default function LaunchClusterPage() {
         location: form.location,
         lifecycle_state: 'FUNDING',
         current_usd: 0,
+        monthly_kwh: 0,
 
       });
       if (error) throw error;
