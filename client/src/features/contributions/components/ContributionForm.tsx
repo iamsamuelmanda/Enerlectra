@@ -114,6 +114,26 @@ export default function ContributeForm({ clusterId, onSuccess }: Props) {
         <ShieldCheck className="w-4 h-4 text-emerald-400" />
         Secured by Lenco
       </div>
+      {(import.meta.env.VITE_TEST_MODE === 'true') && (
+        <button
+          type="button"
+          onClick={async () => {
+            if (!user) return toast.error('Sign in first');
+            const { supabase } = await import('@/lib/supabase');
+            const { error } = await supabase.rpc('increment_cluster_funding', {
+              row_id: clusterId,
+              inc_amount: Number(amountUSD) || 10,
+              user_uuid: user.id,
+            });
+            if (error) toast.error(error.message);
+            else { toast.success('Test contribution recorded!'); onSuccess?.(); }
+          }}
+          className="w-full py-2 border border-dashed border-white/20 rounded-xl text-white/30 text-xs hover:border-brand-primary hover:text-brand-primary transition-all">
+          🧪 Simulate Contribution (Test Only)
+        </button>
+      )}
+      <div className="hidden">
+      </div>
     </div>
   );
 }
