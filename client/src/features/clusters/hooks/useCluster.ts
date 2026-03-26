@@ -8,7 +8,7 @@ export function useClusters() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("clusters")
-        .select("id, name, location, lifecycle_state, image_url, current_funding, funding_goal")
+        .select("*")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
