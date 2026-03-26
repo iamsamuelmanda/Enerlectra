@@ -1,65 +1,47 @@
-import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "@/hooks/useAuth";
-import { Zap, Wallet, LayoutDashboard, LogOut, Menu } from "lucide-react";
+import { Menu, Zap, LogOut } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
 
-export function Header() {
-  const { user, signOut } = useAuth(); // Ensure this matches your hook's export
+interface HeaderProps {
+  onMenuClick?: () => void;
+}
+
+export function Header({ onMenuClick }: HeaderProps) {
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
       await signOut();
-      navigate("/signin");
-    } catch (error) {
-      console.error("Error signing out:", error);
+      navigate('/signin');
+    } catch (err) {
+      console.error('Sign out error:', err);
     }
   };
 
   return (
-    <header className="border-b border-white/5 bg-black/50 backdrop-blur-xl sticky top-0 z-40">
-      <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="p-2 bg-brand-primary rounded-lg group-hover:rotate-12 transition-transform">
-            <Zap size={20} className="text-black fill-current" />
-          </div>
-          <span className="font-display font-black text-2xl uppercase tracking-tighter italic">
-            Enerlectra
-          </span>
-        </Link>
-
-        <nav className="hidden md:flex items-center gap-8">
-          <NavLink to="/" icon={<LayoutDashboard size={16} />} label="Grid" />
-          <NavLink to="/wallet" icon={<Wallet size={16} />} label="Wallet" />
-        </nav>
-
+    <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#020205]/80 backdrop-blur-xl">
+      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
         <div className="flex items-center gap-4">
+          <button onClick={onMenuClick} className="md:hidden p-2 -ml-2 text-white/70 hover:text-white transition-colors">
+            <Menu size={22} />
+          </button>
+          <Link to="/" className="flex items-center gap-2 group">
+            <Zap size={18} className="text-brand-primary" />
+            <span className="font-bold tracking-tighter text-lg uppercase italic">Enerlectra</span>
+          </Link>
+        </div>
+        <div className="flex items-center gap-3">
           {user ? (
-            <button 
-              onClick={handleSignOut}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl text-white/40 hover:text-white hover:bg-white/5 transition-all text-xs font-bold uppercase tracking-widest"
-            >
+            <button onClick={handleSignOut} className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs hover:bg-white/10 transition-colors flex items-center gap-2">
               <LogOut size={14} />
-              <span>Disconnect</span>
+              <span className="hidden sm:inline">Disconnect</span>
             </button>
           ) : (
-            <button 
-              onClick={() => navigate("/signin")}
-              className="btn-primary px-6 py-2 text-xs"
-            >
-              Sign In
-            </button>
+            <Link to="/signin" className="px-4 py-1.5 rounded-full bg-brand-primary text-black text-xs font-bold">Access</Link>
           )}
         </div>
       </div>
     </header>
-  );
-}
-
-function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link to={to} className="flex items-center gap-2 text-xs font-bold text-white/40 hover:text-brand-primary uppercase tracking-widest transition-colors">
-      {icon}
-      <span>{label}</span>
-    </Link>
   );
 }
