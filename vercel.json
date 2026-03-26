@@ -1,15 +1,1 @@
-{
-  "version": 2,
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "https://enerlectra-backend.onrender.com/api/:path*"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
-  ],
-  "cleanUrls": true,
-  "trailingSlash": false
-}
+{"rewrites":[{"source":"/((?!api/.*).*)", "destination":"/index.html"}]}
