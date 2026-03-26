@@ -1,5 +1,5 @@
 import { useClusters } from "../hooks/useCluster";
-import ClusterCard from "./ClusterCard";
+import { ClusterCard } from "./ClusterCard";
 import { LayoutGrid, Loader2 } from "lucide-react";
 
 export default function ClusterList() {
