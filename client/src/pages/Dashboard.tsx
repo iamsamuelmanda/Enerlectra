@@ -2,8 +2,8 @@ import ClusterList from '@/features/clusters/components/ClusterList';
 import { Card } from '@/components/ui/Card';
 import { Zap, Battery, DollarSign, Users, Plus, Globe, Activity } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { TruthHeader } from '@/components/layout/TruthHeader';
-import { GlobalTransactionLedger } from '@/features/grid/components/GlobalTransactionLedger';
+import { TruthHeader } from '@/components/layout/TruthHeader.tsx';
+import { GlobalTransactionLedger } from '@/features/grid/components/GlobalTransactionLedger.tsx';
 
 export default function Dashboard() {
   const navigate = useNavigate();
