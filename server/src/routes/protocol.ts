@@ -31,7 +31,7 @@ function getCurrentPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-// FX Rate fetcher (reuses your existing logic)
+// FX Rate fetcher
 async function getFXRate(): Promise<number> {
   const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
   const FALLBACK = 28.45;
@@ -58,21 +58,33 @@ async function getFXRate(): Promise<number> {
 router.get('/market-state', async (req, res) => {
   const hour = new Date().getHours();
   
-  // Temporal Engine: Time-of-Use multipliers
+  // Temporal Engine
   const getPremium = (h: number) => {
-    if (h >= 18 && h <= 22) return 1.45;  // Peak demand
-    if (h >= 22 || h <= 6) return 0.85;   // Off-peak surplus
-    return 1.05;                          // Standard
+    if (h >= 18 && h <= 22) return 1.45;
+    if (h >= 22 || h <= 6) return 0.85;
+    return 1.05;
   };
 
-  // Live FX rate with fallback
   const fxRate = await getFXRate();
+  const currentPremium = getPremium(hour);
+  
+  // Protocol constants (documented for auditability)
+  const PCU_PEG_USD = 1.00;
+  const KWH_PER_PCU = 1.00;
 
   res.json({
+    // Protocol foundation
+    pcuPegUsd: PCU_PEG_USD,
+    kwhPerPcu: KWH_PER_PCU,
+    
+    // Market reality
     fxRate,
-    currentPremium: getPremium(hour),
-    temporalBand: hour >= 18 && h <= 22 ? 'peak' : hour >= 22 || hour <= 6 ? 'off-peak' : 'standard',
-    pcuValueZMW: fxRate * 1.0 * getPremium(hour), // 1 PCU = 1 USD * premium
+    currentPremium,
+    temporalBand: hour >= 18 && hour <= 22 ? 'peak' : hour >= 22 || hour <= 6 ? 'off-peak' : 'standard',
+    
+    // Computed
+    pcuValueZMW: fxRate * PCU_PEG_USD * currentPremium,
+    
     timestamp: new Date().toISOString()
   });
 });
@@ -88,7 +100,6 @@ router.post('/readings/ingest', async (req, res) => {
       return res.status(400).json({ error: 'clusterId and unitId required' });
     }
 
-    // Handle phone number vs UUID
     let actualUserId: string | null = null;
     let lookupMethod: 'uuid' | 'phone' | 'none' = 'none';
     
