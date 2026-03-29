@@ -1,7 +1,7 @@
 /**
- * ENERLECTRA PRODUCTION BACKEND v2.4.0
- * Updated: Full Lenco integration + Claude 3.5 Sonnet Simulation Engine
- * Deployment Fix: corrected static paths for monorepo structure
+ * ENERLECTRA PRODUCTION BACKEND v2.5.0
+ * Updated: Protocol Oracle + Temporal Engine + Fixed Ingest
+ * Date: March 29, 2026
  */
 
 import 'dotenv/config';
@@ -23,6 +23,7 @@ const __dirname = path.dirname(__filename);
 import paymentRoutes from './routes/payments.js';
 import readingsRouter from './routes/readings.js';
 import simulationRouter from './routes/simulation.js';
+import protocolRouter from './routes/protocol.js'; // NEW: Protocol Oracle
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -32,11 +33,11 @@ const PORT = process.env.PORT || 4000;
 // ═══════════════════════════════════════════════════════════
 
 let supabase: any = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
   try {
     supabase = createClient(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY
+      process.env.SUPABASE_SERVICE_KEY
     );
     console.log('✅ Supabase connected');
   } catch (error) {
@@ -52,7 +53,7 @@ async function getExchangeRate(
   from: string = 'USD',
   to: string = 'ZMW'
 ): Promise<{ rate: number; live: boolean; error?: string }> {
-  const FALLBACK_RATE = 27.5;
+  const FALLBACK_RATE = 28.45; // Updated March 2026
   const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
 
   if (!API_KEY) {
@@ -102,7 +103,7 @@ app.get('/api/info', (req, res) => {
   res.json({
     status: 'OK',
     message: 'Enerlectra Production Backend',
-    version: '2.4.0',
+    version: '2.5.0',
     timestamp: new Date().toISOString(),
   });
 });
@@ -142,7 +143,40 @@ app.get('/api/exchange-rate/:from/:to', async (req, res) => {
       ...(result.error && { error: result.error }),
     });
   } catch (error: any) {
-    res.status(500).json({ rate: 27.5, fallback: true, error: error.message });
+    res.status(500).json({ rate: 28.45, fallback: true, error: error.message });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// PROTOCOL ORACLE (NEW v2.5.0)
+// ═══════════════════════════════════════════════════════════
+
+app.get('/api/protocol/global-state', async (req, res) => {
+  try {
+    const rate = await getExchangeRate('USD', 'ZMW');
+    
+    // Get cluster stats
+    let nodeCount = 0;
+    let totalKwh = 0;
+    
+    if (supabase) {
+      const { data: clusters } = await supabase
+        .from('clusters')
+        .select('target_kw');
+      
+      nodeCount = clusters?.length || 0;
+      totalKwh = clusters?.reduce((sum: number, c: any) => sum + (c.target_kw || 0), 0) || 0;
+    }
+
+    res.json({
+      fxRate: rate.rate,
+      live: rate.live,
+      nodeCount,
+      totalKwh,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -230,76 +264,13 @@ app.put('/api/clusters/:id', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// ENERGY READINGS
+// ROUTERS (MOUNTED)
 // ═══════════════════════════════════════════════════════════
 
-app.post('/api/energy/readings', async (req, res) => {
-  try {
-    if (!supabase) return res.status(503).json({ error: 'Database not available' });
-
-    const { cluster_id, unit_id, date, generation_kwh, consumption_kwh, recorded_by } = req.body;
-
-    if (!cluster_id || !unit_id || !date || generation_kwh === undefined || consumption_kwh === undefined) {
-      return res.status(400).json({
-        error: 'Missing required fields: cluster_id, unit_id, date, generation_kwh, consumption_kwh',
-      });
-    }
-
-    const { data, error } = await supabase
-      .from('energy_readings')
-      .insert([{
-        cluster_id,
-        unit_id,
-        date,
-        generation_kwh,
-        consumption_kwh,
-        recorded_by: recorded_by || null,
-        created_at: new Date().toISOString(),
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-    console.log(`✅ [ENERGY] Reading saved: ${unit_id} on ${date}`);
-    res.status(201).json(data);
-  } catch (error: any) {
-    console.error('[ENERGY POST]', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/energy/readings', async (req, res) => {
-  try {
-    if (!supabase) return res.json([]);
-
-    const { cluster_id, from, to } = req.query;
-    if (!cluster_id || !from || !to) {
-      return res.status(400).json({ error: 'Missing required query params: cluster_id, from, to' });
-    }
-
-    const { data, error } = await supabase
-      .from('energy_readings')
-      .select('*')
-      .eq('cluster_id', cluster_id)
-      .gte('date', from)
-      .lte('date', to)
-      .order('date', { ascending: true });
-
-    if (error) throw error;
-    res.json(data || []);
-  } catch (error: any) {
-    console.error('[ENERGY GET]', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// ═══════════════════════════════════════════════════════════
-// ROUTERS
-// ═══════════════════════════════════════════════════════════
-
-app.use('/api/readings', readingsRouter);
+app.use('/api/readings', readingsRouter);        // Fixed ingest with phone→UUID
 app.use('/api/simulation', simulationRouter);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/protocol', protocolRouter);        // NEW: Market-state + temporal engine
 
 // ═══════════════════════════════════════════════════════════
 // SETTLEMENT
@@ -475,7 +446,6 @@ app.get('/api/webhooks/status', async (req, res) => {
 
 // ═══════════════════════════════════════════════════════════
 // STATIC ASSET SERVING & SPA ROUTING
-// Corrected Path: Go up TWO levels to reach root, then into client/dist
 // ═══════════════════════════════════════════════════════════
 
 const distPath = path.resolve(__dirname, '../../client/dist');
@@ -495,19 +465,17 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // ═══════════════════════════════════════════════════════════
 
 app.get('*', (req, res) => {
-  // If request is for an API that doesn't exist, return JSON 404
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API Endpoint not found' });
   }
   
-  // Try to serve index.html for React routing, else send a simple status message
   const indexPath = path.join(distPath, 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
       res.status(200).send(`
         <html>
           <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #0f172a; color: white;">
-            <h1 style="color: #22c55e;">⚡ Enerlectra API v2.4.0</h1>
+            <h1 style="color: #22c55e;">⚡ Enerlectra API v2.5.0</h1>
             <p>Production Backend is Live and Healthy.</p>
             <p style="color: #94a3b8; font-size: 0.8rem;">Note: Frontend is managed via Vercel.</p>
           </body>
@@ -523,7 +491,8 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('═'.repeat(70));
-  console.log(`⚡ ENERLECTRA PRODUCTION BACKEND v2.4.0`);
+  console.log(`⚡ ENERLECTRA PRODUCTION BACKEND v2.5.0`);
+  console.log(`   Protocol Oracle + Temporal Engine Active`);
   console.log('═'.repeat(70));
   console.log(`🌐 Server: http://localhost:${PORT}`);
   console.log(`📅 Started: ${new Date().toISOString()}`);
@@ -534,5 +503,6 @@ app.listen(PORT, () => {
   console.log(`  Lenco:         ${process.env.LENCO_SECRET_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  Claude AI:     ${process.env.ANTHROPIC_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`  Exchange Rate: ${process.env.EXCHANGE_RATE_API_KEY ? '✅ Live' : '⚠️  Using fallback'}`);
+  console.log(`  Protocol:      ✅ Oracle Active`);
   console.log('═'.repeat(70));
 });
