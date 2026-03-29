@@ -47,7 +47,7 @@ export function TruthHeader() {
   });
 
   return (
-    <div style={{ width: '100%', background: 'rgba(0,0,0,0.9)', borderBottom: '1px solid rgba(255,255,255,0.05)', padding: '6px 16px', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(20px)' }}>
+    <div style={{ width: '100%', background: 'rgba(0,0,0,0.9)', borderBottom: '1px solid rgba(102,126,234,0.15)', padding: '6px 16px', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(20px)' }}>
       <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontFamily: 'monospace', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)' }}>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -59,7 +59,7 @@ export function TruthHeader() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.4)' }}>
             <Clock size={12} />
             <span style={{ color: 'rgba(255,255,255,0.6)' }}>{dateStr}</span>
-            <span style={{ color: '#667eea', fontWeight: 'bold' }}>{timeStr}</span>
+            <span style={{ color: '#a855f7', fontWeight: 'bold' }}>{timeStr}</span>
             <span style={{ marginLeft: '4px', padding: '1px 6px', borderRadius: '4px', fontSize: '7px', fontWeight: 'bold' }} className={bandColor}>{band.toUpperCase()}</span>
           </div>
         </div>
@@ -75,8 +75,8 @@ export function TruthHeader() {
             <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>{premium > 1 ? '+' : ''}{((premium - 1) * 100).toFixed(0)}%</span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '24px' }}>
-            <span style={{ fontSize: '7px', color: '#667eea' }}>Instant (Now)</span>
-            <span style={{ color: '#667eea', fontWeight: '900', fontSize: '11px' }}>K{marketZMW.toFixed(2)}</span>
+            <span style={{ fontSize: '7px', color: '#a855f7' }}>Instant (Now)</span>
+            <span style={{ color: '#a855f7', fontWeight: '900', fontSize: '11px' }}>K{marketZMW.toFixed(2)}</span>
             <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>per kWh</span>
           </div>
         </div>
