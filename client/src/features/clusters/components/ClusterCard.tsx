@@ -1,9 +1,18 @@
 import { useNavigate } from 'react-router-dom';
-import { Zap, Battery, DollarSign, Users, Clock, MapPin } from 'lucide-react';
+import { Zap, Battery, Users, Clock, MapPin, MessageSquare } from 'lucide-react';
 
 export function ClusterCard({ cluster }: any) {
   const navigate = useNavigate();
   const fundingPct = Math.min(100, Math.round((cluster.current_usd / cluster.target_usd) * 100));
+
+  // --- ELLIE DEEP LINK LOGIC ---
+  const handleEllieSync = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigating to the details page
+    const botUsername = "Enerlectrabot";
+    // Encode context: c = cluster, u = unit
+    const payload = btoa(`c:${cluster.id}|u:unit-${cluster.id}`);
+    window.open(`https://t.me/${botUsername}?start=${payload}`, '_blank');
+  };
 
   return (
     <div 
@@ -58,14 +67,19 @@ export function ClusterCard({ cluster }: any) {
         </div>
       </div>
 
-      {/* Footer Info */}
+      {/* Footer Info & New Sync Button */}
       <div className="flex justify-between items-center text-xs">
         <div className="flex items-center gap-1.5 text-muted">
           <Users size={14} /> {cluster.participant_count} Members
         </div>
-        <div className="flex items-center gap-1.5 text-brand-primary font-semibold">
-          View Details <Clock size={14} />
-        </div>
+        
+        <button 
+          onClick={handleEllieSync}
+          className="flex items-center gap-2 px-3 py-1.5 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary rounded-lg border border-brand-primary/20 transition-all font-bold group-hover:scale-105"
+        >
+          <MessageSquare size={14} />
+          Sync via Ellie
+        </button>
       </div>
     </div>
   );
