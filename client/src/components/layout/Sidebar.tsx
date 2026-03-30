@@ -14,7 +14,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
   const menuItems = [
     { icon: LayoutGrid, label: 'Grid Nodes', path: '/' },
     { icon: Wallet, label: 'My Assets', path: '/wallet' },
-    { icon: Repeat, label: 'P2P Market', path: '/trading' },
+    { icon: Repeat, label: 'Deployment', path: '/trading' },
     { icon: Settings, label: 'System', path: '/admin/pilot' },
   ];
 

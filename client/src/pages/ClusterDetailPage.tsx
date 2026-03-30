@@ -6,6 +6,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import { FundingChart } from '@/features/clusters/components/FundingChart';
 import { useCluster } from '@/features/clusters/hooks/useCluster';
 import { ContributionHistory } from '@/features/contributions/components/ContributionHistory';
+import { ClusterEconomics } from '@/features/clusters/components/ClusterEconomics';
 import ContributeForm from '@/features/contributions/components/ContributionForm';
 import { SimulationForm } from '@/features/simulation/components/SimulationForm';
 
@@ -144,7 +145,7 @@ export default function ClusterDetailPage() {
         </TabsContent>
 
         {/* ANALYTICS TAB */}
-        <TabsContent value="analytics" className="outline-none">
+        <TabsContent value="analytics" className="outline-none">`n          <ClusterEconomics clusterId={clusterId!} fundingPct={fundingPct} targetUsd={cluster.target_usd} currentUsd={cluster.current_usd} lifecycleState={cluster.lifecycle_state} />
           <FundingChart clusterId={clusterId!} />
         </TabsContent>
 
