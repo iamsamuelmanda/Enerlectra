@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Activity, Zap, Globe, Clock, TrendingUp } from 'lucide-react';
+import { Activity, Zap, Globe, Clock, TrendingUp, Cpu } from 'lucide-react';
 
 export function TruthHeader() {
   const [fxRate, setFxRate] = useState<number>(28.45);
@@ -30,65 +30,91 @@ export function TruthHeader() {
     return () => { clearInterval(interval); clearInterval(timer); };
   }, []);
 
-  const pegZMW = fxRate;
-  const marketZMW = pegZMW * premium;
+  const marketZMW = fxRate * premium;
 
-  const bandColor = band === 'peak'
-    ? 'text-red-400 bg-red-500/20'
+  const bandStyles = band === 'peak'
+    ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
     : band === 'off-peak'
-    ? 'text-blue-400 bg-blue-500/20'
-    : 'text-amber-400 bg-amber-500/20';
+    ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+    : 'text-violet-400 bg-violet-500/10 border-violet-500/20';
 
-  const dateStr = time.toLocaleDateString('en-ZM', {
-    weekday: 'short', day: 'numeric', month: 'short', year: 'numeric'
-  });
   const timeStr = time.toLocaleTimeString('en-GB', {
     hour: '2-digit', minute: '2-digit', second: '2-digit'
   });
 
   return (
-    <div style={{ width: '100%', background: 'rgba(0,0,0,0.9)', borderBottom: '1px solid rgba(102,126,234,0.15)', padding: '6px 16px', position: 'sticky', top: 0, zIndex: 50, backdropFilter: 'blur(20px)' }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '12px', fontFamily: 'monospace', fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'rgba(255,255,255,0.3)' }}>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: live ? '#10b981' : '#f59e0b', fontWeight: 'bold' }}>
-            <Activity size={12} style={{ animation: 'pulse 2s infinite' }} />
-            <span>{live ? 'Protocol Live' : 'Connecting...'}</span>
+    <div className="w-full bg-slate-950/90 border-b border-white/5 sticky top-0 z-[100] backdrop-blur-xl py-4 px-6">
+      <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-6 font-mono">
+        
+        {/* LEFT SECTION: STATUS & TEMPORAL STATE */}
+        <div className="flex items-center gap-8">
+          <div className={`flex items-center gap-2.5 text-[12px] font-black uppercase tracking-widest ${live ? 'text-emerald-400' : 'text-amber-500'}`}>
+            <Activity size={16} className={live ? 'animate-pulse' : ''} />
+            <span>{live ? 'Protocol Active' : 'Connecting Oracle...'}</span>
           </div>
-          <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.4)' }}>
-            <Clock size={12} />
-            <span style={{ color: 'rgba(255,255,255,0.6)' }}>{dateStr}</span>
-            <span style={{ color: '#a855f7', fontWeight: 'bold' }}>{timeStr}</span>
-            <span style={{ marginLeft: '4px', padding: '1px 6px', borderRadius: '4px', fontSize: '7px', fontWeight: 'bold' }} className={bandColor}>{band.toUpperCase()}</span>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-            <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', gap: '4px' }}><Globe size={10} /> Peg (Fixed)</span>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 'bold' }}>K{pegZMW.toFixed(2)}</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '24px' }}>
-            <span style={{ fontSize: '7px', color: 'rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', gap: '4px' }}><TrendingUp size={10} /> Market (TOU)</span>
-            <span style={{ fontWeight: 'bold', color: premium > 1.2 ? '#f87171' : premium < 1.0 ? '#60a5fa' : '#fbbf24' }}>K{marketZMW.toFixed(2)}</span>
-            <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>{premium > 1 ? '+' : ''}{((premium - 1) * 100).toFixed(0)}%</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', borderLeft: '1px solid rgba(255,255,255,0.1)', paddingLeft: '24px' }}>
-            <span style={{ fontSize: '7px', color: '#a855f7' }}>Instant (Now)</span>
-            <span style={{ color: '#a855f7', fontWeight: '900', fontSize: '11px' }}>K{marketZMW.toFixed(2)}</span>
-            <span style={{ fontSize: '6px', color: 'rgba(255,255,255,0.3)' }}>per kWh</span>
+          
+          <div className="hidden lg:flex items-center gap-4 text-white/40 text-[12px] border-l border-white/10 pl-8">
+            <Clock size={16} className="text-violet-400" />
+            <span className="text-white/90 font-bold">{timeStr}</span>
+            <span className={`px-2.5 py-0.5 rounded border text-[10px] font-black tracking-tighter transition-all duration-500 ${bandStyles}`}>
+              {band.toUpperCase()}
+            </span>
           </div>
         </div>
 
+        {/* RIGHT SECTION: MARKET METRICS */}
+        <div className="flex items-center gap-12">
+          {/* Peg Data */}
+          <div className="hidden sm:flex flex-col items-end">
+            <span className="text-[10px] text-white/30 uppercase tracking-tighter flex items-center gap-1.5">
+              <Globe size={12} /> Peg (Fixed)
+            </span>
+            <span className="text-[14px] text-white/70 font-bold">
+              K{fxRate.toFixed(2)}
+            </span>
+          </div>
+
+          {/* Premium Data */}
+          <div className="hidden sm:flex flex-col items-end border-l border-white/10 pl-12">
+            <span className="text-[10px] text-white/30 uppercase tracking-tighter flex items-center gap-1.5">
+              <TrendingUp size={12} /> Market Premium
+            </span>
+            <span className={`text-[14px] font-bold ${premium >= 1 ? 'text-rose-400' : 'text-emerald-400'}`}>
+              {premium > 1 ? '+' : ''}{((premium - 1) * 100).toFixed(1)}%
+            </span>
+          </div>
+
+          {/* MAIN CALLOUT: INSTANT PRICE */}
+          <div className="flex items-center gap-5 bg-violet-600/10 border border-violet-500/30 px-6 py-2.5 rounded-2xl shadow-2xl shadow-violet-500/5">
+            <div className="flex flex-col items-end">
+              <span className="text-[11px] text-violet-400 font-black uppercase tracking-widest leading-none mb-1">Instant Price</span>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl text-white font-black leading-none">K{marketZMW.toFixed(2)}</span>
+                <span className="text-[11px] text-white/40 uppercase font-bold">/ kWh</span>
+              </div>
+            </div>
+            <div className="bg-violet-500/20 p-2.5 rounded-xl">
+              <Cpu size={22} className="text-violet-400" />
+            </div>
+          </div>
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '8px', color: 'rgba(255,255,255,0.2)', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '4px', marginTop: '4px', fontFamily: 'monospace' }}>
-        <Zap size={10} style={{ color: '#f59e0b' }} />
-        <span>1 PCU = 1 kWh = $1.00 USD</span>
-        <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
+
+      {/* LOWER COMPLIANCE STRIP */}
+      <div className="flex items-center justify-center gap-8 text-[11px] text-white/20 border-t border-white/5 pt-3 mt-3 font-mono">
+        <div className="flex items-center gap-2">
+          <Zap size={14} className="text-amber-400" />
+          <span className="font-bold text-white/30">1 PCU = 1 kWh = $1.00 USD</span>
+        </div>
+        <span className="opacity-20 text-lg leading-none">|</span>
+        <span className="flex items-center gap-2.5">
+          <span className={`w-2 h-2 rounded-full ${live ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500'}`} />
+          <span className={live ? 'text-emerald-500/60' : 'text-amber-500/60'}>
+            {live ? 'Ledger Synchronized' : 'Syncing Data Stream...'}
+          </span>
+        </span>
+        <span className="opacity-20 text-lg leading-none">|</span>
         <span>Rate: {fxRate.toFixed(4)} ZMW/USD</span>
-        <span style={{ color: 'rgba(255,255,255,0.1)' }}>|</span>
-        <span style={{ color: live ? '#10b981' : '#f59e0b' }}>{live ? 'Oracle Connected' : 'Syncing...'}</span>
       </div>
     </div>
   );
