@@ -8,7 +8,11 @@ interface SimulationFormProps {
 }
 
 export function SimulationForm({ clusterData }: SimulationFormProps) {
-  const [prompt, setPrompt] = useState('');
+  const defaultPrompt = `Simulate a 30% drop in solar yield for the ${
+    clusterData?.name || 'current'
+  } cluster in ${clusterData?.location || 'Zambia'}.`;
+
+  const [prompt, setPrompt] = useState(defaultPrompt);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -16,13 +20,13 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
 
   // TECHNICAL LOG SEQUENCE
   const systemLogs = [
-    "> INITIALIZING NEURAL LINK...",
-    "> FETCHING NODE TELEMETRY [ID: " + (clusterData?.id?.slice(0, 8) || 'GLOBAL') + "]",
-    "> SYNCHRONIZING WITH ZESCO GRID STANDARDS...",
-    "> CALCULATING CURRENCY VOLATILITY (USD/ZMW)...",
-    "> CLAUDE 3.5 SONNET: ANALYZING STRESS SCENARIO...",
-    "> GENERATING PROBABILISTIC ROI MODELS...",
-    "> FINALIZING STRATEGIC REPORT..."
+    '> INITIALIZING NEURAL LINK...',
+    '> FETCHING NODE TELEMETRY [ID: ' + (clusterData?.id?.slice(0, 8) || 'GLOBAL') + ']',
+    '> SYNCHRONIZING WITH ZESCO GRID STANDARDS...',
+    '> CALCULATING CURRENCY VOLATILITY (USD/ZMW)...',
+    '> CLAUDE 3.5 SONNET: ANALYZING STRESS SCENARIO...',
+    '> GENERATING PROBABILISTIC ROI MODELS...',
+    '> FINALIZING STRATEGIC REPORT...',
   ];
 
   // LOG ANIMATION TIMER
@@ -31,7 +35,7 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
     if (loading) {
       interval = setInterval(() => {
         setLogIndex((prev) => (prev + 1) % systemLogs.length);
-      }, 1000); // Cycles every second
+      }, 1000);
     } else {
       setLogIndex(0);
     }
@@ -39,20 +43,24 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
   }, [loading, systemLogs.length]);
 
   const handleSimulate = async () => {
-    if (!prompt.trim()) return;
-    
+    const trimmed = prompt.trim();
+    if (!trimmed) return;
+
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(${import.meta.env.VITE_API_URL}/api/simulation/run, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          clusterData, 
-          prompt: prompt.trim() 
-        }),
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/simulation/run`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clusterData,
+            prompt: trimmed,
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error('Simulation Engine Offline');
@@ -68,13 +76,19 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
     }
   };
 
-  if (result) return <SimulationResultView data={result} onReset={() => setResult(null)} />;
+  if (result) {
+    return <SimulationResultView data={result} onReset={() => setResult(null)} />;
+  }
 
   return (
-    <Card variant="raised" padding="xl" className="border-brand-primary/20 bg-brand-primary/5 relative overflow-hidden">
+    <Card
+      variant="raised"
+      padding="xl"
+      className="border-brand-primary/20 bg-brand-primary/5 relative overflow-hidden"
+    >
       {/* Background Glow Effect */}
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-brand-primary/10 blur-[100px] rounded-full" />
-      
+
       <div className="space-y-8 relative z-10">
         {/* Header Section */}
         <div className="flex items-center justify-between">
@@ -83,8 +97,12 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
               <Brain className="text-brand-primary" size={24} />
             </div>
             <div>
-              <h2 className="text-2xl font-display font-bold text-white tracking-tight">Simulation Terminal</h2>
-              <p className="text-[10px] text-brand-primary font-black uppercase tracking-[0.3em]">AI-Driven Grid Analytics</p>
+              <h2 className="text-2xl font-display font-bold text-white tracking-tight">
+                Simulation Terminal
+              </h2>
+              <p className="text-[10px] text-brand-primary font-black uppercase tracking-[0.3em]">
+                AI-Driven Grid Analytics
+              </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1 glass rounded-full border-white/5">
@@ -102,12 +120,12 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
                 {systemLogs[logIndex]}
               </div>
             </div>
-            
+
             <div className="w-full max-w-xs space-y-2">
               <div className="progress-track bg-white/5 h-1.5">
-                <div 
-                  className="progress-fill shadow-[0_0_15px_rgba(102,126,234,0.5)] transition-all duration-700 ease-out" 
-                  style={{ width: `${((logIndex + 1) / systemLogs.length) * 100}%` }} 
+                <div
+                  className="progress-fill shadow-[0_0_15px_rgba(102,126,234,0.5)] transition-all duration-700 ease-out"
+                  style={{ width: `${((logIndex + 1) / systemLogs.length) * 100}%` }}
                 />
               </div>
               <p className="text-[9px] text-center text-muted uppercase tracking-widest animate-pulse">
@@ -152,5 +170,3 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
     </Card>
   );
 }
-
-
