@@ -45,7 +45,7 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
     setError(null);
 
     try {
-      const response = await fetch('/api/simulation/run', {
+      const response = await fetch(${import.meta.env.VITE_API_URL}/api/simulation/run, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -55,8 +55,7 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Simulation Engine Offline');
+        throw new Error('Simulation Engine Offline');
       }
 
       const data = await response.json();
@@ -153,3 +152,4 @@ export function SimulationForm({ clusterData }: SimulationFormProps) {
     </Card>
   );
 }
+
