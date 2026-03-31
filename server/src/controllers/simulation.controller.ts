@@ -18,8 +18,8 @@ export const runClusterSimulation = async (req: any, res: any) => {
       return res.status(400).json({ error: 'Missing clusterData for simulation.' });
     }
 
-    // If Claude is not configured, return a deterministic fallback for demo
-    if (!anthropic) {
+    // If Claude is not configured OR SDK initialised broken, return deterministic fallback
+    if (!anthropic || !anthropic.messages) {
       const targetKw = Number(clusterData?.target_kw ?? 0);
       const monthlyKwh = Number(clusterData?.monthly_kwh ?? 0);
       const name = clusterData?.name || 'this cluster';
