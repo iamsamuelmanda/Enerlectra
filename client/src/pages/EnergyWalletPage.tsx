@@ -59,7 +59,7 @@ export default function EnergyWalletPage() {
             {assets?.stakes.map((stake: any) => (
               <tr key={stake.cluster_id} className="hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => navigate(`/clusters/${stake.cluster_id}`)}>
                 <td className="px-6 py-4 font-bold">{stake.clusters?.name}</td>
-                <td className="px-6 py-4 text-right text-brand-primary font-black">{(stake.ownership_share * 100).toFixed(2)}%</td>
+                <td className="px-6 py-4 text-right text-brand-primary font-black">{(stake.ownership_share).toFixed(2)}%</td>
               </tr>
             ))}
           </tbody>
