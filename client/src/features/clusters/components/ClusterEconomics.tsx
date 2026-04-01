@@ -129,8 +129,8 @@ export function ClusterEconomics({ clusterId, fundingPct, targetUsd, currentUsd,
                     </div>
                     <p className="text-xs text-white/40 mt-1">{q.capacity}</p>
                     <div className="flex gap-3 mt-2 text-[10px] text-white/30">
-                      <span>⚡ {q.efficiency_rating}</span>
-                      <span>🚚 {q.delivery_days} days</span>
+                    <span className="font-mono">{q.efficiency_rating}</span>
+                    <span className="font-mono">{q.delivery_days} days</span>
                     </div>
                   </div>
                   <span className="text-lg font-black text-white">${q.total_cost_usd?.toLocaleString()}</span>

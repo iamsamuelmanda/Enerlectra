@@ -13,6 +13,7 @@ interface Job {
   target_usd: number;
   lifecycle_state: string;
   bid_count: number;
+  funding_pct: number;
 }
 
 export default function TradingPage() {
@@ -23,7 +24,7 @@ export default function TradingPage() {
   useEffect(() => {
     supabase
       .from('clusters')
-      .select('id, name, location, target_kw, current_usd, target_usd, lifecycle_state')
+      .select('id, name, location, target_kw, current_usd, target_usd, lifecycle_state, funding_pct')
       .in('lifecycle_state', ['FUNDED', 'INSTALLING', 'FUNDING'])
       .gte('funding_pct', 80)
       .order('funding_pct', { ascending: false })
