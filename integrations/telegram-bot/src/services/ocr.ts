@@ -452,9 +452,23 @@ async function callClaudeVision(imageUrl: string, logger: pino.Logger): Promise<
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY not set');
 
+  // Download image first — Claude cannot fetch api.telegram.org (blocked by robots.txt)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), OCR_CONFIG.REQUEST_TIMEOUT_MS);
+  let base64: string;
+  let mediaType: string;
+  try {
+    const res = await fetch(imageUrl, { signal: controller.signal });
+    if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
+    const buffer = await res.arrayBuffer();
+    base64 = Buffer.from(buffer).toString('base64');
+    mediaType = res.headers.get('content-type') ?? 'image/jpeg';
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
   const anthropic = new Anthropic({ apiKey: key, timeout: OCR_CONFIG.REQUEST_TIMEOUT_MS });
 
-  // Improved prompt for dual‑register meters
   const prompt = `Read the electricity meter shown in this image. 
 Return ONLY the main cumulative kWh reading as a plain number (e.g., 1234.5). 
 If the meter displays multiple values (e.g., import and export), return the one labeled "import" or "total". 
@@ -467,16 +481,21 @@ Do not include units or any explanation.`;
     messages: [{
       role: 'user',
       content: [
-        { type: 'image', source: { type: 'url', url: imageUrl } },
+        {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
+            data: base64,
+          },
+        },
         { type: 'text', text: prompt },
       ],
     }],
   });
 
   const vlText = message.content.find(b => b.type === 'text')?.text.trim() ?? '';
-  if (!vlText || vlText === 'UNREADABLE') {
-    throw new Error('Claude returned UNREADABLE');
-  }
+  if (!vlText || vlText === 'UNREADABLE') throw new Error('Claude returned UNREADABLE');
   return vlText;
 }
 
