@@ -584,3 +584,4 @@ process.once('SIGTERM', () => { logger.info('SIGTERM received'); bot.stop('SIGTE
 bot.launch()
   .then(() => logger.info('🤖 Ellie is online!'))
   .catch(err => logger.error({ err }, 'Bot launch failed'));
+  
