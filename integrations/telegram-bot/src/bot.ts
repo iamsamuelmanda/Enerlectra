@@ -25,6 +25,12 @@ const supabase: SupabaseClient = createClient(
 
 const rateLimiter = new OCRRateLimiter(logger);
 
+// Default cluster used when a user has no membership.
+// Users are auto-enrolled here on first interaction.
+// ASSUMPTION: clu_73x96b83 = "Kabwe Central Solar + Battery" (KNU pilot)
+// Change DEFAULT_CLUSTER_ID env var to override without redeploying.
+const DEFAULT_CLUSTER_ID = process.env.DEFAULT_CLUSTER_ID || 'clu_73x96b83';
+
 // ====================== EXPRESS HEALTH CHECK ======================
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -33,6 +39,7 @@ app.listen(PORT, () => logger.info(`Health check listening on port ${PORT}`));
 
 // ====================== SESSION TYPE ======================
 interface BotSession {
+  clusterId?: string;      // set by deep link or auto-enroll
   pendingReading?: {
     imageUrl: string;
     ocrResult: MeterOcrResult;
@@ -57,15 +64,14 @@ function getCurrentPeriod(): string {
 
 function normalizeZambianPhone(input: string): string | null {
   const cleaned = input.replace(/\s+/g, '');
-  let normalized = cleaned;
-  if (normalized.startsWith('0'))      normalized = '+260' + normalized.slice(1);
-  if (normalized.startsWith('260'))    normalized = '+' + normalized;
-  if (!/^\+260\d{9}$/.test(normalized)) return null;
-  return normalized;
+  let n = cleaned;
+  if (n.startsWith('0'))   n = '+260' + n.slice(1);
+  if (n.startsWith('260')) n = '+' + n;
+  return /^\+260\d{9}$/.test(n) ? n : null;
 }
 
-// Upsert telegram_users row and return the stable user_id UUID.
-// No Auth involved — telegram_id is the identity.
+// Upsert telegram_users and return stable user_id UUID.
+// Never touches the app's `users` table.
 async function resolveUserId(
   telegramId: string,
   profile?: { username?: string; first_name?: string; last_name?: string }
@@ -74,11 +80,11 @@ async function resolveUserId(
     .from('telegram_users')
     .upsert(
       {
-        telegram_id:  telegramId,
-        username:     profile?.username   ?? null,
-        first_name:   profile?.first_name ?? null,
-        last_name:    profile?.last_name  ?? null,
-        updated_at:   new Date().toISOString(),
+        telegram_id: telegramId,
+        username:    profile?.username   ?? null,
+        first_name:  profile?.first_name ?? null,
+        last_name:   profile?.last_name  ?? null,
+        updated_at:  new Date().toISOString(),
       },
       { onConflict: 'telegram_id' }
     )
@@ -102,37 +108,55 @@ async function getPhoneNumber(userId: string): Promise<string | null> {
   return data?.phone_number ?? null;
 }
 
-async function getUserActiveCluster(userId: string): Promise<{ clusterId: string; unitId: string }> {
-  const { data: profile } = await supabase
-    .from('users')
-    .select('default_cluster_id')
-    .eq('id', userId)
-    .single();
+// Returns the user's cluster. Never throws.
+// Priority: session → cluster_members → DEFAULT_CLUSTER_ID (auto-enroll).
+async function resolveCluster(
+  ctx: BotContext,
+  userId: string
+): Promise<{ clusterId: string; unitId: string }> {
 
-  if (profile?.default_cluster_id) {
-    return { clusterId: profile.default_cluster_id, unitId: 'A1' };
+  // 1. Session has it (set by deep link this session)
+  if (ctx.session.clusterId) {
+    return { clusterId: ctx.session.clusterId, unitId: 'A1' };
   }
 
-  const { data: member, error } = await supabase
+  // 2. Existing membership in DB
+  const { data: member } = await supabase
     .from('cluster_members')
-    .select('cluster_id, unit_id')
+    .select('cluster_id')
     .eq('user_id', userId)
+    .order('joined_at', { ascending: false })
+    .limit(1)
     .single();
 
-  if (error || !member) {
-    throw new Error('No active cluster found. Please join a cluster first.');
+  if (member?.cluster_id) {
+    ctx.session.clusterId = member.cluster_id;
+    return { clusterId: member.cluster_id, unitId: 'A1' };
   }
 
-  return { clusterId: member.cluster_id, unitId: member.unit_id || 'A1' };
+  // 3. No membership — auto-enroll into default cluster
+  logger.info({ userId }, 'No cluster membership found — auto-enrolling into default cluster');
+
+  await supabase.from('cluster_members').insert({
+    cluster_id:          DEFAULT_CLUSTER_ID,
+    user_id:             userId,
+    contribution_amount: 0,
+    ownership_share:     0,
+  });
+
+  ctx.session.clusterId = DEFAULT_CLUSTER_ID;
+  return { clusterId: DEFAULT_CLUSTER_ID, unitId: 'A1' };
 }
 
 async function getUserConsent(userId: string): Promise<boolean> {
   const { data } = await supabase
-    .from('users')
-    .select('consent_given')
-    .eq('id', userId)
+    .from('telegram_users')
+    .select('phone_number')   // consent tied to having registered phone
+    .eq('user_id', userId)
     .single();
-  return data?.consent_given ?? false;
+  // Using phone registration as implicit consent gate.
+  // Replace with a dedicated consent column if needed.
+  return !!data?.phone_number;
 }
 
 // ====================== CORE PROCESSING ======================
@@ -146,13 +170,15 @@ async function processAndSaveReading(
 ): Promise<void> {
   const editOrReply = async (text: string, extra?: any) => {
     if (editMessageId) {
-      return ctx.telegram.editMessageText(ctx.chat!.id, editMessageId, undefined, text, extra);
+      return ctx.telegram.editMessageText(
+        ctx.chat!.id, editMessageId, undefined, text, extra
+      ).catch(() => ctx.reply(text, extra)); // fallback if message too old to edit
     }
     return ctx.reply(text, extra);
   };
 
   try {
-    const { clusterId, unitId } = await getUserActiveCluster(userId);
+    const { clusterId, unitId } = await resolveCluster(ctx, userId);
 
     const validation = await validateReading({
       userId,
@@ -198,9 +224,9 @@ async function processAndSaveReading(
       : 'First reading';
 
     let valueMessage = '';
-    const consentGiven = await getUserConsent(userId);
+    const hasPhone = await getUserConsent(userId);
 
-    if (consentGiven && validation.delta && validation.delta > 0) {
+    if (hasPhone && validation.delta && validation.delta > 0) {
       try {
         const value = await calculateValue(
           validation.delta,
@@ -218,9 +244,8 @@ async function processAndSaveReading(
           `• Rate: K${value.effectiveRate}/kWh\n` +
           `• Net: K${value.netValue.toFixed(2)}\n`;
 
-        // Attempt Lenco payout
+        // Trigger Lenco payout
         const phone = await getPhoneNumber(userId);
-
         if (phone) {
           try {
             const payout = await requestLencoPayout({
@@ -241,18 +266,13 @@ async function processAndSaveReading(
             logger.error({ err }, 'Lenco payout failed');
             valueMessage += `\n⚠️ Payout failed — reading saved. Support will follow up.`;
           }
-        } else {
-          valueMessage +=
-            `\n📱 Add your MoMo number to receive K${value.netValue.toFixed(2)}:\n` +
-            `Use /register`;
         }
-
       } catch (err) {
         logger.error({ err }, 'Value calculation failed');
         valueMessage = `\n⚠️ Value estimation unavailable.`;
       }
-    } else if (validation.delta && validation.delta > 0 && !consentGiven) {
-      valueMessage = `\n📊 Enable value estimates with /consent`;
+    } else if (!hasPhone && validation.delta && validation.delta > 0) {
+      valueMessage = `\n📱 Register your MoMo number to receive payments:\n/register`;
     }
 
     await editOrReply(
@@ -261,6 +281,7 @@ async function processAndSaveReading(
       `• Change: ${deltaText}\n` +
       `• Type: ${ocrResult.meterType.replace(/_/g, ' ')}\n` +
       `• Period: ${getCurrentPeriod()}\n` +
+      `• Cluster: \`${clusterId}\`\n` +
       valueMessage +
       `\n_⚠️ Estimates only. Official ZESCO credits handled separately._`,
       { parse_mode: 'Markdown' }
@@ -268,9 +289,9 @@ async function processAndSaveReading(
 
     ctx.session.pendingReading = undefined;
 
-  } catch (error) {
+  } catch (error: any) {
     logger.error({ error }, 'Processing error');
-    await editOrReply('❌ Failed to save reading. Please try again.');
+    await editOrReply(`❌ Failed to save reading: ${error.message}`);
   }
 }
 
@@ -286,6 +307,7 @@ bot.start(async (ctx) => {
     last_name:  from.last_name,
   });
 
+  // Deep link — set cluster from QR code
   if (startPayload) {
     try {
       const decoded = Buffer.from(startPayload, 'base64').toString('utf-8');
@@ -293,21 +315,23 @@ bot.start(async (ctx) => {
       const clusterId = parts.find(p => p.startsWith('c:'))?.replace('c:', '');
       const unitId    = parts.find(p => p.startsWith('u:'))?.replace('u:', '');
 
-      if (clusterId && unitId) {
-        await supabase.from('users').upsert(
-          { id: userId, default_cluster_id: clusterId },
-          { onConflict: 'id' }
+      if (clusterId) {
+        ctx.session.clusterId = clusterId;
+
+        // Upsert membership so it persists across restarts
+        await supabase.from('cluster_members').upsert(
+          { cluster_id: clusterId, user_id: userId, contribution_amount: 0, ownership_share: 0 },
+          { onConflict: 'cluster_id,user_id' }
         );
 
         const phone = await getPhoneNumber(userId);
-
         await ctx.reply(
           `👋 *Welcome to Enerlectra!*\n\n` +
           `📍 Cluster: \`${clusterId}\`\n` +
-          `🔌 Unit: \`${unitId}\`\n\n` +
+          `🔌 Unit: \`${unitId ?? 'A1'}\`\n\n` +
           (phone
-            ? `You're all set. Send a photo of your meter to log a reading.`
-            : `One more step — register your MoMo number to receive payments:\n/register`),
+            ? `You're set. Send a meter photo to log a reading.`
+            : `Register your MoMo number to receive payments:\n/register`),
           { parse_mode: 'Markdown' }
         );
         return;
@@ -317,78 +341,45 @@ bot.start(async (ctx) => {
     }
   }
 
+  // No deep link — auto-resolve cluster silently
+  await resolveCluster(ctx, userId);
+  const phone = await getPhoneNumber(userId);
+
   await ctx.reply(
     `👋 Hello! I'm *Ellie*, your Enerlectra assistant.\n\n` +
+    (phone ? '' : `📱 Register your MoMo number: /register\n\n`) +
     `Commands:\n` +
     `📸 Send a meter photo to submit a reading\n` +
     `⚡ \`/read <kWh>\` — Submit manually\n` +
     `📱 \`/register\` — Add MoMo number\n` +
-    `📊 \`/consent\` — Enable value estimates\n` +
     `🔍 \`/status\` — Your account info`,
     { parse_mode: 'Markdown' }
   );
 });
 
-// ── /register ──────────────────────────────────────────────────────────────
 bot.command('register', async (ctx) => {
   ctx.session.awaitingPhone = true;
   await ctx.reply(
-    `📱 *Register your MoMo number*\n\n` +
-    `Reply with your Zambian number:\n` +
-    `\`+260971234567\` or \`0971234567\``,
+    `📱 *Register your MoMo number*\n\nReply with your Zambian number:\n\`+260971234567\` or \`0971234567\``,
     { parse_mode: 'Markdown' }
   );
 });
 
-// ── /status ────────────────────────────────────────────────────────────────
 bot.command('status', async (ctx) => {
   const telegramId = ctx.from.id.toString();
   const userId = await resolveUserId(telegramId);
   const phone = await getPhoneNumber(userId);
-
-  let clusterInfo = 'Not linked';
-  try {
-    const { clusterId, unitId } = await getUserActiveCluster(userId);
-    clusterInfo = `\`${clusterId}\` / Unit \`${unitId}\``;
-  } catch { /* not linked */ }
+  const { clusterId } = await resolveCluster(ctx, userId);
 
   await ctx.reply(
     `*Your Enerlectra Status*\n\n` +
-    `📍 Cluster: ${clusterInfo}\n` +
-    `📱 MoMo: ${phone ?? '❌ Not registered — use /register'}\n\n` +
-    `_Period: ${getCurrentPeriod()}_`,
+    `📍 Cluster: \`${clusterId}\`\n` +
+    `📱 MoMo: ${phone ?? '❌ Not registered — /register'}\n` +
+    `📅 Period: ${getCurrentPeriod()}`,
     { parse_mode: 'Markdown' }
   );
 });
 
-// ── /consent ───────────────────────────────────────────────────────────────
-bot.command('consent', async (ctx) => {
-  const telegramId = ctx.from.id.toString();
-  const userId = await resolveUserId(telegramId);
-
-  await supabase.from('users').upsert(
-    { id: userId, consent_given: true, consent_given_at: new Date().toISOString() },
-    { onConflict: 'id' }
-  );
-
-  await ctx.reply(
-    '✅ Consent recorded. You will now see estimated ZMW values.\n\nRevoke with /revoke_consent'
-  );
-});
-
-bot.command('revoke_consent', async (ctx) => {
-  const telegramId = ctx.from.id.toString();
-  const userId = await resolveUserId(telegramId);
-
-  await supabase.from('users').upsert(
-    { id: userId, consent_given: false, consent_given_at: null },
-    { onConflict: 'id' }
-  );
-
-  await ctx.reply('❌ Consent revoked.');
-});
-
-// ── /read ──────────────────────────────────────────────────────────────────
 bot.command('read', async (ctx) => {
   const parts = ctx.message.text.split(' ');
   const readingKwh = parseFloat(parts[1]);
@@ -398,26 +389,29 @@ bot.command('read', async (ctx) => {
   }
 
   const telegramId = ctx.from.id.toString();
-  const userId = await resolveUserId(telegramId);
+  const userId = await resolveUserId(telegramId, {
+    username:   ctx.from.username,
+    first_name: ctx.from.first_name,
+    last_name:  ctx.from.last_name,
+  });
   const requestId = crypto.randomUUID();
+  const { clusterId, unitId } = await resolveCluster(ctx, userId);
+
+  const validation = await validateReading({
+    userId,
+    clusterId,
+    newKwh:     readingKwh,
+    confidence: 1.0,
+    meterType:  'unknown',
+    requestId,
+    logger,
+  });
+
+  if (!validation.valid) {
+    return ctx.reply(`⚠️ Reading rejected: ${validation.reason}`);
+  }
 
   try {
-    const { clusterId, unitId } = await getUserActiveCluster(userId);
-
-    const validation = await validateReading({
-      userId,
-      clusterId,
-      newKwh:     readingKwh,
-      confidence: 1.0,
-      meterType:  'unknown',
-      requestId,
-      logger,
-    });
-
-    if (!validation.valid) {
-      return ctx.reply(`⚠️ Reading rejected: ${validation.reason}`);
-    }
-
     await supabase.from('meter_readings').insert({
       user_id:          userId,
       cluster_id:       clusterId,
@@ -437,23 +431,19 @@ bot.command('read', async (ctx) => {
 });
 
 // ====================== TEXT HANDLER (phone registration) ======================
-// Must be before the photo handler. Intercepts plain text when awaitingPhone is set.
 bot.on(message('text'), async (ctx, next) => {
   if (!ctx.session.awaitingPhone) return next();
 
   const normalized = normalizeZambianPhone(ctx.message.text);
-
   if (!normalized) {
     await ctx.reply(
-      '❌ Invalid number. Please enter a valid Zambian number:\n`+260971234567` or `0971234567`',
+      '❌ Invalid number. Try:\n`+260971234567` or `0971234567`',
       { parse_mode: 'Markdown' }
     );
     return;
   }
 
   const telegramId = ctx.from.id.toString();
-  const userId = await resolveUserId(telegramId);
-
   const { error } = await supabase
     .from('telegram_users')
     .update({ phone_number: normalized, updated_at: new Date().toISOString() })
@@ -466,11 +456,8 @@ bot.on(message('text'), async (ctx, next) => {
   }
 
   ctx.session.awaitingPhone = false;
-
   await ctx.reply(
-    `✅ *MoMo number registered:* ${normalized}\n\n` +
-    `You'll receive energy credit payments to this number.\n\n` +
-    `Send a photo of your meter to log a reading.`,
+    `✅ *MoMo number registered:* ${normalized}\n\nSend a meter photo to log a reading.`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -505,28 +492,22 @@ bot.on(message('photo'), async (ctx) => {
 
     if (ocrResult.status === 'failed' || ocrResult.kwh === null) {
       await ctx.telegram.editMessageText(
-        ctx.chat.id,
-        statusMsg.message_id,
-        undefined,
-        `❌ Could not read the meter.\n\n` +
-        `${ocrResult.error || 'No numbers detected'}\n\n` +
-        `Try: /read <value>`
+        ctx.chat.id, statusMsg.message_id, undefined,
+        `❌ Could not read the meter.\n\n${ocrResult.error || 'No numbers detected'}\n\nTry: /read <value>`
       );
       return;
     }
 
-    // Low confidence — ask user to confirm before saving
+    // Low confidence — confirm before saving
     if (ocrResult.confidence < 0.80) {
       ctx.session.pendingReading = {
         imageUrl,
         ocrResult,
-        expiresAt: Date.now() + 5 * 60 * 1000, // 5 min window
+        expiresAt: Date.now() + 5 * 60 * 1000,
       };
 
       await ctx.telegram.editMessageText(
-        ctx.chat.id,
-        statusMsg.message_id,
-        undefined,
+        ctx.chat.id, statusMsg.message_id, undefined,
         `📸 *Reading detected:* ${ocrResult.kwh} kWh\n` +
         `Type: ${ocrResult.meterType.replace(/_/g, ' ')}\n` +
         `Confidence: ${(ocrResult.confidence * 100).toFixed(0)}%\n\n` +
@@ -535,9 +516,9 @@ bot.on(message('photo'), async (ctx) => {
           parse_mode: 'Markdown',
           reply_markup: {
             inline_keyboard: [
-              [{ text: '✅ Yes, save it', callback_data: 'confirm:yes' }],
-              [{ text: '❌ No, cancel',  callback_data: 'confirm:no'  }],
-              [{ text: '✏️ Enter manually', callback_data: 'confirm:manual' }],
+              [{ text: '✅ Yes, save it',     callback_data: 'confirm:yes'    }],
+              [{ text: '❌ No, cancel',        callback_data: 'confirm:no'     }],
+              [{ text: '✏️ Enter manually',   callback_data: 'confirm:manual' }],
             ],
           },
         }
@@ -551,11 +532,9 @@ bot.on(message('photo'), async (ctx) => {
   } catch (error) {
     logger.error({ error, userId }, 'Photo handler error');
     await ctx.telegram.editMessageText(
-      ctx.chat.id,
-      statusMsg.message_id,
-      undefined,
+      ctx.chat.id, statusMsg.message_id, undefined,
       '❌ An unexpected error occurred. Please try again.'
-    );
+    ).catch(() => ctx.reply('❌ An unexpected error occurred.'));
   }
 });
 
@@ -579,12 +558,8 @@ bot.on('callback_query', async (ctx) => {
 
   if (action === 'yes') {
     await processAndSaveReading(
-      ctx,
-      userId,
-      pending.ocrResult,
-      pending.imageUrl,
-      requestId,
-      (ctx.callbackQuery as any).message?.message_id
+      ctx, userId, pending.ocrResult, pending.imageUrl,
+      requestId, (ctx.callbackQuery as any).message?.message_id
     );
   } else if (action === 'no') {
     ctx.session.pendingReading = undefined;
@@ -602,7 +577,7 @@ bot.catch((err, ctx) => {
 });
 
 // ====================== GRACEFUL SHUTDOWN ======================
-process.once('SIGINT',  () => { logger.info('SIGINT received'); bot.stop('SIGINT');  });
+process.once('SIGINT',  () => { logger.info('SIGINT received');  bot.stop('SIGINT');  });
 process.once('SIGTERM', () => { logger.info('SIGTERM received'); bot.stop('SIGTERM'); });
 
 // ====================== LAUNCH ======================
