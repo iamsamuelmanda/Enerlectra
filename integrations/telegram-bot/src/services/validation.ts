@@ -187,7 +187,7 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
   );
 
   const { data: lastReadings, error } = await supabase
-    .from('readings')
+    .from('meter_readings')
     .select('reading_kwh, created_at')
     .eq('user_id', userId)
     .eq('cluster_id', clusterId)
