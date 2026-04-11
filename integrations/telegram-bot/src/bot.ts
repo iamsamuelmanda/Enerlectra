@@ -207,6 +207,7 @@ async function processAndSaveReading(
         photo_url:        imageUrl,
         ocr_confidence:   ocrResult.confidence,
         validated:        true,
+        captured_at:      new Date().toISOString(),
         reporting_period: getCurrentPeriod(),
         source:           'telegram',
       })
@@ -419,6 +420,7 @@ bot.command('read', async (ctx) => {
       reading_kwh:      readingKwh,
       meter_type:       'unknown',
       validated:        true,
+      captured_at:      new Date().toISOString(),
       reporting_period: getCurrentPeriod(),
       source:           'telegram_manual',
     });

@@ -188,10 +188,10 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
 
   const { data: lastReadings, error } = await supabase
     .from('meter_readings')
-    .select('reading_kwh, created_at')
+    .select('reading_kwh, captured_at')
     .eq('user_id', userId)
     .eq('cluster_id', clusterId)
-    .order('created_at', { ascending: false })
+    .order('captured_at', { ascending: false })
     .limit(2);
 
   if (error) {
@@ -201,7 +201,7 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
 
   const lastReading = lastReadings?.[0] ?? null;
   const prevKwh = lastReading?.reading_kwh ?? null;
-  const prevTimestamp = lastReading?.created_at ? new Date(lastReading.created_at) : null;
+  const prevTimestamp = lastReading?.captured_at ? new Date(lastReading.captured_at) : null;
 
   // ── 1a. Idempotency: reject exact duplicate ────────────────────────
   if (
