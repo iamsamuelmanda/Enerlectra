@@ -3,47 +3,35 @@
 //
 // Primary:  tesseract.js v7 (WASM, local, zero-cost)
 //           + sharp preprocessing (greyscale + contrast)
-// Fallback: @anthropic-ai/sdk – Claude Haiku vision (with timeout & retry)
-// Caching:  ioredis – optional, skipped gracefully if REDIS_URL not set
+// Fallback: @anthropic-ai/sdk – Claude Haiku vision (base64, bypasses robots.txt)
+// Caching:  @upstash/redis REST API – works on Render free tier (no TCP)
 // Metrics:  prom-client – exposed via getOCRMetrics()
 // Logging:  structured JSON via pino (injected or fallback console)
 //
 // Install:
-//   npm install tesseract.js sharp @anthropic-ai/sdk ioredis prom-client pino pino-pretty
+//   npm install tesseract.js sharp @anthropic-ai/sdk @upstash/redis prom-client pino pino-pretty
 //
 // Env vars:
-//   ANTHROPIC_API_KEY    – required for VL fallback
-//   REDIS_URL            – optional (omit to disable caching)
-//   REDIS_CACHE_TTL      – cache TTL in seconds (default: 3600)
-//   TESSERACT_WORKERS    – worker pool size (default: 1 for Render free, 4 for paid)
-//   LOG_LEVEL            – pino log level (default: 'info')
-//   OCR_REQUEST_TIMEOUT_MS – HTTP timeout for image fetch (default: 10000)
-//   MAX_IMAGE_BYTES      – reject images larger than this (default: 10MB)
-//
-// Production hardening includes:
-//   • Timeouts on all external calls (fetch, HEAD, Claude)
-//   • Singleton Redis with race‑condition protection
-//   • Input validation (URL format, size limits)
-//   • Absolute kWh bounds (0–1e6) + configurable sanity deltas
-//   • Worker pool health monitoring with periodic restart on long‑running processes
-//   • Improved Claude prompt for dual‑register meters
-//   • Structured logging with request IDs (if provided)
-//   • Graceful shutdown hooks for Scheduler and Redis
-//   • Concurrency limiting for Claude API (optional via p‑limit)
+//   ANTHROPIC_API_KEY          – required for VL fallback
+//   UPSTASH_REDIS_REST_URL     – optional (omit to disable caching)
+//   UPSTASH_REDIS_REST_TOKEN   – optional (omit to disable caching)
+//   REDIS_CACHE_TTL            – cache TTL in seconds (default: 3600)
+//   TESSERACT_WORKERS          – worker pool size (default: 1)
+//   LOG_LEVEL                  – pino log level (default: 'info')
+//   OCR_REQUEST_TIMEOUT_MS     – HTTP timeout for image fetch (default: 10000)
+//   MAX_IMAGE_BYTES            – reject images larger than this (default: 10MB)
 
 import { createScheduler, createWorker, PSM, OEM } from 'tesseract.js';
 import type { Scheduler, Line, Word } from 'tesseract.js';
 import sharp from 'sharp';
 import Anthropic from '@anthropic-ai/sdk';
-import Redis from 'ioredis';
+import { Redis } from '@upstash/redis';
 import { Counter, Histogram, Registry } from 'prom-client';
 import { createHash } from 'node:crypto';
 import pino from 'pino';
 import { URL } from 'node:url';
 
 // ====================== LOGGER ======================
-// Inject a logger or use a default pino instance. For production, pass a
-// child logger with request context (e.g., traceId).
 let _logger: pino.Logger = pino({
   level: process.env.LOG_LEVEL || 'info',
   transport: process.env.NODE_ENV === 'production' ? undefined : { target: 'pino-pretty' },
@@ -59,22 +47,22 @@ function getLogger(): pino.Logger {
 
 // ====================== CONFIG ======================
 const OCR_CONFIG = {
-  CONFIDENCE_THRESHOLD: 0.82,           // Tesseract 0–100 normalised to 0–1
-  FALLBACK_CONFIDENCE: 0.85,            // fixed confidence assigned to Claude results
-  SANITY_DELTA_MAX_KWH: 100,            // max allowed change from previous reading
-  ABSOLUTE_MAX_KWH: 1_000_000,          // reject readings above this (hallucination guard)
+  CONFIDENCE_THRESHOLD: 0.82,
+  FALLBACK_CONFIDENCE: 0.85,
+  SANITY_DELTA_MAX_KWH: 100,
+  ABSOLUTE_MAX_KWH: 1_000_000,
   CLAUDE_MODEL: 'claude-haiku-4-5-20251001' as const,
   WORKER_COUNT: parseInt(process.env.TESSERACT_WORKERS ?? '1', 10),
   CACHE_TTL: parseInt(process.env.REDIS_CACHE_TTL ?? '3600', 10),
   REQUEST_TIMEOUT_MS: parseInt(process.env.OCR_REQUEST_TIMEOUT_MS ?? '10000', 10),
-  MAX_IMAGE_BYTES: parseInt(process.env.MAX_IMAGE_BYTES ?? `${10 * 1024 * 1024}`, 10), // 10MB
+  MAX_IMAGE_BYTES: parseInt(process.env.MAX_IMAGE_BYTES ?? `${10 * 1024 * 1024}`, 10),
 } as const;
 
-// ====================== WORKER POOL (WITH HEALTH MONITORING) ======================
+// ====================== WORKER POOL ======================
 let _scheduler: Scheduler | null = null;
 let _schedulerInit: Promise<Scheduler> | null = null;
 let _schedulerCreatedAt: number = 0;
-const WORKER_MAX_AGE_MS = 30 * 60 * 1000; // restart workers every 30 minutes to prevent memory creep
+const WORKER_MAX_AGE_MS = 30 * 60 * 1000;
 
 async function buildScheduler(): Promise<Scheduler> {
   const scheduler = createScheduler();
@@ -99,9 +87,8 @@ async function buildScheduler(): Promise<Scheduler> {
   return scheduler;
 }
 
-async function getScheduler(): Promise<Scheduler> {
+export async function getScheduler(): Promise<Scheduler> {
   const now = Date.now();
-  // If scheduler is older than max age, recycle it to prevent memory leaks.
   if (_scheduler && now - _schedulerCreatedAt > WORKER_MAX_AGE_MS) {
     getLogger().info('Recycling Tesseract workers due to age');
     await _scheduler.terminate();
@@ -125,61 +112,43 @@ async function getScheduler(): Promise<Scheduler> {
   return _schedulerInit;
 }
 
-// ====================== REDIS CACHE (SINGLETON WITH RACE PROTECTION) ======================
+// ====================== REDIS CACHE (UPSTASH REST — works on Render free tier) ======================
+// Uses @upstash/redis REST client instead of ioredis TCP.
+// TCP connections to Redis are blocked by Render's free tier firewall.
+// REST uses standard HTTPS (port 443) which is always allowed.
+
 let _redis: Redis | null = null;
 let _redisDisabled = false;
-let _redisPromise: Promise<Redis | null> | null = null;
 
-function getRedis(): Promise<Redis | null> {
-  if (_redisDisabled) return Promise.resolve(null);
-  if (_redis) return Promise.resolve(_redis);
-  if (!process.env.REDIS_URL) {
+function getRedis(): Redis | null {
+  if (_redisDisabled) return null;
+  if (_redis) return _redis;
+
+  const url   = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+  if (!url || !token) {
     _redisDisabled = true;
-    getLogger().info('REDIS_URL not set – caching disabled');
-    return Promise.resolve(null);
+    getLogger().info('Upstash REST credentials not set – caching disabled');
+    return null;
   }
 
-  if (!_redisPromise) {
-    _redisPromise = new Promise<Redis | null>((resolve) => {
-      const client = new Redis(process.env.REDIS_URL!, {
-        connectTimeout: 2_000,
-        commandTimeout: 1_000,
-        maxRetriesPerRequest: 1,
-        lazyConnect: true,
-        enableOfflineQueue: false,
-      });
-
-      client.on('error', (err) => {
-        getLogger().warn({ err }, 'Redis error (caching disabled)');
-        _redisDisabled = true;
-        resolve(null);
-      });
-
-      client
-        .connect()
-        .then(() => {
-          getLogger().info('Redis connected');
-          _redis = client;
-          resolve(client);
-        })
-        .catch((err) => {
-          getLogger().warn({ err }, 'Redis connection failed – caching disabled');
-          _redisDisabled = true;
-          resolve(null);
-        });
-    }).then(client => {
-      _redisPromise = null;
-      return client;
-    });
+  try {
+    _redis = new Redis({ url, token });
+    getLogger().info('Upstash Redis REST client initialized');
+    return _redis;
+  } catch (err) {
+    getLogger().warn({ err }, 'Failed to initialize Upstash Redis – caching disabled');
+    _redisDisabled = true;
+    return null;
   }
-  return _redisPromise;
 }
 
 async function cacheGet(key: string): Promise<MeterOcrResult | null> {
   try {
-    const redis = await getRedis();
+    const redis = getRedis();
     if (!redis) return null;
-    const raw = await redis.get(key);
+    const raw = await redis.get<string>(key);
     return raw ? (JSON.parse(raw) as MeterOcrResult) : null;
   } catch (err) {
     getLogger().debug({ err, key }, 'Cache get error');
@@ -189,7 +158,7 @@ async function cacheGet(key: string): Promise<MeterOcrResult | null> {
 
 async function cacheSet(key: string, value: MeterOcrResult): Promise<void> {
   try {
-    const redis = await getRedis();
+    const redis = getRedis();
     if (!redis) return;
     await redis.setex(key, OCR_CONFIG.CACHE_TTL, JSON.stringify(value));
   } catch (err) {
@@ -197,7 +166,6 @@ async function cacheSet(key: string, value: MeterOcrResult): Promise<void> {
   }
 }
 
-// Cache key: HEAD request with timeout; fallback to URL hash.
 async function cacheKeyFor(imageUrl: string): Promise<string> {
   try {
     const controller = new AbortController();
@@ -209,7 +177,7 @@ async function cacheKeyFor(imageUrl: string): Promise<string> {
     const lm = res.headers.get('last-modified');
     if (lm) return `ocr:lm:${createHash('sha256').update(imageUrl + lm).digest('hex')}`;
   } catch {
-    // Fall through to URL hash
+    // fall through
   }
   return `ocr:url:${createHash('sha256').update(imageUrl).digest('hex')}`;
 }
@@ -232,18 +200,13 @@ const ocrDurationSeconds = new Histogram({
   registers: [ocrRegistry],
 });
 
-/** Mount on GET /metrics in your Fastify app. */
 export async function getOCRMetrics(): Promise<string> {
   return ocrRegistry.metrics();
 }
 
-// ====================== INPUT VALIDATION & FETCH ======================
+// ====================== IMAGE FETCH & PREPROCESS ======================
 function validateImageUrl(url: string): void {
-  try {
-    new URL(url);
-  } catch {
-    throw new Error('Invalid image URL');
-  }
+  try { new URL(url); } catch { throw new Error('Invalid image URL'); }
 }
 
 async function fetchImageBuffer(imageUrl: string, timeoutMs: number): Promise<Uint8Array> {
@@ -255,7 +218,7 @@ async function fetchImageBuffer(imageUrl: string, timeoutMs: number): Promise<Ui
 
     const contentLength = res.headers.get('content-length');
     if (contentLength && parseInt(contentLength, 10) > OCR_CONFIG.MAX_IMAGE_BYTES) {
-      throw new Error(`Image too large: ${contentLength} bytes (max ${OCR_CONFIG.MAX_IMAGE_BYTES})`);
+      throw new Error(`Image too large: ${contentLength} bytes`);
     }
 
     const buffer = await res.arrayBuffer();
@@ -323,36 +286,26 @@ export function parseNumericString(raw: string): number | null {
   return isNaN(v) ? null : v;
 }
 
-// ====================== METER TYPE DETECTION (IMPROVED) ======================
+// ====================== METER TYPE DETECTION ======================
 export type MeterType =
   | 'grid_import' | 'solar_import' | 'solar_export'
   | 'solar_generation' | 'unit_submeter' | 'generator' | 'unknown';
 
-// Weighted scoring to reduce misclassification
 export function detectMeterType(text: string): MeterType {
   const lower = text.toLowerCase();
   const scores: Record<MeterType, number> = {
-    grid_import: 0,
-    solar_import: 0,
-    solar_export: 0,
-    solar_generation: 0,
-    unit_submeter: 0,
-    generator: 0,
-    unknown: 0,
+    grid_import: 0, solar_import: 0, solar_export: 0,
+    solar_generation: 0, unit_submeter: 0, generator: 0, unknown: 0,
   };
 
-  if (lower.includes('export')) scores.solar_export += 3;
-  if (lower.includes('import')) scores.grid_import += 2;
-  if (lower.includes('grid')) scores.grid_import += 3;
-  if (lower.includes('solar') || lower.includes('pv')) {
-    scores.solar_generation += 2;
-    scores.solar_export += 1; // ambiguous, but export wins if also "export"
-  }
-  if (lower.includes('unit') || lower.includes('sub')) scores.unit_submeter += 3;
-  if (/\bgen\b/.test(lower)) scores.generator += 3;
-  if (lower.includes('generation')) scores.solar_generation += 2;
+  if (lower.includes('export'))                              scores.solar_export   += 3;
+  if (lower.includes('import'))                              scores.grid_import    += 2;
+  if (lower.includes('grid'))                                scores.grid_import    += 3;
+  if (lower.includes('solar') || lower.includes('pv')) {    scores.solar_generation += 2; scores.solar_export += 1; }
+  if (lower.includes('unit') || lower.includes('sub'))       scores.unit_submeter  += 3;
+  if (/\bgen\b/.test(lower))                                scores.generator      += 3;
+  if (lower.includes('generation'))                          scores.solar_generation += 2;
 
-  // Default to grid_import if nothing matches
   const best = Object.entries(scores).reduce((a, b) => (a[1] >= b[1] ? a : b));
   return (best[1] > 0 ? best[0] : 'grid_import') as MeterType;
 }
@@ -414,7 +367,6 @@ function extractReadings(lines: Line[]): ExtractionResult {
 
 // ====================== SANITY CHECKS ======================
 function passesSanity(reading: number, meterType: MeterType, prev?: number): boolean {
-  // Absolute bounds
   if (reading < 0 || reading > OCR_CONFIG.ABSOLUTE_MAX_KWH) {
     getLogger().debug({ reading, meterType }, 'Reading out of absolute bounds');
     return false;
@@ -447,33 +399,37 @@ export interface MeterOcrResult {
   error?: string;
 }
 
-// ====================== CLAUDE API WRAPPER WITH TIMEOUT/RETRY ======================
+// ====================== CLAUDE VISION ======================
+// Downloads image as base64 — Claude cannot fetch api.telegram.org directly
+// (blocked by Telegram's robots.txt). Normalises media_type to one of the
+// four values Claude accepts.
 async function callClaudeVision(imageUrl: string, logger: pino.Logger): Promise<string> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY not set');
 
-  // Download image first — Claude cannot fetch api.telegram.org (blocked by robots.txt)
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), OCR_CONFIG.REQUEST_TIMEOUT_MS);
   let base64: string;
-  let mediaType: string;
+  let mediaType: 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+
   try {
     const res = await fetch(imageUrl, { signal: controller.signal });
     if (!res.ok) throw new Error(`Image fetch failed: ${res.status}`);
     const buffer = await res.arrayBuffer();
     base64 = Buffer.from(buffer).toString('base64');
-    mediaType = res.headers.get('content-type') ?? 'image/jpeg';
+
+    // Normalise content-type to one of the four types Claude accepts.
+    // Telegram returns 'image/jpeg' but sometimes with charset suffixes.
+    const raw = res.headers.get('content-type') ?? '';
+    if (raw.includes('png'))  mediaType = 'image/png';
+    else if (raw.includes('webp')) mediaType = 'image/webp';
+    else if (raw.includes('gif'))  mediaType = 'image/gif';
+    else                           mediaType = 'image/jpeg'; // safe default
   } finally {
     clearTimeout(timeoutId);
   }
 
   const anthropic = new Anthropic({ apiKey: key, timeout: OCR_CONFIG.REQUEST_TIMEOUT_MS });
-
-  const prompt = `Read the electricity meter shown in this image. 
-Return ONLY the main cumulative kWh reading as a plain number (e.g., 1234.5). 
-If the meter displays multiple values (e.g., import and export), return the one labeled "import" or "total". 
-If no reading is visible, return the single word UNREADABLE. 
-Do not include units or any explanation.`;
 
   const message = await anthropic.messages.create({
     model: OCR_CONFIG.CLAUDE_MODEL,
@@ -483,13 +439,17 @@ Do not include units or any explanation.`;
       content: [
         {
           type: 'image',
-          source: {
-            type: 'base64',
-            media_type: mediaType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif',
-            data: base64,
-          },
+          source: { type: 'base64', media_type: mediaType, data: base64 },
         },
-        { type: 'text', text: prompt },
+        {
+          type: 'text',
+          text:
+            'Read the electricity meter shown in this image. ' +
+            'Return ONLY the main cumulative kWh reading as a plain number (e.g., 1234.5). ' +
+            'If the meter displays multiple values, return the one labeled "import" or "total". ' +
+            'If no reading is visible, return the single word UNREADABLE. ' +
+            'Do not include units or any explanation.',
+        },
       ],
     }],
   });
@@ -506,32 +466,22 @@ export async function readMeterOCR(
     prevReading?: number;
     confidenceThreshold?: number;
     enableVLFallback?: boolean;
-    requestId?: string; // for log correlation
+    requestId?: string;
   } = {}
 ): Promise<MeterOcrResult> {
-  const threshold = options.confidenceThreshold ?? OCR_CONFIG.CONFIDENCE_THRESHOLD;
+  const threshold     = options.confidenceThreshold ?? OCR_CONFIG.CONFIDENCE_THRESHOLD;
   const enableFallback = options.enableVLFallback ?? true;
   const logger = getLogger().child({ requestId: options.requestId, imageUrl: imageUrl.substring(0, 100) });
 
-  // Input validation
   try {
     validateImageUrl(imageUrl);
   } catch (err) {
     logger.warn({ err }, 'Invalid image URL');
-    return {
-      kwh: null,
-      confidence: 0,
-      rawText: '',
-      meterType: 'unknown',
-      status: 'failed',
-      source: 'tesseract_with_warning',
-      error: 'Invalid image URL',
-    };
+    return { kwh: null, confidence: 0, rawText: '', meterType: 'unknown', status: 'failed', source: 'tesseract_with_warning', error: 'Invalid image URL' };
   }
 
-  // ── Cache check ────────────────────────────────────────────────────────────
   const cacheKey = await cacheKeyFor(imageUrl);
-  const cached = await cacheGet(cacheKey);
+  const cached   = await cacheGet(cacheKey);
   if (cached) {
     logger.debug({ cacheKey, status: cached.status }, 'Cache hit');
     ocrRequestsTotal.inc({ status: cached.status, source: cached.source, cache: 'hit' });
@@ -545,35 +495,18 @@ export async function readMeterOCR(
     result = await _runOCR(imageUrl, threshold, enableFallback, options.prevReading, logger);
   } catch (err) {
     logger.error({ err }, 'OCR pipeline unexpected error');
-    result = {
-      kwh: null,
-      confidence: 0,
-      rawText: '',
-      meterType: 'unknown',
-      status: 'failed',
-      source: 'tesseract_with_warning',
-      error: err instanceof Error ? err.message : String(err),
-    };
+    result = { kwh: null, confidence: 0, rawText: '', meterType: 'unknown', status: 'failed', source: 'tesseract_with_warning', error: err instanceof Error ? err.message : String(err) };
   } finally {
     endTimer({ status: result.status, source: result.source });
   }
 
   ocrRequestsTotal.inc({ status: result.status, source: result.source, cache: 'miss' });
-  if (result.status !== 'failed') {
-    await cacheSet(cacheKey, result);
-  }
+  if (result.status !== 'failed') await cacheSet(cacheKey, result);
 
-  logger.info({
-    status: result.status,
-    source: result.source,
-    kwh: result.kwh,
-    confidence: result.confidence,
-  }, 'OCR completed');
-
+  logger.info({ status: result.status, source: result.source, kwh: result.kwh, confidence: result.confidence }, 'OCR completed');
   return result;
 }
 
-// ─── Inner OCR logic (separated so the cache/metrics wrapper stays clean) ────
 async function _runOCR(
   imageUrl: string,
   threshold: number,
@@ -582,7 +515,7 @@ async function _runOCR(
   logger: pino.Logger,
 ): Promise<MeterOcrResult> {
 
-  // ── Stage 1: Tesseract ─────────────────────────────────────────────────────
+  // Stage 1: Tesseract
   let tResult: ExtractionResult | null = null;
   let tError: string | undefined;
 
@@ -591,8 +524,7 @@ async function _runOCR(
     const preprocessed = await preprocessImage(raw);
     const scheduler = await getScheduler();
     const { data } = await scheduler.addJob('recognize', preprocessed);
-    const lines = (data as any).lines ?? [];
-    tResult = extractReadings(lines);
+    tResult = extractReadings((data as any).lines ?? []);
   } catch (err) {
     logger.warn({ err }, 'Tesseract OCR failed');
     tError = err instanceof Error ? err.message : String(err);
@@ -612,83 +544,48 @@ async function _runOCR(
     return { kwh: null, confidence: 0, rawText: '', meterType: 'unknown', status: 'failed', source: 'tesseract_with_warning', error: tError ?? 'No readings detected' };
   }
 
-  // ── Stage 2: Claude Haiku vision ───────────────────────────────────────────
+  // Stage 2: Claude Haiku
   try {
-    const vlText = await callClaudeVision(imageUrl, logger);
+    const vlText   = await callClaudeVision(imageUrl, logger);
     const numMatch = vlText.match(NUM_RE);
-    const kwh = numMatch ? parseNumericString(numMatch[0]) : null;
+    const kwh      = numMatch ? parseNumericString(numMatch[0]) : null;
     if (kwh === null) throw new Error(`Unparseable Claude response: "${vlText}"`);
 
     const meterType = detectMeterType(vlText + ' ' + (tResult?.rawText ?? ''));
-    const passes = passesSanity(kwh, meterType, prevReading);
+    const passes    = passesSanity(kwh, meterType, prevReading);
 
-    return {
-      kwh,
-      confidence: OCR_CONFIG.FALLBACK_CONFIDENCE,
-      rawText: vlText,
-      meterType,
-      status: passes ? 'accepted' : 'review',
-      source: 'claude_vision',
-      allReadings: tResult?.allReadings,
-    };
+    return { kwh, confidence: OCR_CONFIG.FALLBACK_CONFIDENCE, rawText: vlText, meterType, status: passes ? 'accepted' : 'review', source: 'claude_vision', allReadings: tResult?.allReadings };
   } catch (err) {
     logger.warn({ err }, 'Claude fallback failed');
 
     if (tResult?.bestReading !== null && tResult != null) {
-      return {
-        kwh: tResult.bestReading,
-        confidence: tResult.averageConfidence * 0.75,
-        rawText: tResult.rawText,
-        meterType: tResult.meterType,
-        status: 'review',
-        source: 'tesseract_with_warning',
-        allReadings: tResult.allReadings,
-        error: `Claude fallback failed: ${err instanceof Error ? err.message : String(err)}`,
-      };
+      return { kwh: tResult.bestReading, confidence: tResult.averageConfidence * 0.75, rawText: tResult.rawText, meterType: tResult.meterType, status: 'review', source: 'tesseract_with_warning', allReadings: tResult.allReadings, error: `Claude fallback failed: ${err instanceof Error ? err.message : String(err)}` };
     }
 
-    return {
-      kwh: null,
-      confidence: 0,
-      rawText: '',
-      meterType: 'unknown',
-      status: 'failed',
-      source: 'tesseract_with_warning',
-      error: `Tesseract: ${tError ?? 'no readings'} | Claude: ${err instanceof Error ? err.message : String(err)}`,
-    };
+    return { kwh: null, confidence: 0, rawText: '', meterType: 'unknown', status: 'failed', source: 'tesseract_with_warning', error: `Tesseract: ${tError ?? 'no readings'} | Claude: ${err instanceof Error ? err.message : String(err)}` };
   }
 }
 
-// ====================== LIFECYCLE (GRACEFUL SHUTDOWN) ======================
+// ====================== LIFECYCLE ======================
 export async function cleanupOCR(): Promise<void> {
-  const logger = getLogger();
-  logger.info('Cleaning up OCR resources...');
+  getLogger().info('Cleaning up OCR resources...');
   if (_scheduler) {
     await _scheduler.terminate();
     _scheduler = null;
-    logger.info('Tesseract scheduler terminated');
+    getLogger().info('Tesseract scheduler terminated');
   }
-  if (_redis) {
-    await _redis.quit();
-    _redis = null;
-    logger.info('Redis connection closed');
-  }
+  // @upstash/redis REST client has no persistent connection to close
+  _redis = null;
 }
 
-export async function checkOCRHealth(): Promise<{
-  tesseract: boolean;
-  redis: boolean;
-  claude: boolean;
-}> {
-  const redis = await getRedis();
+export async function checkOCRHealth(): Promise<{ tesseract: boolean; redis: boolean; claude: boolean }> {
   return {
     tesseract: _scheduler !== null,
-    redis: !_redisDisabled && redis !== null,
-    claude: !!process.env.ANTHROPIC_API_KEY,
+    redis:     !_redisDisabled && getRedis() !== null,
+    claude:    !!process.env.ANTHROPIC_API_KEY,
   };
 }
 
-// Optional: Register cleanup on process exit (call this in your main app entry)
 export function registerOCRShutdownHandlers(): void {
   const shutdown = async (signal: string) => {
     getLogger().info({ signal }, 'Received shutdown signal');
@@ -696,5 +593,5 @@ export function registerOCRShutdownHandlers(): void {
     process.exit(0);
   };
   process.once('SIGTERM', () => shutdown('SIGTERM'));
-  process.once('SIGINT', () => shutdown('SIGINT'));
+  process.once('SIGINT',  () => shutdown('SIGINT'));
 }
