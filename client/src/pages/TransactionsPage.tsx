@@ -35,7 +35,7 @@ export default function TransactionsPage() {
                     {tx.pcu_amount > 0 ? <ArrowDownLeft size={20} /> : <Ticket size={20} />}
                   </div>
                   <div>
-                    <p className="font-bold text-white capitalize">{tx.settlement_type === 'redemption' ? 'Meter Voucher' : 'Grid Yield'}</p>
+                    <p className="font-bold text-white capitalize">Energy Settlement</p>
                     <p className="text-[10px] text-white/30 uppercase font-bold tracking-tight">
                       {format(new Date(tx.created_at), 'MMM dd, yyyy • HH:mm')}
                     </p>
