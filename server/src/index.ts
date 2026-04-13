@@ -1,7 +1,7 @@
 /**
  * ENERLECTRA PRODUCTION BACKEND v2.5.0
  * Updated: Protocol Oracle + Temporal Engine + Fixed Ingest
- * Date: March 29, 2026
+ * Date: April 13, 2026
  */
 
 import 'dotenv/config';
@@ -148,34 +148,44 @@ app.get('/api/exchange-rate/:from/:to', async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════
-// PROTOCOL ORACLE (NEW v2.5.0)
+// PROTOCOL ORACLE (ENHANCED FOR FRONTEND DASHBOARD)
 // ═══════════════════════════════════════════════════════════
 
 app.get('/api/protocol/global-state', async (req, res) => {
   try {
     const rate = await getExchangeRate('USD', 'ZMW');
     
-    // Get cluster stats
     let nodeCount = 0;
-    let totalKwh = 0;
+    let totalSolarKw = 0;
+    let totalStorageKwh = 0;
+    let totalFundingRaised = 0;
     
     if (supabase) {
-      const { data: clusters } = await supabase
+      const { data: clusters, error } = await supabase
         .from('clusters')
-        .select('target_kw');
+        .select('solar_capacity_kw, storage_capacity_kwh, funding_raised_zmw');
       
-      nodeCount = clusters?.length || 0;
-      totalKwh = clusters?.reduce((sum: number, c: any) => sum + (c.target_kw || 0), 0) || 0;
+      if (error) {
+        console.error('[PROTOCOL ORACLE] Supabase error:', error);
+      } else {
+        nodeCount = clusters?.length || 0;
+        totalSolarKw = clusters?.reduce((sum: number, c: any) => sum + (c.solar_capacity_kw || 0), 0) || 0;
+        totalStorageKwh = clusters?.reduce((sum: number, c: any) => sum + (c.storage_capacity_kwh || 0), 0) || 0;
+        totalFundingRaised = clusters?.reduce((sum: number, c: any) => sum + (c.funding_raised_zmw || 0), 0) || 0;
+      }
     }
 
     res.json({
       fxRate: rate.rate,
       live: rate.live,
       nodeCount,
-      totalKwh,
+      totalSolarKw,
+      totalStorageKwh,
+      totalFundingRaised,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
+    console.error('[PROTOCOL ORACLE ERROR]', error);
     res.status(500).json({ error: error.message });
   }
 });
