@@ -109,7 +109,7 @@ export function TruthHeader() {
     <div className="w-full sticky top-0 z-[100] border-b border-white/10 bg-slate-950/85 backdrop-blur-2xl py-5 px-4 md:px-8 shadow-header-soft">
       <div className="max-w-[1440px] mx-auto rounded-4xl border border-white/10 bg-header-gradient px-4 md:px-6 py-4 md:py-5">
       <div className="flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
           <div
             className={`flex items-center gap-2.5 text-xs font-semibold uppercase tracking-wide ${
               !error ? 'text-emerald-400' : 'text-amber-400'
@@ -137,7 +137,7 @@ export function TruthHeader() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-7 flex-shrink-0">
+        <div className="flex items-center gap-4 md:gap-7 w-full md:w-auto">
           {/* FX index */}
           <div className="hidden sm:flex flex-col items-end min-w-[170px]">
             <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
@@ -175,8 +175,8 @@ export function TruthHeader() {
           </div>
 
           {/* True prices: ZESCO reference + last PCU settlement */}
-          <div className="flex items-center gap-4 bg-white/8 border border-white/15 px-6 md:px-7 py-3.5 rounded-2xl min-w-fit shadow-card">
-            <div className="flex flex-col items-end mr-4">
+          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white/8 border border-white/15 px-4 sm:px-6 md:px-7 py-3.5 rounded-2xl min-w-fit shadow-card">
+            <div className="flex flex-col items-start sm:items-end sm:mr-4">
               <span className="text-[11px] text-white/60 uppercase tracking-wider">
                 Utility Price Guide
               </span>
@@ -191,7 +191,7 @@ export function TruthHeader() {
               </span>
             </div>
 
-            <div className="flex flex-col items-end">
+            <div className="flex flex-col items-start sm:items-end">
               <span className="text-[11px] text-white/60 uppercase tracking-wider">
                 Last Community Payout Rate
               </span>
@@ -213,7 +213,7 @@ export function TruthHeader() {
               </span>
             </div>
 
-            <Cpu size={22} className="text-white/50 ml-2" />
+            <Cpu size={22} className="hidden sm:block text-white/50 ml-2" />
           </div>
         </div>
       </div>
