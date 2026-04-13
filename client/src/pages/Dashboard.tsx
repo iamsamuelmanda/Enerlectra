@@ -122,7 +122,7 @@ function SystemHealthDrawer({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             status={health ? `${Math.floor(health.uptime / 3600)} hours` : '—'}
           />
         </div>
-        <p className="mt-6 text-[10px] text-white/30 text-center uppercase tracking-widest">
+        <p className="mt-6 text-[10px] text-white/50 text-center uppercase tracking-widest">
           Enerlectra v2.5.0
         </p>
       </div>
@@ -167,7 +167,7 @@ function PayoutInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         <div className="space-y-6">
           <div className="text-center">
             <div className="text-5xl font-bold text-white">ZMW</div>
-            <div className="text-sm text-white/40 mt-1">Zambian Kwacha</div>
+            <div className="text-sm text-white/60 mt-1">Zambian Kwacha</div>
           </div>
           <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
             <div className="flex items-center justify-between">
@@ -183,7 +183,7 @@ function PayoutInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
               </span>
             </div>
           </div>
-          <p className="text-[10px] text-white/30 text-center">
+          <p className="text-[10px] text-white/50 text-center">
             All payouts are made in Zambian Kwacha via mobile money.
           </p>
         </div>
@@ -227,7 +227,7 @@ function StatCard({
         <div className="text-3xl font-bold text-white">{value}</div>
         <div className="space-y-1">
           <div className="text-sm font-medium text-white/70">{label}</div>
-          <div className="text-[10px] text-white/30">{description}</div>
+          <div className="text-[10px] text-white/50">{description}</div>
         </div>
       </div>
     </Card>
@@ -250,7 +250,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-[#0a0a0c]">
       <TruthHeader />
 
-      <div className="max-w-7xl mx-auto px-4 pb-20 space-y-16 animate-in fade-in duration-1000">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 pb-20 space-y-16 animate-in fade-in duration-1000">
         {/* Hero – Simple, aspirational */}
         <header className="relative py-12 md:py-24 text-center">
           <div className="absolute inset-0 bg-brand-primary/5 blur-[120px] rounded-full pointer-events-none" />
@@ -263,7 +263,7 @@ export default function Dashboard() {
               Join an energy community. Contribute your extra solar. Earn mobile money when neighbors use it.
             </p>
 
-            <div className="flex flex-col md:flex-row justify-center items-center gap-4 pt-4">
+            <div className="flex flex-col md:flex-row justify-center items-center gap-5 pt-5">
               <button
                 className="btn-primary w-full md:w-auto px-8 py-4 rounded-xl font-semibold text-sm flex items-center justify-center gap-2 transition-transform hover:scale-105 active:scale-95"
                 onClick={() => navigate('/clusters/new')}
@@ -296,7 +296,7 @@ export default function Dashboard() {
         {/* Stats Grid + Ledger */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* Left column: Stats */}
-          <div className="lg:col-span-8 grid grid-cols-2 gap-4">
+          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-5">
             <StatCard
               icon={<Users size={22} />}
               value={stats.communityCount > 0 ? String(stats.communityCount) : '—'}
@@ -331,7 +331,7 @@ export default function Dashboard() {
             />
 
             {/* Community list (formerly ClusterList) */}
-            <div className="col-span-2 pt-6">
+            <div className="sm:col-span-2 pt-7">
               <CommunityList />
             </div>
           </div>
@@ -342,14 +342,14 @@ export default function Dashboard() {
               <div className="flex items-center gap-2 mb-3 px-2">
                 <span className="text-sm font-semibold text-white/80">Recent Activity</span>
                 <div className="group relative">
-                  <HelpCircle size={14} className="text-white/30 cursor-help" />
+                  <HelpCircle size={14} className="text-white/50 cursor-help" />
                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-black/90 border border-white/10 rounded-lg text-[10px] text-white/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                     Each time someone shares their meter, it shows up here.
                   </div>
                 </div>
               </div>
               <GlobalTransactionLedger />
-              <p className="mt-4 px-2 text-[10px] text-white/30 leading-relaxed">
+              <p className="mt-4 px-2 text-[10px] text-white/50 leading-relaxed">
                 Every contribution is verified by Ellie and recorded securely.
               </p>
             </div>

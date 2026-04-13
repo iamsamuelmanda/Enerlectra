@@ -26,10 +26,10 @@ export default function ClusterList() {
   const clusterData = clusters || [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <div className="flex items-center gap-2 px-2">
         <LayoutGrid size={14} className="text-brand-primary" />
-        <h3 className="text-[10px] font-black text-white/40 uppercase tracking-widest">Available Nodes</h3>
+        <h3 className="text-[10px] font-black text-white/60 uppercase tracking-widest">Available Nodes</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -39,8 +39,8 @@ export default function ClusterList() {
       </div>
 
       {clusterData.length === 0 && (
-        <div className="py-20 text-center border-2 border-dashed border-white/5 rounded-3xl">
-          <p className="text-white/20 text-sm italic font-medium">No active clusters found in your area.</p>
+        <div className="py-20 text-center border-2 border-dashed border-white/10 rounded-3xl">
+          <p className="text-white/50 text-sm italic font-medium">No active clusters found in your area.</p>
         </div>
       )}
     </div>

@@ -106,8 +106,8 @@ export function TruthHeader() {
   });
 
   return (
-    <div className="w-full bg-slate-950/90 border-b border-white/5 sticky top-0 z-[100] backdrop-blur-xl py-3 px-6">
-      <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-4">
+    <div className="w-full bg-slate-950/90 border-b border-white/5 sticky top-0 z-[100] backdrop-blur-xl py-4 px-8">
+      <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-5">
         <div className="flex items-center gap-6">
           <div
             className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
@@ -127,7 +127,7 @@ export function TruthHeader() {
             <span className="text-white/90 font-medium tabular-nums">
               {timeDisplay}
             </span>
-            <span className="text-white/40">{dateDisplay}</span>
+            <span className="text-white/60">{dateDisplay}</span>
             <span
               className={`px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide ${bandStyles}`}
             >
@@ -136,26 +136,26 @@ export function TruthHeader() {
           </div>
         </div>
 
-        <div className="flex items-center gap-6 md:gap-10">
+        <div className="flex items-center gap-4 md:gap-8 flex-shrink-0">
           {/* FX index */}
           <div className="hidden sm:flex flex-col items-end">
-            <span className="text-[10px] text-white/40 uppercase tracking-wider flex items-center gap-1">
+            <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
               <Globe size={12} /> FX Index (USD → ZMW)
             </span>
-            <span className="text-sm font-bold text-white/80 tabular-nums">
+            <span className="text-base font-bold text-white/90 tabular-nums">
               {fxRate !== null ? `${fxRate.toFixed(2)} ZMW` : '—'}
             </span>
-            <span className="text-[9px] text-white/30">
+            <span className="text-[10px] text-white/50">
               {liveFx ? 'Live feed' : 'Stale / unavailable'}
             </span>
           </div>
 
           {/* Time-of-day heuristic */}
           <div className="hidden sm:flex flex-col items-end">
-            <span className="text-[10px] text-white/40 uppercase tracking-wider flex items-center gap-1">
+            <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
               <TrendingUp size={12} /> Time‑of‑Day Premium
               <span className="group relative ml-1 cursor-help">
-                <Info size={10} className="text-white/30" />
+                <Info size={10} className="text-white/50" />
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                   Heuristic multiplier · Peak 18:00–22:00 · Off‑peak
                   22:00–06:00
@@ -163,46 +163,46 @@ export function TruthHeader() {
               </span>
             </span>
             <span
-              className={`text-sm font-bold tabular-nums ${
+              className={`text-base font-bold tabular-nums ${
                 premium >= 1 ? 'text-rose-400' : 'text-emerald-400'
               }`}
             >
               {premium > 1 ? '+' : ''}
               {((premium - 1) * 100).toFixed(1)}%
             </span>
-            <span className="text-[9px] text-white/30">heuristic only</span>
+            <span className="text-[10px] text-white/50">heuristic only</span>
           </div>
 
           {/* True prices: ZESCO reference + last PCU settlement */}
-          <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-5 py-2 rounded-xl">
+          <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-xl min-w-fit">
             <div className="flex flex-col items-end mr-4">
-              <span className="text-[10px] text-white/50 uppercase tracking-wider">
+              <span className="text-[11px] text-white/60 uppercase tracking-wider">
                 ZESCO Reference
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-sm font-bold text-white tabular-nums">
+                <span className="text-2xl font-bold text-white tabular-nums">
                   {zescoRate !== null ? `K${zescoRate.toFixed(2)}` : '—'}
                 </span>
-                <span className="text-[10px] text-white/40">per kWh</span>
+                <span className="text-[11px] text-white/50">per kWh</span>
               </div>
-              <span className="text-[9px] text-white/30">
+              <span className="text-[10px] text-white/50">
                 from tariff_bands
               </span>
             </div>
 
             <div className="flex flex-col items-end">
-              <span className="text-[10px] text-white/50 uppercase tracking-wider">
+              <span className="text-[11px] text-white/60 uppercase tracking-wider">
                 Last PCU Settlement
               </span>
               <div className="flex items-baseline gap-1">
-                <span className="text-sm font-bold text-white tabular-nums">
+                <span className="text-2xl font-bold text-white tabular-nums">
                   {lastPcuPrice !== null
                     ? `K${lastPcuPrice.toFixed(2)}`
                     : '—'}
                 </span>
-                <span className="text-[10px] text-white/40">per PCU</span>
+                <span className="text-[11px] text-white/50">per PCU</span>
               </div>
-              <span className="text-[9px] text-white/30">
+              <span className="text-[10px] text-white/50">
                 {lastPcuWindowAt
                   ? `window ${new Date(lastPcuWindowAt).toLocaleTimeString(
                       'en-GB',
@@ -212,12 +212,12 @@ export function TruthHeader() {
               </span>
             </div>
 
-            <Cpu size={20} className="text-white/40 ml-2" />
+            <Cpu size={22} className="text-white/50 ml-2" />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-6 text-[10px] text-white/30 border-t border-white/5 pt-2 mt-2">
+      <div className="flex flex-wrap items-center justify-center gap-6 text-[11px] text-white/50 border-t border-white/5 pt-4 mt-3">
         <div className="flex items-center gap-2">
           <Zap size={12} className="text-amber-400/60" />
           <span>Energy unit: 1 kWh = 1 PCU</span>

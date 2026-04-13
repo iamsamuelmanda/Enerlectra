@@ -94,7 +94,7 @@ export function GlobalTransactionLedger() {
   }, []);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
@@ -112,18 +112,18 @@ export function GlobalTransactionLedger() {
       </div>
 
       {/* Feed */}
-      <div className="space-y-2 max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 pr-1">
+      <div className="space-y-3 max-h-[480px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-white/10 pr-1">
         {loading && (
           <div className="flex items-center justify-center py-8">
             <Zap size={16} className="text-brand-primary animate-pulse" />
-            <span className="ml-2 text-[10px] text-white/40 uppercase tracking-widest">Syncing...</span>
+            <span className="ml-2 text-[10px] text-white/60 uppercase tracking-widest">Syncing...</span>
           </div>
         )}
 
         {!loading && readings.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 gap-3">
             <Zap size={24} className="text-white/20" />
-            <p className="text-[10px] text-white/30 uppercase tracking-widest text-center">
+            <p className="text-[10px] text-white/50 uppercase tracking-widest text-center">
               No readings yet.<br />Send a meter photo to Ellie.
             </p>
             <a
@@ -171,21 +171,21 @@ export function GlobalTransactionLedger() {
                   </div>
                   <p className="text-xl font-display font-black text-white leading-none">
                     {formatKwh(r.reading_kwh)}
-                    <span className="text-xs text-white/30 font-normal ml-1">kWh</span>
+                    <span className="text-xs text-white/50 font-normal ml-1">kWh</span>
                   </p>
-                  <p className="text-[9px] text-white/30 font-mono truncate">
+                  <p className="text-[9px] text-white/50 font-mono truncate">
                     {shortId(r.cluster_id)} · {r.unit_id}
                   </p>
                 </div>
 
                 {/* Right */}
                 <div className="text-right shrink-0 space-y-1">
-                  <p className="text-[9px] font-mono text-white/30">
+                  <p className="text-[9px] font-mono text-white/50">
                     {r.captured_at ? formatTime(r.captured_at) : '—'}
                   </p>
-                  <p className="text-[8px] text-white/20 uppercase tracking-widest">{r.source}</p>
+                  <p className="text-[8px] text-white/40 uppercase tracking-widest">{r.source}</p>
                   {r.ocr_confidence !== null && (
-                    <p className="text-[8px] font-mono text-white/20">
+                    <p className="text-[8px] font-mono text-white/40">
                       {(r.ocr_confidence * 100).toFixed(0)}% conf
                     </p>
                   )}

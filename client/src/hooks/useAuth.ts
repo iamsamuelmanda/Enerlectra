@@ -20,8 +20,10 @@ export function useAuth() {
     // Listen for login/logout
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      
-      console.log('Auth event:', event);
+
+      if (import.meta.env.DEV && event !== 'INITIAL_SESSION') {
+        console.log('Auth event:', event);
+      }
       setUser(session?.user ?? null);
       setIsLoading(false);
     });
