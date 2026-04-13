@@ -106,11 +106,12 @@ export function TruthHeader() {
   });
 
   return (
-    <div className="w-full bg-slate-950/90 border-b border-white/5 sticky top-0 z-[100] backdrop-blur-xl py-4 px-8">
-      <div className="max-w-[1440px] mx-auto flex flex-wrap items-center justify-between gap-5">
+    <div className="w-full sticky top-0 z-[100] border-b border-white/10 bg-slate-950/85 backdrop-blur-2xl py-5 px-4 md:px-8 shadow-header-soft">
+      <div className="max-w-[1440px] mx-auto rounded-4xl border border-white/10 bg-header-gradient px-4 md:px-6 py-4 md:py-5">
+      <div className="flex flex-wrap items-center justify-between gap-6">
         <div className="flex items-center gap-6">
           <div
-            className={`flex items-center gap-2 text-xs font-medium uppercase tracking-wide ${
+            className={`flex items-center gap-2.5 text-xs font-semibold uppercase tracking-wide ${
               !error ? 'text-emerald-400' : 'text-amber-400'
             }`}
           >
@@ -122,7 +123,7 @@ export function TruthHeader() {
             <span>{!error ? 'System Online' : 'Connection Lost'}</span>
           </div>
 
-          <div className="hidden md:flex items-center gap-3 text-white/60 text-xs border-l border-white/10 pl-6">
+          <div className="hidden md:flex items-center gap-3 text-white/70 text-xs border-l border-white/15 pl-6">
             <Clock size={14} />
             <span className="text-white/90 font-medium tabular-nums">
               {timeDisplay}
@@ -136,9 +137,9 @@ export function TruthHeader() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 md:gap-8 flex-shrink-0">
+        <div className="flex items-center gap-4 md:gap-7 flex-shrink-0">
           {/* FX index */}
-          <div className="hidden sm:flex flex-col items-end">
+          <div className="hidden sm:flex flex-col items-end min-w-[170px]">
             <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
               <Globe size={12} /> Exchange Rate (USD → ZMW)
             </span>
@@ -151,7 +152,7 @@ export function TruthHeader() {
           </div>
 
           {/* Time-of-day heuristic */}
-          <div className="hidden sm:flex flex-col items-end">
+          <div className="hidden sm:flex flex-col items-end min-w-[170px]">
             <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
               <TrendingUp size={12} /> Time‑based Rate
               <span className="group relative ml-1 cursor-help">
@@ -174,7 +175,7 @@ export function TruthHeader() {
           </div>
 
           {/* True prices: ZESCO reference + last PCU settlement */}
-          <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-xl min-w-fit">
+          <div className="flex items-center gap-4 bg-white/8 border border-white/15 px-6 md:px-7 py-3.5 rounded-2xl min-w-fit shadow-card">
             <div className="flex flex-col items-end mr-4">
               <span className="text-[11px] text-white/60 uppercase tracking-wider">
                 Utility Price Guide
@@ -217,7 +218,7 @@ export function TruthHeader() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-6 text-[11px] text-white/50 border-t border-white/5 pt-4 mt-3">
+      <div className="flex flex-wrap items-center justify-center gap-6 text-[11px] text-white/60 border-t border-white/10 pt-4 mt-4">
         <div className="flex items-center gap-2">
           <Zap size={12} className="text-amber-400/60" />
           <span>Energy unit: 1 kWh = 1 PCU</span>
@@ -241,6 +242,7 @@ export function TruthHeader() {
               })
             : '—'}
         </span>
+      </div>
       </div>
     </div>
   );

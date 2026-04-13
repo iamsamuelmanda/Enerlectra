@@ -52,12 +52,14 @@ export default {
         'brand-gradient':   'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         'brand-gradient-h': 'linear-gradient(90deg, #667eea 0%, #764ba2 100%)',
         'success-gradient': 'linear-gradient(90deg, #10b981, #059669)',
+        'header-gradient':  'linear-gradient(120deg, rgba(102,126,234,0.15) 0%, rgba(118,75,162,0.08) 45%, rgba(13,13,26,0.2) 100%)',
       },
       boxShadow: {
         'glow-purple': '0 0 24px rgba(102, 126, 234, 0.35)',
         'glow-green':  '0 0 24px rgba(16, 185, 129, 0.3)',
         'card':        '0 8px 32px rgba(0, 0, 0, 0.4)',
         'card-hover':  '0 12px 40px rgba(102, 126, 234, 0.2)',
+        'header-soft': '0 10px 30px rgba(8, 10, 24, 0.45)',
       },
       animation: {
         'spin-slow':  'spin 3s linear infinite',
@@ -83,6 +85,7 @@ export default {
       borderRadius: {
         '2xl': '1rem',
         '3xl': '1.5rem',
+        '4xl': '2rem',
       },
     },
   },
