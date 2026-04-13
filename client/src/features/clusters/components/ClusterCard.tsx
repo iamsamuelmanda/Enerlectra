@@ -78,7 +78,7 @@ export function ClusterCard({ cluster }: any) {
           className="flex items-center gap-2 px-3 py-1.5 bg-brand-primary/10 hover:bg-brand-primary/20 text-brand-primary rounded-lg border border-brand-primary/20 transition-all font-bold group-hover:scale-105"
         >
           <MessageSquare size={14} />
-          Sync via Ellie
+          Open Ellie Chat
         </button>
       </div>
     </div>

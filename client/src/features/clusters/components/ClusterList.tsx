@@ -29,7 +29,7 @@ export default function ClusterList() {
     <div className="space-y-7">
       <div className="flex items-center gap-2 px-2">
         <LayoutGrid size={14} className="text-brand-primary" />
-        <h3 className="text-[10px] font-black text-white/60 uppercase tracking-widest">Available Nodes</h3>
+        <h3 className="text-[10px] font-black text-white/70 uppercase tracking-widest">Communities</h3>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

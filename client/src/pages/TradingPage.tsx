@@ -37,17 +37,16 @@ export default function TradingPage() {
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
       <div>
-        <h1 className="text-4xl font-display font-black tracking-tighter">Resource Control Layer</h1>
+        <h1 className="text-4xl font-display font-black tracking-tighter">Installer Marketplace</h1>
         <p className="text-white/50 mt-2 max-w-2xl">
-          Deployment signals for verified solar installers. Clusters approaching or at 100% funding
-          are surfaced here for procurement and installation bids.
+          Communities close to full funding appear here so certified installers can prepare delivery and setup.
         </p>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Active Signals', value: jobs.length.toString() },
-          { label: 'kW Deploying', value: `${jobs.reduce((s, j) => s + (j.target_kw || 0), 0)}` },
+          { label: 'Open Opportunities', value: jobs.length.toString() },
+          { label: 'kW in Pipeline', value: `${jobs.reduce((s, j) => s + (j.target_kw || 0), 0)}` },
           { label: 'Capital Ready', value: `$${jobs.filter(j => j.funding_pct >= 100).reduce((s, j) => s + (j.current_usd || 0), 0).toLocaleString()}` },
           { label: 'Open Bids', value: '0' },
         ].map(s => (
@@ -59,12 +58,12 @@ export default function TradingPage() {
       </div>
 
       {loading ? (
-        <div className="text-white/20 text-xs font-mono text-center py-12">Loading deployment signals...</div>
+        <div className="text-white/30 text-xs font-mono text-center py-12">Loading opportunities...</div>
       ) : jobs.length === 0 ? (
         <div className="text-center py-16 space-y-3">
           <Truck size={40} className="text-white/10 mx-auto" />
-          <p className="text-white/30 text-sm">No clusters at deployment threshold yet.</p>
-          <p className="text-white/20 text-xs">Clusters appear here when they reach 80%+ funding.</p>
+          <p className="text-white/50 text-sm">No communities are ready for installer bids yet.</p>
+          <p className="text-white/30 text-xs">Opportunities appear here once funding crosses 80%.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -78,7 +77,7 @@ export default function TradingPage() {
                     <div className="flex items-center gap-3">
                       <h3 className="text-xl font-display font-bold text-white">{job.name}</h3>
                       <span className={`text-[9px] font-mono px-2 py-1 rounded-full ${isReady ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                        {isReady ? 'READY FOR DEPLOYMENT' : `${pct}% FUNDED`}
+                        {isReady ? 'READY TO BUILD' : `${pct}% FUNDED`}
                       </span>
                     </div>
                     <div className="flex items-center gap-4 text-xs text-white/40">
@@ -93,14 +92,14 @@ export default function TradingPage() {
 
                   <div className="flex items-center gap-3 shrink-0">
                     <div className="text-right">
-                      <p className="text-[10px] text-white/30 uppercase">System Size</p>
+                      <p className="text-[10px] text-white/40 uppercase">Community Size</p>
                       <p className="text-lg font-black text-white">{job.target_kw} kWp</p>
                     </div>
                     <button
                       onClick={() => navigate(`/clusters/${job.id}`)}
                       className="flex items-center gap-2 px-5 py-3 bg-brand-primary/20 border border-brand-primary/30 text-brand-primary rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-brand-primary/30 transition-all group"
                     >
-                      View Node
+                      View Community
                       <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                     </button>
                   </div>
@@ -121,7 +120,7 @@ export default function TradingPage() {
               license from the Energy Regulation Board (ERB) and complete Enerlectra digital
               metering certification.
             </p>
-            <button className="text-brand-primary text-xs mt-3 hover:underline">Start Certification →</button>
+            <p className="text-brand-primary text-xs mt-3">Certification enrollment opens soon.</p>
           </div>
         </div>
       </div>

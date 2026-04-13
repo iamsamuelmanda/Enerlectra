@@ -1,4 +1,4 @@
-import { LayoutGrid, Wallet, Repeat, Settings, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { LayoutGrid, Wallet, Repeat, Receipt, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils/cn';
 
@@ -12,10 +12,10 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
   const location = useLocation();
 
   const menuItems = [
-    { icon: LayoutGrid, label: 'Grid Nodes', path: '/' },
-    { icon: Wallet, label: 'My Assets', path: '/wallet' },
-    { icon: Repeat, label: 'Deployment', path: '/trading' },
-    { icon: Settings, label: 'System', path: '/admin/pilot' },
+    { icon: LayoutGrid, label: 'Communities', path: '/' },
+    { icon: Wallet, label: 'Wallet', path: '/wallet' },
+    { icon: Repeat, label: 'Marketplace', path: '/trading' },
+    { icon: Receipt, label: 'Activity', path: '/transactions' },
   ];
 
   return (
@@ -31,7 +31,7 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
         </button>
       </div>
 
-      <nav className="flex-1 px-3 py-4 space-y-2">
+      <nav className="flex-1 px-3 py-5 space-y-2.5">
         {menuItems.map((item) => {
           const isActive = location.pathname === item.path;
           return (
@@ -40,12 +40,12 @@ export function Sidebar({ collapsed, onToggle, onNavigate }: SidebarProps) {
               to={item.path}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all group",
-                isActive ? "bg-brand-primary/10 text-brand-primary" : "text-white/40 hover:text-white hover:bg-white/5"
+                "flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all group",
+                isActive ? "bg-brand-primary/15 text-brand-primary border border-brand-primary/20" : "text-white/70 hover:text-white hover:bg-white/8"
               )}
             >
-              <item.icon size={20} className={cn(isActive ? "text-brand-primary" : "text-white/40 group-hover:text-white")} />
-              {!collapsed && <span className="font-medium text-sm tracking-tight">{item.label}</span>}
+              <item.icon size={20} className={cn(isActive ? "text-brand-primary" : "text-white/70 group-hover:text-white")} />
+              {!collapsed && <span className="font-semibold text-sm tracking-tight">{item.label}</span>}
             </Link>
           );
         })}

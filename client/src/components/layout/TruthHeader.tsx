@@ -140,7 +140,7 @@ export function TruthHeader() {
           {/* FX index */}
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
-              <Globe size={12} /> FX Index (USD → ZMW)
+              <Globe size={12} /> Exchange Rate (USD → ZMW)
             </span>
             <span className="text-base font-bold text-white/90 tabular-nums">
               {fxRate !== null ? `${fxRate.toFixed(2)} ZMW` : '—'}
@@ -153,11 +153,11 @@ export function TruthHeader() {
           {/* Time-of-day heuristic */}
           <div className="hidden sm:flex flex-col items-end">
             <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
-              <TrendingUp size={12} /> Time‑of‑Day Premium
+              <TrendingUp size={12} /> Time‑based Rate
               <span className="group relative ml-1 cursor-help">
                 <Info size={10} className="text-white/50" />
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  Heuristic multiplier · Peak 18:00–22:00 · Off‑peak
+                  Time-based multiplier · Peak 18:00–22:00 · Off‑peak
                   22:00–06:00
                 </div>
               </span>
@@ -170,14 +170,14 @@ export function TruthHeader() {
               {premium > 1 ? '+' : ''}
               {((premium - 1) * 100).toFixed(1)}%
             </span>
-            <span className="text-[10px] text-white/50">heuristic only</span>
+            <span className="text-[10px] text-white/50">estimated guide</span>
           </div>
 
           {/* True prices: ZESCO reference + last PCU settlement */}
           <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-xl min-w-fit">
             <div className="flex flex-col items-end mr-4">
               <span className="text-[11px] text-white/60 uppercase tracking-wider">
-                ZESCO Reference
+                Utility Price Guide
               </span>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-white tabular-nums">
@@ -186,13 +186,13 @@ export function TruthHeader() {
                 <span className="text-[11px] text-white/50">per kWh</span>
               </div>
               <span className="text-[10px] text-white/50">
-                from tariff_bands
+                based on current tariff data
               </span>
             </div>
 
             <div className="flex flex-col items-end">
               <span className="text-[11px] text-white/60 uppercase tracking-wider">
-                Last PCU Settlement
+                Last Community Payout Rate
               </span>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-bold text-white tabular-nums">
@@ -200,7 +200,7 @@ export function TruthHeader() {
                     ? `K${lastPcuPrice.toFixed(2)}`
                     : '—'}
                 </span>
-                <span className="text-[11px] text-white/50">per PCU</span>
+                <span className="text-[11px] text-white/50">per unit</span>
               </div>
               <span className="text-[10px] text-white/50">
                 {lastPcuWindowAt
@@ -208,7 +208,7 @@ export function TruthHeader() {
                       'en-GB',
                       { hour: '2-digit', minute: '2-digit' }
                     )}`
-                  : 'no settlements yet'}
+                  : 'no payout history yet'}
               </span>
             </div>
 

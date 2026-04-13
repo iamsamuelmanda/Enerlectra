@@ -35,10 +35,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           {user ? (
             <button onClick={handleSignOut} className="px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs hover:bg-white/10 transition-colors flex items-center gap-2">
               <LogOut size={14} />
-              <span className="hidden sm:inline">Disconnect</span>
+              <span className="hidden sm:inline">Sign out</span>
             </button>
           ) : (
-            <Link to="/signin" className="px-4 py-1.5 rounded-full bg-brand-primary text-black text-xs font-bold">Access</Link>
+            <Link to="/signin" className="px-4 py-1.5 rounded-full bg-brand-primary text-black text-xs font-bold">Sign in</Link>
           )}
         </div>
       </div>

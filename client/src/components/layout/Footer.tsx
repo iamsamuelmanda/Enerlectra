@@ -9,18 +9,18 @@ export function Footer() {
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 rounded-md bg-brand-primary/10 border border-brand-primary/20">
             <span className="text-[10px] font-bold text-brand-primary uppercase tracking-widest">
-              Early Access
+              Live
             </span>
           </div>
-          <span className="text-[10px] font-medium text-white/20 uppercase tracking-widest">
+          <span className="text-[10px] font-medium text-white/40 uppercase tracking-widest">
             v2.4.0
           </span>
         </div>
 
         {/* THE MISSION (No Jargon) */}
         <div className="text-center">
-          <p className="text-[12px] text-white/50 font-bold uppercase tracking-[0.2em]">
-            The Fair Energy Ownership Platform
+          <p className="text-[12px] text-white/70 font-bold uppercase tracking-[0.2em]">
+            Community Solar, Made Simple
           </p>
         </div>
 
@@ -30,7 +30,7 @@ export function Footer() {
             <p className="text-sm font-black text-white uppercase tracking-tighter leading-none">
               Enerlectra
             </p>
-            <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1 font-medium">
+            <p className="text-[10px] text-white/50 uppercase tracking-widest mt-1 font-medium">
               Africa
             </p>
           </div>

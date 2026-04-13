@@ -41,7 +41,7 @@ export default function EnergyWalletPage() {
           <h2 className="text-4xl font-display font-black text-white">${assets?.totalContribution.toLocaleString()}</h2>
         </Card>
         <Card variant="glass" padding="lg" className="border-l-4 border-purple-500">
-          <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-4">Grid Nodes</p>
+          <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-4">Communities</p>
           <h2 className="text-4xl font-display font-black text-white">{assets?.nodeCount}</h2>
         </Card>
       </div>

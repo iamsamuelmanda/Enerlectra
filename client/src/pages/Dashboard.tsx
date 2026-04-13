@@ -243,8 +243,8 @@ export default function Dashboard() {
   const [showHealthDrawer, setShowHealthDrawer] = useState(false);
   const [showPayoutModal, setShowPayoutModal] = useState(false);
 
-  const goToCommunities = () => navigate('/clusters');
-  const goToContributions = () => navigate('/readings');
+  const goToCommunities = () => navigate('/');
+  const goToContributions = () => navigate('/transactions');
 
   return (
     <div className="min-h-screen bg-[#0a0a0c]">
