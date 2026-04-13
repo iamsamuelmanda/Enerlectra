@@ -25,10 +25,26 @@ export function useUserAssets() {
   });
 
   const redeem = useMutation({
-    mutationFn: async (_amount: number) => {
-      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-      const voucher_code = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-      return { voucher_code };
+    mutationFn: async ({ amount, phoneNumber }: { amount: number; phoneNumber: string }) => {
+      if (!user?.id) throw new Error('Please sign in first');
+      const base = (
+        import.meta.env.VITE_API_URL ||
+        'https://enerlectra-backend.onrender.com'
+      ).replace(/\/api$/, '');
+
+      const res = await fetch(`${base}/api/payments/redeem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          amountPcu: amount,
+          phoneNumber,
+        }),
+      });
+
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.error || 'Redemption failed');
+      return payload as { reference: string; status: string; providerRef?: string | null };
     },
   });
 

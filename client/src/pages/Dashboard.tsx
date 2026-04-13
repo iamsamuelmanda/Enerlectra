@@ -142,56 +142,6 @@ function HealthRow({ icon, label, status }: { icon: React.ReactNode; label: stri
   );
 }
 
-function PayoutInfoModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
-  const [rate, setRate] = useState<{ fxRate: number; live: boolean } | null>(null);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    fetch('https://enerlectra-backend.onrender.com/api/protocol/global-state')
-      .then(res => res.json())
-      .then(data => setRate({ fxRate: data.fxRate, live: data.live }))
-      .catch(console.error);
-  }, [isOpen]);
-
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
-      <div className="w-full max-w-sm bg-[#0a0a0c] border border-white/10 rounded-3xl p-6 shadow-2xl">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-white">Payout Currency</h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10">
-            <X size={18} className="text-white/60" />
-          </button>
-        </div>
-        <div className="space-y-6">
-          <div className="text-center">
-            <div className="text-5xl font-bold text-white">ZMW</div>
-            <div className="text-sm text-white/60 mt-1">Zambian Kwacha</div>
-          </div>
-          <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-white/50">USD → ZMW</span>
-              <span className="text-lg font-medium text-white">
-                {rate ? rate.fxRate.toFixed(4) : '—'}
-              </span>
-            </div>
-            <div className="flex items-center justify-between mt-2">
-              <span className="text-xs text-white/50">Rate source</span>
-              <span className={cn("text-xs", rate?.live ? "text-emerald-400" : "text-amber-400")}>
-                {rate?.live ? 'Live' : 'Estimated'}
-              </span>
-            </div>
-          </div>
-          <p className="text-[10px] text-white/50 text-center">
-            All payouts are made in Zambian Kwacha via mobile money.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ──────────────────────────────────────────────────────────
 // Stat Card – clickable, friendly
 // ──────────────────────────────────────────────────────────
@@ -241,7 +191,6 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const stats = useCommunityStats();
   const [showHealthDrawer, setShowHealthDrawer] = useState(false);
-  const [showPayoutModal, setShowPayoutModal] = useState(false);
 
   const goToCommunities = () => navigate('/');
   const goToContributions = () => navigate('/transactions');
@@ -327,7 +276,7 @@ export default function Dashboard() {
               label="Payouts"
               description="Mobile money, instantly"
               color="text-amber-400"
-              onClick={() => setShowPayoutModal(true)}
+              onClick={() => navigate('/wallet')}
             />
 
             {/* Community list (formerly ClusterList) */}
@@ -359,7 +308,6 @@ export default function Dashboard() {
 
       {/* Overlays */}
       <SystemHealthDrawer isOpen={showHealthDrawer} onClose={() => setShowHealthDrawer(false)} />
-      <PayoutInfoModal isOpen={showPayoutModal} onClose={() => setShowPayoutModal(false)} />
     </div>
   );
 }

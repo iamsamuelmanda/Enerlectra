@@ -3,18 +3,30 @@ import { useNavigate } from 'react-router-dom';
 import { useUserAssets } from '@/hooks/useUserAssets';
 import { Ticket, X, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import toast from 'react-hot-toast';
 
 export default function EnergyWalletPage() {
   const navigate = useNavigate();
   const { data: assets, isLoading, redeem } = useUserAssets();
   const [showRedeem, setShowRedeem] = useState(false);
   const [redeemAmount, setRedeemAmount] = useState(0);
-  const [voucher, setVoucher] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [payoutRef, setPayoutRef] = useState<string | null>(null);
 
   const handleRedeem = async () => {
     if (redeemAmount <= 0 || redeemAmount > (assets?.totalPcu || 0)) return;
-    const result = await redeem.mutateAsync(redeemAmount);
-    setVoucher(result.voucher_code);
+    const normalizedPhone = phoneNumber.replace(/\s+/g, '');
+    if (!/^\+260\d{9}$/.test(normalizedPhone)) {
+      toast.error('Use phone format +260XXXXXXXXX');
+      return;
+    }
+    try {
+      const result = await redeem.mutateAsync({ amount: redeemAmount, phoneNumber: normalizedPhone });
+      setPayoutRef(result.reference);
+      toast.success('Redemption sent to Lenco for processing');
+    } catch (err: any) {
+      toast.error(err.message || 'Redemption failed');
+    }
   };
 
   if (isLoading) return <div className="min-h-[60vh] flex items-center justify-center animate-pulse text-white/20 font-black">SYNCING GRID...</div>;
@@ -70,29 +82,39 @@ export default function EnergyWalletPage() {
       {showRedeem && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-6">
           <Card className="max-w-md w-full p-8 border border-white/10 relative">
-            <button onClick={() => { setShowRedeem(false); setVoucher(null); }} className="absolute top-4 right-4 text-white/20 hover:text-white"><X /></button>
+            <button onClick={() => { setShowRedeem(false); setPayoutRef(null); }} className="absolute top-4 right-4 text-white/20 hover:text-white"><X /></button>
             
-            {!voucher ? (
+            {!payoutRef ? (
               <div className="space-y-6">
-                <h3 className="text-2xl font-black uppercase italic">Redeem Credits</h3>
-                <p className="text-sm text-white/40">Convert your PCU into a utility meter voucher. 1 PCU ≈ 1 kWh.</p>
+                <h3 className="text-2xl font-black uppercase italic">Withdraw to Mobile Money</h3>
+                <p className="text-sm text-white/40">Convert your PCU balance into a mobile-money payout via Lenco.</p>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold uppercase text-brand-primary">Amount to Redeem</label>
+                  <label className="text-[10px] font-bold uppercase text-brand-primary">Amount (PCU / ZMW)</label>
                   <input type="number" value={redeemAmount} onChange={(e) => setRedeemAmount(Number(e.target.value))} className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-primary transition-all" />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold uppercase text-brand-primary">Mobile Number</label>
+                  <input
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+260971234567"
+                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-brand-primary transition-all"
+                  />
                 </div>
                 <button onClick={handleRedeem} disabled={redeem.isPending || redeemAmount <= 0} className="w-full py-4 bg-brand-primary rounded-xl font-bold uppercase flex items-center justify-center gap-2">
                   {redeem.isPending && <Loader2 className="animate-spin" />}
-                  Generate Voucher
+                  Withdraw Now
                 </button>
               </div>
             ) : (
               <div className="text-center space-y-6 py-4">
                 <div className="w-16 h-16 bg-emerald-500/20 text-emerald-500 rounded-full flex items-center justify-center mx-auto"><Ticket size={32} /></div>
-                <h3 className="text-2xl font-black uppercase italic">Voucher Ready</h3>
+                <h3 className="text-2xl font-black uppercase italic">Payout Requested</h3>
                 <div className="bg-white/5 p-6 rounded-2xl border border-dashed border-white/20">
-                  <span className="text-3xl font-mono font-black tracking-widest text-brand-primary">{voucher}</span>
+                  <span className="text-xl font-mono font-black tracking-widest text-brand-primary">{payoutRef}</span>
                 </div>
-                <p className="text-xs text-white/40 uppercase font-bold">Enter this code into your prepaid meter</p>
+                <p className="text-xs text-white/40 uppercase font-bold">Track this reference in activity history</p>
               </div>
             )}
           </Card>

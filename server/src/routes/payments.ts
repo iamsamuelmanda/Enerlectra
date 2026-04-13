@@ -15,6 +15,7 @@ const supabase = createClient(
 const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
 const LENCO_WEBHOOK_SECRET = process.env.LENCO_WEBHOOK_SECRET;
 const LENCO_VERIFY_BASE = 'https://api.lenco.co/access/v2/collections/status/';
+const LENCO_PAYOUT_BASE = 'https://api.lenco.co/v1/payouts';
 
 // ═══════════════════════════════════════════════════════════
 // VERIFY ENDPOINT (Widget Success Callback)
@@ -55,6 +56,64 @@ router.post('/verify', async (req, res) => {
   } catch (error: any) {
     console.error('[VERIFY ERROR]', error.response?.data || error.message);
     res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// USER REDEMPTION -> LENCO PAYOUT
+// ═══════════════════════════════════════════════════════════
+router.post('/redeem', async (req, res) => {
+  const { userId, amountPcu, phoneNumber } = req.body ?? {};
+
+  if (!userId || !amountPcu || !phoneNumber) {
+    return res.status(400).json({ error: 'userId, amountPcu and phoneNumber are required' });
+  }
+
+  if (!LENCO_SECRET) {
+    return res.status(500).json({ error: 'LENCO_SECRET_KEY missing' });
+  }
+
+  const amount = Number(amountPcu);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return res.status(400).json({ error: 'amountPcu must be a positive number' });
+  }
+
+  const normalizedPhone = String(phoneNumber).replace(/\s+/g, '');
+  if (!/^\+260\d{9}$/.test(normalizedPhone)) {
+    return res.status(400).json({ error: 'phoneNumber must be in +260XXXXXXXXX format' });
+  }
+
+  const reference = `ENR-RED-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+
+  try {
+    const response = await axios.post(
+      LENCO_PAYOUT_BASE,
+      {
+        amount,
+        currency: 'ZMW',
+        accountNumber: normalizedPhone,
+        accountName: 'Enerlectra User',
+        narration: `Enerlectra redemption (${amount} PCU)`,
+        reference,
+      },
+      {
+        headers: { Authorization: `Bearer ${LENCO_SECRET}` },
+        timeout: 15000,
+      }
+    );
+
+    const providerRef = response.data?.data?.providerRef ?? null;
+    return res.json({
+      success: true,
+      reference,
+      status: 'processing',
+      providerRef,
+    });
+  } catch (error: any) {
+    console.error('[REDEEM ERROR]', error.response?.data || error.message);
+    return res.status(500).json({
+      error: error.response?.data?.message || 'Redemption payout failed',
+    });
   }
 });
 
