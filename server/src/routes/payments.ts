@@ -15,7 +15,8 @@ const supabase = createClient(
 const LENCO_SECRET = process.env.LENCO_SECRET_KEY;
 const LENCO_WEBHOOK_SECRET = process.env.LENCO_WEBHOOK_SECRET;
 const LENCO_VERIFY_BASE = 'https://api.lenco.co/access/v2/collections/status/';
-const LENCO_PAYOUT_BASE = 'https://api.lenco.co/v1/payouts';
+const LENCO_TRANSFER_BASE = 'https://api.lenco.co/access/v2/transfers';
+const LENCO_ACCOUNT_ID = process.env.LENCO_ACCOUNT_ID;
 
 // ═══════════════════════════════════════════════════════════
 // VERIFY ENDPOINT (Widget Success Callback)
@@ -72,6 +73,9 @@ router.post('/redeem', async (req, res) => {
   if (!LENCO_SECRET) {
     return res.status(500).json({ error: 'LENCO_SECRET_KEY missing' });
   }
+  if (!LENCO_ACCOUNT_ID) {
+    return res.status(500).json({ error: 'LENCO_ACCOUNT_ID missing' });
+  }
 
   const amount = Number(amountPcu);
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -87,12 +91,12 @@ router.post('/redeem', async (req, res) => {
 
   try {
     const response = await axios.post(
-      LENCO_PAYOUT_BASE,
+      LENCO_TRANSFER_BASE,
       {
-        amount,
+        accountId: LENCO_ACCOUNT_ID,
+        amount: amount.toFixed(2),
         currency: 'ZMW',
-        accountNumber: normalizedPhone,
-        accountName: 'Enerlectra User',
+        phone: normalizedPhone.replace('+', ''),
         narration: `Enerlectra redemption (${amount} PCU)`,
         reference,
       },
@@ -102,17 +106,20 @@ router.post('/redeem', async (req, res) => {
       }
     );
 
-    const providerRef = response.data?.data?.providerRef ?? null;
+    const providerRef =
+      response.data?.data?.lencoReference ||
+      response.data?.data?.reference ||
+      null;
     return res.json({
       success: true,
       reference,
-      status: 'processing',
+      status: response.data?.data?.status || 'processing',
       providerRef,
     });
   } catch (error: any) {
     console.error('[REDEEM ERROR]', error.response?.data || error.message);
-    return res.status(500).json({
-      error: error.response?.data?.message || 'Redemption payout failed',
+    return res.status(error.response?.status || 500).json({
+      error: error.response?.data?.message || error.response?.data?.error || 'Redemption payout failed',
     });
   }
 });
