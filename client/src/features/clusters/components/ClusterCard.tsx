@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { Zap, Battery, Users, Clock, MapPin, MessageSquare } from 'lucide-react';
+import { Zap, Battery, Users, MapPin, MessageSquare } from 'lucide-react';
 
 export function ClusterCard({ cluster }: any) {
   const navigate = useNavigate();

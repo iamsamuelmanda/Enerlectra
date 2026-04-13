@@ -44,7 +44,9 @@ export function useIsParticipant(userId?: string, clusterId?: string) {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      void supabase.removeChannel(channel);
+    };
   }, [userId, clusterId]);
 
   return { isParticipant, loading };

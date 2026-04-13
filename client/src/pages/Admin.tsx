@@ -2,9 +2,9 @@ import { useAuth } from '../hooks/useAuth';
 import { Navigate } from 'react-router-dom';
 
 export default function Admin() {
-  const { user, loading } = useAuth();
+  const { user, isLoading } = useAuth();
 
-  if (loading) {
+  if (isLoading) {
     return <div className="max-w-7xl mx-auto px-4 py-8">Loading...</div>;
   }
 

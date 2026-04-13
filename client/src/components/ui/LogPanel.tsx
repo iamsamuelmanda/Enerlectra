@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, AlertCircle, CheckCircle, Info, AlertTriangle, Terminal, ChevronDown } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info, AlertTriangle, Terminal, ChevronDown } from 'lucide-react';
 import { useLogStore } from '../../store/logStore';
 
 const icons = {

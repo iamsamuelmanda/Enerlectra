@@ -1,5 +1,5 @@
 import { Card } from '@/components/ui/Card';
-import { Activity, ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight, Zap } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface LiveMonitorProps {

@@ -5,6 +5,32 @@ import type { Contribution } from '@/types/contribution';
 const BACKEND_URL = 'https://enerlectra-backend.onrender.com';
 const LENCO_PUBLIC_KEY = 'pub-1187e2020c8d8657438033d87387af85bf4259d72f89c58d';
 
+type LencoPayConfig = {
+  key: string;
+  reference: string;
+  email: string;
+  amount: number;
+  currency: string;
+  channels: string[];
+  label: string;
+  customer: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+  };
+  bearer: 'merchant' | 'customer';
+  onSuccess: (response: { reference: string }) => void;
+  onClose: () => void;
+};
+
+declare global {
+  interface Window {
+    LencoPay?: {
+      getPaid: (config: LencoPayConfig) => void;
+    };
+  }
+}
+
 export const contributionService = {
   initiatePayment({
     clusterId,
@@ -36,7 +62,7 @@ export const contributionService = {
       amount: amountUsd,
       currency: 'ZMW',
       channels: ['mobile-money'],
-      label: 'Contribution to Cluster',
+      label: `Contribution via ${provider.toUpperCase()}`,
       customer: {
         firstName: 'User',
         lastName: 'Enerlectra',
@@ -82,6 +108,17 @@ export const contributionService = {
       .from('contributions')
       .select('*')
       .eq('cluster_id', clusterId)
+      .eq('status', 'COMPLETED')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  },
+
+  async getUserContributions(userId: string): Promise<Contribution[]> {
+    const { data, error } = await supabase
+      .from('contributions')
+      .select('*')
+      .eq('user_id', userId)
       .eq('status', 'COMPLETED')
       .order('created_at', { ascending: false });
     if (error) throw error;

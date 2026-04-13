@@ -25,7 +25,7 @@ export function useUserAssets() {
   });
 
   const redeem = useMutation({
-    mutationFn: async (amount: number) => {
+    mutationFn: async (_amount: number) => {
       const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
       const voucher_code = Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
       return { voucher_code };

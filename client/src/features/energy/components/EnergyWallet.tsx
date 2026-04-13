@@ -14,7 +14,7 @@ export function EnergyWallet() {
     setLoading(true);
     try {
       const contributions = await contributionService.getUserContributions(user.id);
-      const total = contributions.reduce((sum, c) => sum + (c.pcus || 0), 0);
+      const total = contributions.reduce((sum: number, c) => sum + (c.pcus || 0), 0);
       setTotalPCU(total);
     } catch (err) {
       toast.error('Sync failed');

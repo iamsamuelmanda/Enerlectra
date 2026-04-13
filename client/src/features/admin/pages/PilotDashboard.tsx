@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useClusters } from '@/features/clusters/hooks/useCluster';
 import { useAdminActions } from '@/hooks/useAdminActions';
-import { Zap, Users, BarChart3, Send, ShieldAlert, Loader2 } from 'lucide-react';
+import { Zap, Send, ShieldAlert, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 export default function PilotDashboard() {

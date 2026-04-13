@@ -98,7 +98,7 @@ export function ContributionHistory({ clusterId }: ContributionHistoryProps) {
                   </p>
                   <div className="flex items-center gap-2 text-xs text-purple-300 mt-1">
                     <Calendar className="w-3 h-3" />
-                    <span>{formatDate(c.created_at, 'MMM d, yyyy')}</span>
+                    <span>{formatDate(c.created_at)}</span>
                   </div>
                 </div>
                 <div className="text-right">

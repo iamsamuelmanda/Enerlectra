@@ -5,7 +5,6 @@ import { z } from 'zod';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { Card } from '../components/ui/Card';
-import { Mail, Lock, User, LogIn, AlertCircle } from 'lucide-react';
 import { GoogleSignIn } from '../features/auth/components/GoogleSignIn';
 import { TruthHeader } from '../components/layout/TruthHeader';
 
@@ -69,7 +68,11 @@ export default function SignUp() {
             <input {...register('email')} className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none" placeholder="Email" />
             <input {...register('password')} type="password" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none" placeholder="Password" />
             <input {...register('confirmPassword')} type="password" className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white outline-none" placeholder="Confirm Password" />
-            
+            {errors.fullName && <p className="text-xs text-rose-300">{errors.fullName.message}</p>}
+            {errors.email && <p className="text-xs text-rose-300">{errors.email.message}</p>}
+            {errors.password && <p className="text-xs text-rose-300">{errors.password.message}</p>}
+            {errors.confirmPassword && <p className="text-xs text-rose-300">{errors.confirmPassword.message}</p>}
+            {error && <p className="text-xs text-rose-300">{error}</p>}
             <button type="submit" disabled={loading} className="w-full bg-purple-600 hover:bg-purple-700 text-white font-bold py-2.5 rounded-lg transition-all">
               {loading ? 'Creating...' : 'Initialize Account'}
             </button>

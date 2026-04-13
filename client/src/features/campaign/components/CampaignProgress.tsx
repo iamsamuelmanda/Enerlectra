@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Target, Calendar, Trophy, CheckCircle, Circle } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import type { Cluster } from '../../../types/api';
-import { daysRemaining, isDeadlinePassed, formatDate } from '../../../utils/dateTime';
+import { formatDate } from '../../../utils/dateTime';
 
 interface CampaignProgressProps {
   cluster: Cluster;
@@ -23,8 +23,13 @@ export function CampaignProgress({ cluster }: CampaignProgressProps) {
     if (!cluster.deadline) return;
 
     const update = () => {
-      const days = daysRemaining(cluster.deadline!);
-      const passed = isDeadlinePassed(cluster.deadline!);
+      const deadline = new Date(cluster.deadline!);
+      const now = new Date();
+      const passed = deadline.getTime() < now.getTime();
+      const days = Math.max(
+        0,
+        Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+      );
       setDeadlinePassed(passed);
       setTimeRemaining(
         passed ? 'Deadline passed' :
@@ -87,7 +92,7 @@ export function CampaignProgress({ cluster }: CampaignProgressProps) {
         <div className="text-right">
           <p className="text-xs" style={{ color: 'rgba(240,240,255,0.4)' }}>Deadline</p>
           <p className="text-xs font-semibold" style={{ color: '#f0f0ff' }}>
-            {formatDate(cluster.deadline, 'MMM d, yyyy')}
+            {formatDate(cluster.deadline)}
           </p>
         </div>
       </div>

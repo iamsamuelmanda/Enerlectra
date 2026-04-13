@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useUserAssets } from '@/hooks/useUserAssets';
-import { Wallet, Zap, PieChart, Shield, Ticket, X, Loader2 } from 'lucide-react';
+import { Ticket, X, Loader2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 export default function EnergyWalletPage() {

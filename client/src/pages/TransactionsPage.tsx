@@ -1,5 +1,5 @@
 import { useTransactions } from "@/hooks/useTransactions";
-import { ArrowDownLeft, ArrowUpRight, Zap, Ticket, Clock, Filter } from "lucide-react";
+import { ArrowDownLeft, Ticket, Clock, Filter } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { format } from "date-fns";
 
