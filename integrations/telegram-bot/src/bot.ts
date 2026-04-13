@@ -386,7 +386,11 @@ bot.command('clusters', async (ctx) => {
 
 bot.action(/^join_cluster:/, async (ctx) => {
   await ctx.answerCbQuery();
-  const clusterId = ctx.callbackQuery?.data?.replace('join_cluster:', '') ?? '';
+  const query = ctx.callbackQuery;
+  const clusterId =
+    query && 'data' in query && typeof query.data === 'string'
+      ? query.data.replace('join_cluster:', '')
+      : '';
   if (!clusterId) return;
 
   const telegramId = ctx.from!.id.toString();
