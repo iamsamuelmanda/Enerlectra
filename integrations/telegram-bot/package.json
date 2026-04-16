@@ -16,6 +16,7 @@
     "@upstash/redis": "^1.37.0",
     "axios": "^1.15.0",
     "dotenv": "^16.6.1",
+    "enerlectra-core": "file:../../enerlectra-core",
     "express": "^4.22.1",
     "ioredis": "^5.10.1",
     "pino": "^10.3.1",
