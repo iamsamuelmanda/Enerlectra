@@ -191,23 +191,6 @@ export class SnapshotRepository {
             'userId', sp.user_id,
             'userName', sp.user_name,
             'userClass', sp.user_class,
-            'pcus',
-            /**
-   * Get snapshot history for cluster
-   */
-  async getHistoryForCluster(
-    clusterId: string,
-    limit: number = 10
-  ): Promise<ClusterSnapshot[]> {
-    const result = await this.pool.query(
-      `
-      SELECT 
-        s.*,
-        json_agg(
-          json_build_object(
-            'userId', sp.user_id,
-            'userName', sp.user_name,
-            'userClass', sp.user_class,
             'pcus', sp.pcus,
             'ownershipPct', sp.ownership_pct,
             'kwhPerMonth', sp.kwh_per_month,
@@ -306,7 +289,7 @@ export class SnapshotRepository {
       monthlyKwh: parseFloat(row.monthly_kwh),
       
       participantCount: row.participant_count,
-      participants: row.participants.map((p: any) => ({
+      participants: (row.participants || []).map((p: any) => ({
         userId: p.userId,
         userName: p.userName,
         userClass: p.userClass,

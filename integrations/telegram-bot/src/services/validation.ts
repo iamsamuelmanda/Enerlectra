@@ -32,8 +32,8 @@ interface MeterTypeRules {
 
 const METER_TYPE_RULES: Record<MeterType, MeterTypeRules> = {
   grid_import: {
-    allowedDecreaseKwh: 5,
-    maxIncreaseKwh: 100,
+    allowedDecreaseKwh: 1,
+    maxIncreaseKwh: 500,
     strictMonotonic: true,
     allowsRollover: true,
     rolloverThreshold: 100_000,
@@ -74,9 +74,9 @@ const METER_TYPE_RULES: Record<MeterType, MeterTypeRules> = {
     rolloverThreshold: 10_000,
   },
   unknown: {
-    allowedDecreaseKwh: 10,
-    maxIncreaseKwh: 200,
-    strictMonotonic: false,
+    allowedDecreaseKwh: 1,
+    maxIncreaseKwh: 500,
+    strictMonotonic: true,
     allowsRollover: true,
     rolloverThreshold: 100_000,
     rolloverDetectionFraction: 0.4, // more sensitive for unknown meters

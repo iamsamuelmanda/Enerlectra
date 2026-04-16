@@ -3,7 +3,7 @@ import { ensureStoreDir, STORE_DIR } from './engines/storePath'
 
 ensureStoreDir()
 
-console.log(\[STORE] Using canonical store at \\)
+console.log(`[STORE] Using canonical store at ${STORE_DIR}`);
 
 /**
  * Enerlectra Core

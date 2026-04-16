@@ -1,18 +1,39 @@
 {
-  "name": "enerlectra-core",
+  "name": "@iamsamuelmanda/enerlectra-core",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Double‑entry ledger, settlement engine, and marketplace core for Enerlectra Protocol",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "scripts": {
+    "build": "tsc",
     "dev": "ts-node src/server.ts",
     "seed:kabwe": "node scripts/seed-kabwe.js",
     "start": "node dist/server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "energy",
+    "settlement",
+    "ledger",
+    "pcu",
+    "marketplace",
+    "enerlectra"
+  ],
+  "author": "Samuel Manda",
+  "license": "UNLICENSED",
   "type": "module",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/iamsamuelmanda/EnerlectraTrade.git",
+    "directory": "enerlectra-core"
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "express": "^5.2.1",
