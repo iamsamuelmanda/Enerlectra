@@ -31,31 +31,53 @@ function validatePhoneNumber(phone: string): boolean {
   return /^\+260\d{9}$/.test(phone);
 }
 
-// ====================== OPERATOR DETECTION ======================
+// ====================== OPERATOR DETECTION & PHONE FORMATTING ======================
 /**
  * Detects the mobile network operator based on Zambian phone number prefix.
- * Returns the operator identifier expected by the Lenco API.
+ * Returns the operator identifier expected by the Lenco API (capitalized).
  */
-function detectOperator(phone: string): 'mtn' | 'airtel' | 'zamtel' {
+function detectOperator(phone: string): 'MTN' | 'AIRTEL' | 'ZAMTEL' {
   const local = phone.replace(/[+\s]/g, '').slice(-9);
   
   // MTN prefixes: 096, 076, 077
   if (/^(96|76|77)/.test(local)) {
-    return 'mtn';
+    return 'MTN';
   }
   
   // Airtel prefixes: 097
   if (/^(97)/.test(local)) {
-    return 'airtel';
+    return 'AIRTEL';
   }
   
   // Zamtel prefixes: 095, 075
   if (/^(95|75)/.test(local)) {
-    return 'zamtel';
+    return 'ZAMTEL';
   }
   
   // Fallback to MTN for unrecognized prefixes
-  return 'mtn';
+  return 'MTN';
+}
+
+/**
+ * Formats the phone number for Lenco API.
+ * Returns the full international number without the '+' sign (e.g., "260966860393").
+ */
+function formatPhoneForLenco(phone: string): string {
+  // Remove all non-digit characters
+  const digits = phone.replace(/\D/g, '');
+  
+  // If it starts with '0', convert to international format
+  if (digits.startsWith('0')) {
+    return '260' + digits.slice(1);
+  }
+  
+  // If it already has the country code, return as is
+  if (digits.startsWith('260')) {
+    return digits;
+  }
+  
+  // Otherwise, assume it's a local number and add the country code
+  return '260' + digits;
 }
 
 // ====================== MAIN FUNCTION ======================
@@ -103,6 +125,12 @@ export async function requestLencoPayout(
 
   // 4. Call Lenco v2 Mobile Money Collection endpoint
   try {
+    // Format phone and detect operator
+    const formattedPhone = formatPhoneForLenco(params.phoneNumber);
+    const operator = detectOperator(params.phoneNumber);
+    
+    log.info({ formattedPhone, operator }, 'Sending payout request to Lenco');
+
     const response = await fetch(`${LENCO_API_URL}/collections/mobile-money`, {
       method: 'POST',
       headers: {
@@ -116,8 +144,8 @@ export async function requestLencoPayout(
         currency: 'ZMW',
         mobileMoneyDetails: {
           country: 'zm',
-          phone: params.phoneNumber.slice(-9),
-          operator: detectOperator(params.phoneNumber),
+          phone: formattedPhone,                     // Full international format: "260966860393"
+          operator: operator,                        // Capitalized: "MTN", "AIRTEL", or "ZAMTEL"
         },
         narration: params.narration || 'Enerlectra energy credit settlement',
         reference,
