@@ -1,10 +1,16 @@
-import { ClusterState } from '../../enerlectra-core/src/domain/marketplace/engines/AntiWhaleEngine';
-import { LifecycleState } from '../../enerlectra-core/src/domain/lifecycle/types';
-export interface ClusterRecord extends ClusterState {
+import { LifecycleState } from '../domain/lifecycle/types';
+export interface ClusterRecord {
+    id: string;
     name: string;
     location: string;
+    lifecycleState: LifecycleState;
+    targetUSD: number;
+    currentUSD: number;
+    fundingPct: number;
+    targetKw: number;
     targetStorageKwh: number;
     monthlyKwh: number;
+    isLocked: boolean;
     participantCount: number;
     createdAt: Date;
     fundedAt: Date | null;

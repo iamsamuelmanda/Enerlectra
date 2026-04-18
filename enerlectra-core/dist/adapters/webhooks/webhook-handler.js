@@ -51,7 +51,7 @@ export class WebhookSignatureVerifier {
     }
 }
 // ═══════════════════════════════════════════════════════════════
-// WEBHOOK HANDLER
+/** WEBHOOK HANDLER */
 // ═══════════════════════════════════════════════════════════════
 export class WebhookHandler {
     constructor(supabase, orchestrator) {
@@ -73,7 +73,7 @@ export class WebhookHandler {
                         success: false,
                         webhookId,
                         processed: false,
-                        error: 'Invalid signature'
+                        error: 'Invalid signature',
                     };
                 }
             }
@@ -88,8 +88,8 @@ export class WebhookHandler {
                     confirmedAt: new Date(data.timestamp || Date.now()),
                     metadata: {
                         partyId: data.payer?.partyId,
-                        currency: data.currency
-                    }
+                        currency: data.currency,
+                    },
                 };
                 // Process through orchestrator
                 const result = await this.orchestrator.confirmPayment(confirmation);
@@ -98,7 +98,7 @@ export class WebhookHandler {
                     success: result.success,
                     webhookId,
                     processed: true,
-                    error: result.error
+                    error: result.error,
                 };
             }
             // Not a payment confirmation, just log it
@@ -106,7 +106,7 @@ export class WebhookHandler {
             return {
                 success: true,
                 webhookId,
-                processed: false
+                processed: false,
             };
         }
         catch (error) {
@@ -116,7 +116,7 @@ export class WebhookHandler {
                 webhookId,
                 processed: false,
                 error: error.message,
-                retry: true
+                retry: true,
             };
         }
     }
@@ -135,23 +135,25 @@ export class WebhookHandler {
                         success: false,
                         webhookId,
                         processed: false,
-                        error: 'Invalid signature'
+                        error: 'Invalid signature',
                     };
                 }
             }
             // Parse payload
             const data = JSON.parse(payload);
             // Check if payment was successful
-            if (data.transaction?.status === 'SUCCESS' || data.status?.success === true) {
+            if (data.transaction?.status === 'SUCCESS' ||
+                data.status?.success === true) {
                 const confirmation = {
                     externalReference: data.transaction?.id || data.data?.transaction?.id,
                     rail: 'AIRTEL',
-                    amountNgwee: ngwee(BigInt(Math.round(parseFloat(data.transaction?.amount || data.data?.transaction?.amount) * 100))),
+                    amountNgwee: ngwee(BigInt(Math.round(parseFloat(data.transaction?.amount ||
+                        data.data?.transaction?.amount) * 100))),
                     confirmedAt: new Date(),
                     metadata: {
                         msisdn: data.subscriber?.msisdn,
-                        currency: data.transaction?.currency
-                    }
+                        currency: data.transaction?.currency,
+                    },
                 };
                 const result = await this.orchestrator.confirmPayment(confirmation);
                 await this.updateWebhookStatus(webhookId, result.success ? 'PROCESSED' : 'FAILED', result.error);
@@ -159,14 +161,14 @@ export class WebhookHandler {
                     success: result.success,
                     webhookId,
                     processed: true,
-                    error: result.error
+                    error: result.error,
                 };
             }
             await this.updateWebhookStatus(webhookId, 'IGNORED', 'Not a successful payment');
             return {
                 success: true,
                 webhookId,
-                processed: false
+                processed: false,
             };
         }
         catch (error) {
@@ -176,7 +178,7 @@ export class WebhookHandler {
                 webhookId,
                 processed: false,
                 error: error.message,
-                retry: true
+                retry: true,
             };
         }
     }
@@ -191,23 +193,32 @@ export class WebhookHandler {
                 const valid = WebhookSignatureVerifier.verifyLencoSignature(payload.toString(), signature, secret);
                 if (!valid) {
                     await this.updateWebhookStatus(webhookId, 'FAILED', 'Invalid signature');
-                    return { success: false, webhookId, processed: false, error: 'Invalid signature' };
+                    return {
+                        success: false,
+                        webhookId,
+                        processed: false,
+                        error: 'Invalid signature',
+                    };
                 }
             }
             // Parse payload
-            const data = typeof payload === 'string' ? JSON.parse(payload) : JSON.parse(payload.toString());
+            const data = typeof payload === 'string'
+                ? JSON.parse(payload)
+                : JSON.parse(payload.toString());
             const reference = data.reference || data.transaction_id || data.data?.reference;
-            const status = data.status || data.transaction?.status || data.data?.status;
+            const status = data.status ||
+                data.transaction?.status ||
+                data.data?.status;
             if (!reference) {
                 await this.updateWebhookStatus(webhookId, 'IGNORED', 'No reference found');
                 return { success: true, webhookId, processed: false };
             }
             // Update contribution status
             let newStatus = 'PENDING';
-            if (['SUCCESS', 'SUCCESSFUL', 'completed'].includes(status?.toUpperCase())) {
+            if (['SUCCESS', 'SUCCESSFUL', 'COMPLETED'].includes(status?.toUpperCase())) {
                 newStatus = 'COMPLETED';
             }
-            else if (['FAILED', 'error'].includes(status?.toUpperCase())) {
+            else if (['FAILED', 'ERROR'].includes(status?.toUpperCase())) {
                 newStatus = 'FAILED';
             }
             const { error: updateError } = await this.supabase
@@ -217,7 +228,9 @@ export class WebhookHandler {
                 transaction_id: data.transaction_id || data.id,
                 updated_at: new Date().toISOString(),
                 payment_response: data,
-                completed_at: newStatus === 'COMPLETED' ? new Date().toISOString() : null
+                completed_at: newStatus === 'COMPLETED'
+                    ? new Date().toISOString()
+                    : null,
             })
                 .eq('id', reference);
             if (updateError) {
@@ -228,7 +241,7 @@ export class WebhookHandler {
             return {
                 success: true,
                 webhookId,
-                processed: true
+                processed: true,
             };
         }
         catch (error) {
@@ -239,7 +252,7 @@ export class WebhookHandler {
                 webhookId,
                 processed: false,
                 error: error.message,
-                retry: true
+                retry: true,
             };
         }
     }
@@ -253,7 +266,7 @@ export class WebhookHandler {
             source,
             payload,
             received_at: new Date().toISOString(),
-            status: 'RECEIVED'
+            status: 'RECEIVED',
         })
             .select('id')
             .single();
@@ -270,7 +283,7 @@ export class WebhookHandler {
             .update({
             status,
             error_message: error,
-            processed_at: new Date().toISOString()
+            processed_at: new Date().toISOString(),
         })
             .eq('id', webhookId);
     }
@@ -288,11 +301,18 @@ export class WebhookHandler {
         return data || [];
     }
     async retryWebhook(webhookId, source, payload, secret) {
+        // Increment retry_count safely (no this.supabase.sql)
+        const { data: existing } = await this.supabase
+            .from('webhook_logs')
+            .select('retry_count')
+            .eq('id', webhookId)
+            .single();
+        const currentRetry = existing?.retry_count ?? 0;
         await this.supabase
             .from('webhook_logs')
             .update({
-            retry_count: this.supabase.sql `retry_count + 1`,
-            last_retry_at: new Date().toISOString()
+            retry_count: currentRetry + 1,
+            last_retry_at: new Date().toISOString(),
         })
             .eq('id', webhookId);
         if (source === 'MTN') {
@@ -308,7 +328,7 @@ export class WebhookHandler {
             success: false,
             webhookId,
             processed: false,
-            error: 'Unknown source'
+            error: 'Unknown source',
         };
     }
 }
@@ -325,9 +345,11 @@ export class WebhookRetryScheduler {
         let succeeded = 0;
         let stillFailed = 0;
         for (const webhook of failed) {
-            const secret = webhook.source === 'MTN' ? this.secrets.mtn :
-                webhook.source === 'AIRTEL' ? this.secrets.airtel :
-                    this.secrets.lenco;
+            const secret = webhook.source === 'MTN'
+                ? this.secrets.mtn
+                : webhook.source === 'AIRTEL'
+                    ? this.secrets.airtel
+                    : this.secrets.lenco;
             const result = await this.handler.retryWebhook(webhook.id, webhook.source, webhook.payload, secret);
             if (result.success) {
                 succeeded++;
@@ -340,7 +362,7 @@ export class WebhookRetryScheduler {
         return {
             processed: failed.length,
             succeeded,
-            failed: stillFailed
+            failed: stillFailed,
         };
     }
     sleep(ms) {

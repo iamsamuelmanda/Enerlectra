@@ -1,4 +1,10 @@
-import { UserState, UserClass } from '../../enerlectra-core/src/domain/marketplace/engines/AntiWhaleEngine';
+export type UserClass = 'MICRO' | 'RETAIL' | 'PROFESSIONAL' | 'INSTITUTIONAL';
+export interface UserState {
+    id: string;
+    currentClass: UserClass;
+    totalInvestedUSD: number;
+    clusterCount: number;
+}
 export interface UserRecord extends UserState {
     name: string;
     email: string;

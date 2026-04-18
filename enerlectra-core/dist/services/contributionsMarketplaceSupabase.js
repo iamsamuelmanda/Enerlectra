@@ -1,5 +1,5 @@
-// server/services/contributionsMarketplaceSupabase.ts
-import { supabase } from '../lib/supabase';
+// src/services/contributionsMarketplaceSupabase.ts
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 /** Map Supabase row to clean TypeScript object */
 function mapRow(row) {
     return {

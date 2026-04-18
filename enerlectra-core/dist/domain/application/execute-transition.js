@@ -3,8 +3,9 @@
  * Low-level API for executing individual state transitions
  * Use this when you need manual control over the settlement flow
  */
-import { EEState } from '../domain/settlement/settlement-state.enum';
-import { SettlementService } from '../domain/settlement/settlement-service';
+// NOTE: path fixed – from ../domain/settlement/... to ../settlement/...
+import { EEState } from '../settlement/settlement-state.enum';
+import { SettlementService } from '../settlement/settlement-service';
 /**
  * Execute a single state transition
  * Lower-level API than runDailySettlement
@@ -33,7 +34,7 @@ export async function executeTransition(supabase, request) {
                 updated_cycle = await service.reportProduction({
                     cluster_id: cycle_data.cluster_id,
                     settlement_date: cycle_data.settlement_date,
-                    ...request.data.production_report
+                    ...request.data.production_report,
                 });
                 break;
             case EEState.VALUE_COMPUTED:
@@ -61,7 +62,7 @@ export async function executeTransition(supabase, request) {
             success: true,
             previous_state,
             current_state: updated_cycle.state,
-            timestamp
+            timestamp,
         };
     }
     catch (error) {
@@ -70,7 +71,7 @@ export async function executeTransition(supabase, request) {
             previous_state: EEState.OPERATIONAL,
             current_state: EEState.OPERATIONAL,
             timestamp,
-            error: error.message
+            error: error.message,
         };
     }
 }
@@ -94,7 +95,8 @@ export async function canTransitionTo(supabase, settlement_cycle_id, target_stat
     const current_state = await getCycleState(supabase, settlement_cycle_id);
     if (!current_state)
         return false;
-    const { ALLOWED_TRANSITIONS } = await import('../domain/settlement/settlement-state.enum');
+    // NOTE: dynamic import path fixed to match the static one above
+    const { ALLOWED_TRANSITIONS } = await import('../settlement/settlement-state.enum');
     const allowed = ALLOWED_TRANSITIONS[current_state] || [];
     return allowed.includes(target_state);
 }
@@ -115,30 +117,30 @@ export async function getTransitionHistory(supabase, settlement_cycle_id) {
     if (data.production_reported_at) {
         transitions.push({
             state: EEState.PRODUCTION_REPORTED,
-            timestamp: new Date(data.production_reported_at)
+            timestamp: new Date(data.production_reported_at),
         });
     }
     if (data.reconciliation_complete_at) {
         transitions.push({
             state: EEState.RECONCILIATION_COMPLETE,
-            timestamp: new Date(data.reconciliation_complete_at)
+            timestamp: new Date(data.reconciliation_complete_at),
         });
     }
     if (data.finality_pending_at) {
         transitions.push({
             state: EEState.FINALITY_PENDING,
-            timestamp: new Date(data.finality_pending_at)
+            timestamp: new Date(data.finality_pending_at),
         });
     }
     if (data.finalized_at) {
         transitions.push({
             state: EEState.SETTLEMENT_FINALIZED,
-            timestamp: new Date(data.finalized_at)
+            timestamp: new Date(data.finalized_at),
         });
     }
     return {
         settlement_cycle_id,
         current_state: data.state,
-        transitions
+        transitions,
     };
 }

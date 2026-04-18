@@ -1,17 +1,23 @@
 // server/routes/protocol.ts
 import { Router } from 'express';
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 const router = Router();
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-  throw new Error('Missing Supabase configuration');
-}
+// Lazy initialization – don't throw at the top level
+let supabase: SupabaseClient | null = null;
 
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
+function getSupabase(): SupabaseClient {
+  if (!supabase) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_KEY;
+    if (!url || !key) {
+      throw new Error('Missing Supabase configuration');
+    }
+    supabase = createClient(url, key);
+  }
+  return supabase;
+}
 
 function isValidUUID(str: string): boolean {
   const uuidRegex =
@@ -31,7 +37,6 @@ function getCurrentPeriod(): string {
 /**
  * Fetch live USD/ZMW exchange rate.
  * Returns { rate: number | null, live: boolean }.
- * If API fails, rate is null and live is false.
  */
 async function getLiveFXRate(): Promise<{ rate: number | null; live: boolean }> {
   const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
@@ -58,30 +63,15 @@ async function getLiveFXRate(): Promise<{ rate: number | null; live: boolean }> 
   }
 }
 
-/**
- * Time‑based demand multiplier.
- * Transparent heuristic until real grid data becomes available.
- * Peak: 18:00–22:00 local
- * Off‑peak: 22:00–06:00 local
- * Standard: 06:00–18:00 local
- */
 const getTimeBasedPremium = (hour: number): number => {
   if (hour >= 18 && hour <= 22) return 1.45;
   if (hour >= 22 || hour <= 6) return 0.85;
   return 1.05;
 };
 
-/**
- * GET /api/protocol/market-state
- *
- * Returns:
- * - FX index (USD→ZMW)
- * - Time-of-day premium band (heuristic only)
- * - Regulated tariff reference (from tariff_bands)
- * - Last cleared PCU price (from energy_value_audits)
- */
 router.get('/market-state', async (req, res) => {
   try {
+    const supabaseClient = getSupabase();
     const hour = new Date().getHours();
     const currentPremium = getTimeBasedPremium(hour);
     const temporalBand =
@@ -93,18 +83,16 @@ router.get('/market-state', async (req, res) => {
 
     const [{ rate: fxRate, live }, tariffRes, auditRes] = await Promise.all([
       getLiveFXRate(),
-      // Use the "current" residential reference tariff based on date
-      supabase
+      supabaseClient
         .from('tariff_bands')
         .select('code, band_name, rate_kz, start_date, end_date')
         .lte('start_date', new Date().toISOString().slice(0, 10))
         .gte('end_date', new Date().toISOString().slice(0, 10))
-        .eq('category', 'residential') // add this column in tariff_bands if not present
+        .eq('category', 'residential')
         .order('kwh_min', { ascending: true })
         .limit(1)
         .maybeSingle(),
-      // Last value calculation as proxy for last PCU clearing price
-      supabase
+      supabaseClient
         .from('energy_value_audits')
         .select('net_value_zmw, delta_kwh, created_at')
         .gt('delta_kwh', 0)
@@ -125,28 +113,29 @@ router.get('/market-state', async (req, res) => {
       liveFx: live,
       currentPremium,
       temporalBand,
-      // Regulated reference tariff (ZESCO/ERB-backed)
       zescoReferenceRate: referenceTariff?.rate_kz ?? null,
       zescoTariffCode: referenceTariff?.code ?? null,
       zescoTariffBand: referenceTariff?.band_name ?? null,
       zescoTariffValidFrom: referenceTariff?.start_date ?? null,
       zescoTariffValidTo: referenceTariff?.end_date ?? null,
-      // Market truth: last protocol settlement
       lastPcuPriceKz,
       lastPcuWindowAt: lastAudit?.created_at ?? null,
       timestamp: new Date().toISOString(),
     });
   } catch (err: any) {
     console.error('[MARKET STATE ERROR]', err);
+    if (err.message.includes('Missing Supabase')) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
     res.status(500).json({ error: 'market_state_failed' });
   }
 });
 
-// POST /api/protocol/readings/ingest
 router.post('/readings/ingest', async (req, res) => {
   const startTime = Date.now();
 
   try {
+    const supabaseClient = getSupabase();
     const {
       clusterId,
       unitId,
@@ -172,7 +161,7 @@ router.post('/readings/ingest', async (req, res) => {
         lookupMethod = 'uuid';
       } else {
         const phone = normalizePhone(userId);
-        const { data: profile, error } = await supabase
+        const { data: profile, error } = await supabaseClient
           .from('profiles')
           .select('id, phone')
           .eq('phone', phone)
@@ -185,7 +174,7 @@ router.post('/readings/ingest', async (req, res) => {
       }
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseClient
       .from('meter_readings')
       .insert({
         cluster_id: clusterId,
@@ -215,6 +204,9 @@ router.post('/readings/ingest', async (req, res) => {
     });
   } catch (err: any) {
     console.error('[INGEST ERROR]', err);
+    if (err.message.includes('Missing Supabase')) {
+      return res.status(503).json({ error: 'Database unavailable' });
+    }
     res.status(202).json({
       status: 'pending_reconciliation',
       error: err.message,

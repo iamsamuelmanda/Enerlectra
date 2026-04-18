@@ -4,7 +4,7 @@
  * Use this when you need manual control over the settlement flow
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { EEState } from '../domain/settlement/settlement-state.enum';
+import { EEState } from '../settlement/settlement-state.enum';
 export interface TransitionRequest {
     settlement_cycle_id: string;
     target_state: EEState;

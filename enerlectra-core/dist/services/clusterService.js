@@ -1,5 +1,5 @@
-import { storeFile } from '../engines/storePath.ts';
-import { generateId } from '../utils/id.ts';
+import { storeFile } from '../engines/storePath';
+import { generateId } from '../utils/id';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 // Path where clusters will be stored
@@ -33,7 +33,7 @@ export async function createCluster(data) {
         clusterId: generateId('clu'),
         ...data,
         status: 'open',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
     };
     clusters.push(cluster);
     await saveClusters();

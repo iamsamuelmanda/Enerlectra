@@ -1,4 +1,4 @@
-// server/services/usersSupabase.ts
+// src/services/usersSupabase.ts
 import { supabase } from '../lib/supabase';
 function mapRow(row) {
     return {
@@ -9,7 +9,7 @@ function mapRow(row) {
         location: row.location,
         currentClass: row.current_class,
         totalInvestedUSD: Number(row.total_invested_usd),
-        clusterCount: row.cluster_count,
+        clusterCount: Number(row.cluster_count),
         createdAt: new Date(row.created_at),
         updatedAt: new Date(row.updated_at),
     };
@@ -69,14 +69,13 @@ export async function updateUserClass(userId, newClass) {
         .eq('id', userId)
         .select('*')
         .single();
-    if (error) {
+    if (error || !data) {
         console.error('updateUserClass error', error);
         throw new Error(`User ${userId} not found or update failed`);
     }
     return mapRow(data);
 }
 export async function updateUserTotalInvested(userId, delta) {
-    // Read current first
     const { data: existing, error: getError } = await supabase
         .from('users')
         .select('total_invested_usd')
@@ -96,7 +95,7 @@ export async function updateUserTotalInvested(userId, delta) {
         .eq('id', userId)
         .select('*')
         .single();
-    if (error) {
+    if (error || !data) {
         console.error('updateUserTotalInvested error', error);
         throw error;
     }
@@ -122,7 +121,7 @@ export async function incrementUserClusterCount(userId) {
         .eq('id', userId)
         .select('*')
         .single();
-    if (error) {
+    if (error || !data) {
         console.error('incrementUserClusterCount error', error);
         throw error;
     }

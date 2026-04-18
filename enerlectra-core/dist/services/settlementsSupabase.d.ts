@@ -1,4 +1,4 @@
-import { Settlement, ParticipantSettlement } from '../../enerlectra-core/src/domain/marketplace/engines/SettlementEngine';
+import { Settlement, ParticipantSettlement } from '../domain/marketplace/engines/SettlementEngine';
 /**
  * Create settlement (append-only) + participant_settlements
  */

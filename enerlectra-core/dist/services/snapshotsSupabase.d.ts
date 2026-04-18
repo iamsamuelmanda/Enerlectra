@@ -1,5 +1,5 @@
-import { ClusterSnapshot } from '../../enerlectra-core/src/domain/marketplace/engines/SnapshotEngine';
-import { LifecycleState } from '../../enerlectra-core/src/domain/lifecycle/types';
+import { ClusterSnapshot } from '../domain/marketplace/engines/SnapshotEngine';
+import { LifecycleState } from '../domain/lifecycle/types';
 /**
  * Create snapshot (append-only)
  */

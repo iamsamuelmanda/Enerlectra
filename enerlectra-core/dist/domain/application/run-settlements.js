@@ -2,7 +2,8 @@
  * Run Settlement
  * Application layer orchestration for full daily settlement
  */
-import { SettlementService } from '../domain/settlement/settlement-service';
+// PATH FIX: '../domain/settlement/...' -> '../settlement/...'
+import { SettlementService, } from '../settlement/settlement-service';
 /**
  * Run complete daily settlement for a cluster
  * This is the main entry point for settlement execution
@@ -18,7 +19,7 @@ export async function runDailySettlement(supabase, request) {
             settlement_date: request.settlement_date,
             kwh_reported: request.production_report.kwh_reported,
             kwh_verified: request.production_report.kwh_verified,
-            price_per_kwh: request.production_report.price_per_kwh
+            price_per_kwh: request.production_report.price_per_kwh,
         });
         operations.push(`✓ Production reported: ${cycle.kwh_verified} kWh @ ${cycle.price_per_kwh} ZMW/kWh`);
         // STEP 2: Compute Value
@@ -41,7 +42,7 @@ export async function runDailySettlement(supabase, request) {
             success: true,
             settlement_cycle_id: cycle.settlement_cycle_id,
             final_state: cycle.state,
-            operations_completed: operations
+            operations_completed: operations,
         };
     }
     catch (error) {
@@ -50,7 +51,7 @@ export async function runDailySettlement(supabase, request) {
             settlement_cycle_id: request.cluster_id + ':' + request.settlement_date,
             final_state: 'ERROR',
             operations_completed: operations,
-            error: error.message
+            error: error.message,
         };
     }
 }
@@ -69,7 +70,7 @@ export async function attemptFinalization(supabase, settlement_cycle_id) {
             success: true,
             settlement_cycle_id,
             final_state: cycle.state,
-            operations_completed: operations
+            operations_completed: operations,
         };
     }
     catch (error) {
@@ -78,7 +79,7 @@ export async function attemptFinalization(supabase, settlement_cycle_id) {
             settlement_cycle_id,
             final_state: 'FINALIZATION_FAILED',
             operations_completed: operations,
-            error: error.message
+            error: error.message,
         };
     }
 }

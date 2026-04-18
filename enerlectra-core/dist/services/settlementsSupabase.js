@@ -1,5 +1,5 @@
-// server/services/settlementsSupabase.ts
-import { supabase } from '../lib/supabase';
+// src/services/settlementsSupabase.ts
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 function mapSettlementRow(row) {
     return {
         id: row.id,
@@ -39,7 +39,6 @@ function mapSettlementRow(row) {
  * Create settlement (append-only) + participant_settlements
  */
 export async function createSettlement(settlement) {
-    // Insert settlement
     const { error: setError } = await supabase.from('settlements').insert({
         id: settlement.id,
         cluster_id: settlement.clusterId,
@@ -65,9 +64,8 @@ export async function createSettlement(settlement) {
         console.error('createSettlement settlement insert error', setError);
         throw setError;
     }
-    // Insert participant settlements
     if (settlement.settlements && settlement.settlements.length > 0) {
-        const participantRows = settlement.settlements.map((p) => ({
+        const participantRows = settlement.settlements.map(p => ({
             settlement_id: settlement.id,
             user_id: p.userId,
             user_name: p.userName,
@@ -107,10 +105,10 @@ export async function updateSettlementStatus(settlementId, status) {
         console.error('updateSettlementStatus error', error);
         throw new Error(`Settlement ${settlementId} not found`);
     }
-    // Load with participants
     const full = await getSettlementById(settlementId);
-    if (!full)
+    if (!full) {
         throw new Error(`Settlement ${settlementId} not found after update`);
+    }
     return full;
 }
 /**

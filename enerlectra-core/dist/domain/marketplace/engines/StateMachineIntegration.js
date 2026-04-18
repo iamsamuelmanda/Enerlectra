@@ -40,7 +40,9 @@ export class StateMachineIntegration {
      */
     static async checkContributionTrigger(currentState, newFundingPct) {
         if (currentState === 'FUNDING' && newFundingPct >= 100) {
-            return this.transitionState(currentState, 'FULL_FUNDING', { fundingPct: newFundingPct });
+            return this.transitionState(currentState, 'FULL_FUNDING', {
+                fundingPct: newFundingPct,
+            });
         }
         return { allowed: false };
     }

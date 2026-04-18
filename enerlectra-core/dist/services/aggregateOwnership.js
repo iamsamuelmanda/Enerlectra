@@ -1,3 +1,4 @@
+// src/services/aggregateOwnership.ts
 export function aggregateOwnership(transactions) {
     const byUser = {};
     for (const tx of transactions) {
@@ -7,6 +8,8 @@ export function aggregateOwnership(transactions) {
     return Object.entries(byUser).map(([userId, totalPCU]) => ({
         userId,
         totalPCU,
-        percent: total === 0 ? 0 : Number(((totalPCU / total) * 100).toFixed(2)),
+        percent: total === 0
+            ? 0
+            : Number(((totalPCU / total) * 100).toFixed(2)),
     }));
 }

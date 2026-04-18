@@ -1,4 +1,4 @@
-// server/services/snapshotsSupabase.ts
+// src/services/snapshotsSupabase.ts
 import { supabase } from '../lib/supabase';
 function mapRow(row) {
     return {
@@ -6,7 +6,7 @@ function mapRow(row) {
         clusterId: row.cluster_id,
         version: row.version,
         lifecycleState: row.lifecycle_state,
-        timestamp: new Date(row.created_at),
+        timestamp: row.created_at, // ISO string
         triggeredBy: row.triggered_by,
         targetUSD: Number(row.target_usd),
         currentUSD: Number(row.current_usd),
@@ -41,8 +41,7 @@ function mapRow(row) {
  * Create snapshot (append-only)
  */
 export async function createSnapshot(snapshot) {
-    // Insert snapshot
-    const { data: snapData, error: snapError } = await supabase
+    const { error: snapError } = await supabase
         .from('snapshots')
         .insert({
         id: snapshot.id,
@@ -64,16 +63,13 @@ export async function createSnapshot(snapshot) {
         previous_snapshot_id: snapshot.previousSnapshotId,
         hash: snapshot.hash,
         metadata: snapshot.metadata ?? null,
-    })
-        .select('*')
-        .single();
+    });
     if (snapError) {
         console.error('createSnapshot snapshot insert error', snapError);
         throw snapError;
     }
-    // Insert participants
     if (snapshot.participants && snapshot.participants.length > 0) {
-        const participantsRows = snapshot.participants.map((p) => ({
+        const participantsRows = snapshot.participants.map(p => ({
             snapshot_id: snapshot.id,
             user_id: p.userId,
             user_name: p.userName,
@@ -95,7 +91,6 @@ export async function createSnapshot(snapshot) {
             throw partError;
         }
     }
-    // Return the full snapshot including participants
     return snapshot;
 }
 /**

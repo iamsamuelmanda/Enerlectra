@@ -18,8 +18,8 @@ export class AirtelMoneyAdapter {
             headers: {
                 'Content-Type': 'application/json',
                 'X-Country': config.country,
-                'X-Currency': 'ZMW'
-            }
+                'X-Currency': 'ZMW',
+            },
         });
     }
     // ═══════════════════════════════════════════════════════════
@@ -29,14 +29,16 @@ export class AirtelMoneyAdapter {
      * Get OAuth access token
      */
     async getAccessToken() {
-        if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
+        if (this.accessToken &&
+            this.tokenExpiresAt &&
+            this.tokenExpiresAt > new Date()) {
             return this.accessToken;
         }
         try {
             const response = await this.client.post('/auth/oauth2/token', {
                 client_id: this.config.clientId,
                 client_secret: this.config.clientSecret,
-                grant_type: 'client_credentials'
+                grant_type: 'client_credentials',
             });
             this.accessToken = response.data.access_token;
             // Tokens expire in ~3600 seconds (1 hour)
@@ -64,25 +66,25 @@ export class AirtelMoneyAdapter {
                 subscriber: {
                     country: this.config.country,
                     currency: 'ZMW',
-                    msisdn: this.formatPhoneNumber(phoneNumber)
+                    msisdn: this.formatPhoneNumber(phoneNumber),
                 },
                 transaction: {
                     amount,
                     country: this.config.country,
                     currency: 'ZMW',
-                    id: transactionId
-                }
+                    id: transactionId,
+                },
             };
             const response = await this.client.post('/merchant/v1/payments/', request, {
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'X-Callback-Url': this.config.callbackUrl
-                }
+                    Authorization: `Bearer ${token}`,
+                    'X-Callback-Url': this.config.callbackUrl,
+                },
             });
             const result = response.data;
             return {
                 transactionId: result.data.transaction.id,
-                status: result.data.transaction.status
+                status: result.data.transaction.status,
             };
         }
         catch (error) {
@@ -97,13 +99,13 @@ export class AirtelMoneyAdapter {
             const token = await this.getAccessToken();
             const response = await this.client.get(`/standard/v1/payments/${transactionId}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    Authorization: `Bearer ${token}`,
+                },
             });
             const result = response.data;
             return {
                 status: result.data.transaction.status,
-                message: result.status.message
+                message: result.status.message,
             };
         }
         catch (error) {
@@ -118,8 +120,12 @@ export class AirtelMoneyAdapter {
         const timeoutMs = timeoutSeconds * 1000;
         while (Date.now() - startTime < timeoutMs) {
             const status = await this.getPaymentStatus(transactionId);
-            if (status.status === 'SUCCESS' || status.status === 'FAILED') {
-                return status;
+            if (status.status === 'SUCCESS' ||
+                status.status === 'FAILED') {
+                return {
+                    status: status.status,
+                    message: status.message,
+                };
             }
             await this.sleep(pollIntervalSeconds * 1000);
         }
@@ -138,24 +144,24 @@ export class AirtelMoneyAdapter {
             const amount = Number(amountNgwee) / 100;
             const request = {
                 payee: {
-                    msisdn: this.formatPhoneNumber(phoneNumber)
+                    msisdn: this.formatPhoneNumber(phoneNumber),
                 },
                 reference: externalId,
                 pin: merchantPin,
                 transaction: {
                     amount,
-                    id: transactionId
-                }
+                    id: transactionId,
+                },
             };
             const response = await this.client.post('/standard/v1/disbursements/', request, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    Authorization: `Bearer ${token}`,
+                },
             });
             const result = response.data;
             return {
                 transactionId: result.data.transaction.id,
-                status: result.status.success ? 'SUCCESS' : 'PENDING'
+                status: result.status.success ? 'SUCCESS' : 'PENDING',
             };
         }
         catch (error) {
@@ -170,13 +176,13 @@ export class AirtelMoneyAdapter {
             const token = await this.getAccessToken();
             const response = await this.client.get(`/standard/v1/disbursements/${transactionId}`, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    Authorization: `Bearer ${token}`,
+                },
             });
             const result = response.data;
             return {
                 status: result.data.transaction.status,
-                message: result.status.message
+                message: result.status.message,
             };
         }
         catch (error) {
@@ -194,12 +200,12 @@ export class AirtelMoneyAdapter {
             const token = await this.getAccessToken();
             const response = await this.client.get('/standard/v1/users/balance', {
                 headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                    Authorization: `Bearer ${token}`,
+                },
             });
             return {
                 balance: response.data.data.balance,
-                currency: response.data.data.currency
+                currency: response.data.data.currency,
             };
         }
         catch (error) {
@@ -238,11 +244,13 @@ export function createAirtelAdapter(config) {
 // ═══════════════════════════════════════════════════════════════
 export function getAirtelConfigFromEnv() {
     return {
-        environment: process.env.AIRTEL_ENVIRONMENT || 'sandbox',
+        environment: process.env.AIRTEL_ENVIRONMENT ||
+            'sandbox',
         clientId: process.env.AIRTEL_CLIENT_ID || '',
         clientSecret: process.env.AIRTEL_CLIENT_SECRET || '',
         apiKey: process.env.AIRTEL_API_KEY || '',
-        callbackUrl: process.env.AIRTEL_CALLBACK_URL || 'https://enerlectra.com/webhooks/airtel',
-        country: process.env.AIRTEL_COUNTRY || 'ZM'
+        callbackUrl: process.env.AIRTEL_CALLBACK_URL ||
+            'https://enerlectra.com/webhooks/airtel',
+        country: process.env.AIRTEL_COUNTRY || 'ZM',
     };
 }

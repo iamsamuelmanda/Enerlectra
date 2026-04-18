@@ -3,7 +3,7 @@
  * Application layer orchestration for full daily settlement
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { ContributorAllocation } from '../domain/settlement/settlement-service';
+import { ContributorAllocation } from '../settlement/settlement-service';
 export interface RunSettlementRequest {
     cluster_id: string;
     settlement_date: string;

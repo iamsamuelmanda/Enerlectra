@@ -5,13 +5,19 @@
  * Clusters ARE mutable (lifecycle state changes).
  */
 import { Pool } from 'pg';
-import { ClusterState } from '../../domain/marketplace/engines/AntiWhaleEngine';
 import { LifecycleState } from '../../domain/lifecycle/types';
-export interface ClusterRecord extends ClusterState {
+export interface ClusterRecord {
+    id: string;
     name: string;
     location: string;
+    lifecycleState: LifecycleState;
+    targetUSD: number;
+    currentUSD: number;
+    fundingPct: number;
+    targetKw: number;
     targetStorageKwh: number;
     monthlyKwh: number;
+    isLocked: boolean;
     participantCount: number;
     createdAt: Date;
     fundedAt: Date | null;

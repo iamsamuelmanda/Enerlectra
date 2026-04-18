@@ -1,4 +1,4 @@
-import { Cluster } from '../types/cluster.ts';
+import { Cluster } from '../types/cluster';
 export declare function createCluster(data: Omit<Cluster, 'clusterId' | 'status' | 'createdAt'>): Promise<Cluster>;
 export declare function listClusters(): Promise<Cluster[]>;
 export declare function deleteCluster(id: string): Promise<boolean>;

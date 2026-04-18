@@ -1,4 +1,4 @@
-// server/services/clustersSupabase.ts
+// src/services/clustersSupabase.ts
 import { supabase } from '../lib/supabase';
 function mapRow(row) {
     return {
@@ -71,14 +71,13 @@ export async function updateClusterLifecycleState(clusterId, newState) {
         .eq('id', clusterId)
         .select('*')
         .single();
-    if (error) {
+    if (error || !data) {
         console.error('updateClusterLifecycleState error', error);
         throw new Error(`Cluster ${clusterId} not found or update failed`);
     }
     return mapRow(data);
 }
 export async function updateClusterFunding(clusterId, amountUSD, participantDelta = 1) {
-    // We need to read current values first to compute funding_pct as in SQL version
     const { data: existing, error: getError } = await supabase
         .from('clusters')
         .select('current_usd,target_usd,participant_count')
@@ -101,7 +100,7 @@ export async function updateClusterFunding(clusterId, amountUSD, participantDelt
         .eq('id', clusterId)
         .select('*')
         .single();
-    if (error) {
+    if (error || !data) {
         console.error('updateClusterFunding error', error);
         throw error;
     }

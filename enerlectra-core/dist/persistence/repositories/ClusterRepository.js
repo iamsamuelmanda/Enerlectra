@@ -43,7 +43,7 @@ export class ClusterRepository {
         const timestampField = this.getTimestampField(newState);
         const result = await this.pool.query(`
       UPDATE clusters
-      SET 
+      SET
         lifecycle_state = $2,
         ${timestampField ? `${timestampField} = NOW(),` : ''}
         is_locked = CASE WHEN $2 IN ('FINALIZED', 'CANCELLED', 'FAILED') THEN TRUE ELSE is_locked END
@@ -61,7 +61,7 @@ export class ClusterRepository {
     async updateFunding(clusterId, amountUSD, participantDelta = 1) {
         const result = await this.pool.query(`
       UPDATE clusters
-      SET 
+      SET
         current_usd = current_usd + $2,
         funding_pct = ((current_usd + $2) / target_usd) * 100,
         participant_count = participant_count + $3
@@ -152,10 +152,14 @@ export class ClusterRepository {
      */
     getTimestampField(state) {
         switch (state) {
-            case 'FUNDED': return 'funded_at';
-            case 'OPERATIONAL': return 'operational_at';
-            case 'FINALIZED': return 'finalized_at';
-            default: return null;
+            case 'FUNDED':
+                return 'funded_at';
+            case 'OPERATIONAL':
+                return 'operational_at';
+            case 'FINALIZED':
+                return 'finalized_at';
+            default:
+                return null;
         }
     }
     /**

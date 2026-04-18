@@ -36,6 +36,7 @@ export declare class WebhookSignatureVerifier {
      */
     private static timingSafeEqual;
 }
+/** WEBHOOK HANDLER */
 export declare class WebhookHandler {
     private supabase;
     private orchestrator;

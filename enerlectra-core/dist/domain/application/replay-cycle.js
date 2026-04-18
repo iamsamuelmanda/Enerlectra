@@ -3,11 +3,12 @@
  * Deterministic replay of settlement cycle from ledger entries
  * NOW WITH: Cryptographic hash chain verification
  */
-import { LedgerService } from '../domain/accounts/ledger-service';
-import { AccountInvariants } from '../domain/accounts/invariants';
-import { AccountUnit } from '../domain/accounts/account';
-import { computeStateHash } from '../domain/settlement/settlement-cycle';
-import { LedgerHashVerifier } from '../domain/ledger/ledger-hash-verifier';
+// PATH FIXES: '../domain/...' -> '../...'
+import { LedgerService } from '../accounts/ledger-service';
+import { AccountInvariants } from '../accounts/invariants';
+import { AccountUnit } from '../accounts/account';
+import { computeStateHash } from '../settlement/settlement-cycle';
+import { LedgerHashVerifier } from '../ledger/ledger-hash-verifier';
 /**
  * Replay and verify a settlement cycle with cryptographic proof
  * This is now a full audit function
@@ -69,7 +70,7 @@ export async function replayCycle(supabase, settlement_cycle_id) {
             total_value: parseFloat(cycle_data.total_value),
             entitlements_hash: cycle_data.entitlements_hash,
             ledger_hash: cycle_data.ledger_hash,
-            previous_cycle_hash: cycle_data.previous_cycle_hash
+            previous_cycle_hash: cycle_data.previous_cycle_hash,
         });
         hash_verified = computed_hash === cycle_data.state_hash;
         if (!hash_verified) {
@@ -90,7 +91,7 @@ export async function replayCycle(supabase, settlement_cycle_id) {
         hash_verified,
         hash_chain_intact,
         cryptographic_integrity,
-        issues
+        issues,
     };
 }
 /**
@@ -129,6 +130,6 @@ export async function verifyEntireLedger(supabase) {
         broken_links: verification.broken_links,
         integrity_percentage,
         cryptographically_sound,
-        errors: verification.errors
+        errors: verification.errors,
     };
 }

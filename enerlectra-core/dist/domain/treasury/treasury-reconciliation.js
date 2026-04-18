@@ -3,7 +3,7 @@
  * Daily verification of internal ledger vs external balances
  * CRITICAL: Prevents insolvency drift
  */
-import { ngwee, addNgwee, ZERO_NGWEE, formatNgwee } from '../settlement/settlement-types';
+import { ngwee, addNgwee, ZERO_NGWEE, formatNgwee, } from '../settlement/settlement-types';
 // ═══════════════════════════════════════════════════════════════
 // RECONCILIATION ENGINE
 // ═══════════════════════════════════════════════════════════════
@@ -40,7 +40,7 @@ export class TreasuryReconciliation {
                 actions.push(`⚠️  ${rail}: Minor drift (discrepancy: ${formatNgwee(discrepancy)})`);
                 alerts.push({
                     severity: 'WARNING',
-                    message: `${rail} has minor drift: ${formatNgwee(discrepancy)}`
+                    message: `${rail} has minor drift: ${formatNgwee(discrepancy)}`,
                 });
             }
             else {
@@ -48,7 +48,7 @@ export class TreasuryReconciliation {
                 actions.push(`❌ ${rail}: MAJOR DISCREPANCY (${formatNgwee(discrepancy)})`);
                 alerts.push({
                     severity: 'CRITICAL',
-                    message: `${rail} has major discrepancy: ${formatNgwee(discrepancy)}. PAYOUTS FROZEN.`
+                    message: `${rail} has major discrepancy: ${formatNgwee(discrepancy)}. PAYOUTS FROZEN.`,
                 });
             }
             railReports.push({
@@ -56,7 +56,7 @@ export class TreasuryReconciliation {
                 internalBalance: liquidity.internalBalanceNgwee,
                 externalBalance: liquidity.externalBalanceNgwee,
                 discrepancy,
-                status
+                status,
             });
         }
         // Calculate overall discrepancy
@@ -70,14 +70,14 @@ export class TreasuryReconciliation {
                 await this.freezePayouts();
                 alerts.push({
                     severity: 'CRITICAL',
-                    message: `Total discrepancy ${formatNgwee(totalDiscrepancy)} exceeds critical threshold. All payouts frozen. Manual intervention required.`
+                    message: `Total discrepancy ${formatNgwee(totalDiscrepancy)} exceeds critical threshold. All payouts frozen. Manual intervention required.`,
                 });
             }
             else {
                 actions.push('⚠️  Minor drift detected - monitoring');
                 alerts.push({
                     severity: 'WARNING',
-                    message: `Total discrepancy: ${formatNgwee(totalDiscrepancy)}. Within tolerance but requires attention.`
+                    message: `Total discrepancy: ${formatNgwee(totalDiscrepancy)}. Within tolerance but requires attention.`,
                 });
             }
         }
@@ -92,7 +92,7 @@ export class TreasuryReconciliation {
             totalDiscrepancy,
             systemBalanced,
             actions,
-            alerts
+            alerts,
         });
         // Return report
         return {
@@ -101,7 +101,7 @@ export class TreasuryReconciliation {
             totalDiscrepancy,
             systemBalanced,
             actions,
-            alerts
+            alerts,
         };
     }
     /**
@@ -113,7 +113,7 @@ export class TreasuryReconciliation {
             .update({
             payouts_frozen: true,
             frozen_at: new Date().toISOString(),
-            freeze_reason: 'Critical treasury discrepancy'
+            freeze_reason: 'Critical treasury discrepancy',
         })
             .eq('active', true);
     }
@@ -127,7 +127,7 @@ export class TreasuryReconciliation {
             payouts_frozen: false,
             unfrozen_at: new Date().toISOString(),
             unfrozen_by: approvedBy,
-            unfreeze_notes: notes
+            unfreeze_notes: notes,
         })
             .eq('active', true);
     }
@@ -160,22 +160,20 @@ export class TreasuryReconciliation {
             totalDiscrepancy: ngwee(BigInt(r.total_discrepancy_ngwee)),
             systemBalanced: r.system_balanced,
             actions: r.actions,
-            alerts: r.alerts
+            alerts: r.alerts,
         }));
     }
     /**
      * Log reconciliation to database
      */
     async logReconciliation(report) {
-        await this.supabase
-            .from('treasury_reconciliations')
-            .insert({
+        await this.supabase.from('treasury_reconciliations').insert({
             timestamp: report.timestamp.toISOString(),
             rail_reports: report.railReports,
             total_discrepancy_ngwee: report.totalDiscrepancy.toString(),
             system_balanced: report.systemBalanced,
             actions: report.actions,
-            alerts: report.alerts
+            alerts: report.alerts,
         });
     }
     /**
@@ -227,7 +225,7 @@ export class TreasuryReconciliation {
                 averageDriftNgwee: ZERO_NGWEE,
                 maxDriftNgwee: ZERO_NGWEE,
                 daysOutOfBalance: 0,
-                trend: 'STABLE'
+                trend: 'STABLE',
             };
         }
         // Calculate metrics
@@ -235,30 +233,36 @@ export class TreasuryReconciliation {
             const abs = h.totalDiscrepancy < 0n
                 ? h.totalDiscrepancy * -1n
                 : h.totalDiscrepancy;
-            return abs;
+            return ngwee(abs);
         });
         const totalDrift = drifts.reduce((sum, d) => addNgwee(sum, d), ZERO_NGWEE);
         const averageDriftNgwee = ngwee(totalDrift / BigInt(drifts.length));
-        const maxDriftNgwee = drifts.reduce((max, d) => d > max ? d : max, ZERO_NGWEE);
+        const maxDriftNgwee = drifts.reduce((max, d) => (d > max ? d : max), ZERO_NGWEE);
         const daysOutOfBalance = history.filter(h => !h.systemBalanced).length;
         // Calculate trend (first half vs second half)
         const midpoint = Math.floor(history.length / 2);
         const firstHalf = history.slice(0, midpoint);
         const secondHalf = history.slice(midpoint);
         const avgFirstHalf = this.calculateAverage(firstHalf.map(h => {
-            const abs = h.totalDiscrepancy < 0n ? h.totalDiscrepancy * -1n : h.totalDiscrepancy;
-            return abs;
+            const abs = h.totalDiscrepancy < 0n
+                ? h.totalDiscrepancy * -1n
+                : h.totalDiscrepancy;
+            return ngwee(abs);
         }));
         const avgSecondHalf = this.calculateAverage(secondHalf.map(h => {
-            const abs = h.totalDiscrepancy < 0n ? h.totalDiscrepancy * -1n : h.totalDiscrepancy;
-            return abs;
+            const abs = h.totalDiscrepancy < 0n
+                ? h.totalDiscrepancy * -1n
+                : h.totalDiscrepancy;
+            return ngwee(abs);
         }));
         let trend;
         const change = Number(avgSecondHalf - avgFirstHalf);
-        if (change < -500) { // Improving by > 5 ZMW
+        if (change < -500) {
+            // Improving by > 5 ZMW
             trend = 'IMPROVING';
         }
-        else if (change > 500) { // Degrading by > 5 ZMW
+        else if (change > 500) {
+            // Degrading by > 5 ZMW
             trend = 'DEGRADING';
         }
         else {
@@ -268,7 +272,7 @@ export class TreasuryReconciliation {
             averageDriftNgwee,
             maxDriftNgwee,
             daysOutOfBalance,
-            trend
+            trend,
         };
     }
     calculateAverage(values) {
