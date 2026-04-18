@@ -30,7 +30,6 @@ dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 // ──────────────────────────────────────────────────────────────
 import paymentRoutes    from './routes/payments.js';
 import readingsRouter   from './routes/readings.js';
-import pcuRouter        from './routes/pcu.js';
 import simulationRouter from './routes/simulation.js';
 import protocolRouter   from './routes/protocol.js';
 import ledgerRouter     from './routes/ledger.js';   // ← single source of truth
@@ -319,7 +318,6 @@ app.use('/api/simulation', simulationRouter);
 app.use('/api/payments',   paymentRoutes);
 app.use('/api/staking',    stakingRoutes);
 app.use('/api/protocol',   protocolRouter);
-app.use('/api/pcu',        pcuRouter);
 app.use('/api/ledger',     ledgerRouter);
 
 // ═══════════════════════════════════════════════════════════
