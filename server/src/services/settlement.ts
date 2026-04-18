@@ -31,6 +31,33 @@ function validatePhoneNumber(phone: string): boolean {
   return /^\+260\d{9}$/.test(phone);
 }
 
+// ====================== OPERATOR DETECTION ======================
+/**
+ * Detects the mobile network operator based on Zambian phone number prefix.
+ * Returns the operator identifier expected by the Lenco API.
+ */
+function detectOperator(phone: string): 'mtn' | 'airtel' | 'zamtel' {
+  const local = phone.replace(/[+\s]/g, '').slice(-9);
+  
+  // MTN prefixes: 096, 076, 077
+  if (/^(96|76|77)/.test(local)) {
+    return 'mtn';
+  }
+  
+  // Airtel prefixes: 097
+  if (/^(97)/.test(local)) {
+    return 'airtel';
+  }
+  
+  // Zamtel prefixes: 095, 075
+  if (/^(95|75)/.test(local)) {
+    return 'zamtel';
+  }
+  
+  // Fallback to MTN for unrecognized prefixes
+  return 'mtn';
+}
+
 // ====================== MAIN FUNCTION ======================
 export async function requestLencoPayout(
   params: PayoutRequest,
@@ -55,7 +82,7 @@ export async function requestLencoPayout(
   const reference = `ENR-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
   const idempotencyKey = params.idempotencyKey || crypto.randomUUID();
 
-  // 3. Insert pending record in our DB
+  // 3. Insert pending record in our database
   const { error: dbError } = await supabase
     .from('settlement_payouts')
     .insert({
@@ -89,8 +116,8 @@ export async function requestLencoPayout(
         currency: 'ZMW',
         mobileMoneyDetails: {
           country: 'zm',
-          phone: params.phoneNumber.slice(-9),   // Last 9 digits of local number
-          operator: 'airtel',                   // Change to 'mtn' or 'zamtel' as needed
+          phone: params.phoneNumber.slice(-9),
+          operator: detectOperator(params.phoneNumber),
         },
         narration: params.narration || 'Enerlectra energy credit settlement',
         reference,
