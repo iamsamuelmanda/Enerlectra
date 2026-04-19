@@ -22,9 +22,7 @@ async function processWebhook(
   signature: string | null,
   secret: string | undefined,
 ): Promise<WebhookResult> {
-  const webhookId = `wh_${Date.now()}_${Math.random()
-    .toString(36)
-    .substr(2, 9)}`;
+  const webhookId = `wh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
   try {
     // Log webhook
@@ -84,12 +82,10 @@ router.post('/webhooks/mtn', express.json(), async (req, res) => {
   );
 
   if (result.success) {
-    res
-      .status(200)
-      .json({
-        message: 'Webhook processed successfully',
-        webhookId: result.webhookId,
-      });
+    res.status(200).json({
+      message: 'Webhook processed successfully',
+      webhookId: result.webhookId,
+    });
   } else {
     res
       .status(result.retry ? 500 : 400)
@@ -108,12 +104,10 @@ router.post('/webhooks/airtel', express.json(), async (req, res) => {
   );
 
   if (result.success) {
-    res
-      .status(200)
-      .json({
-        message: 'Webhook processed successfully',
-        webhookId: result.webhookId,
-      });
+    res.status(200).json({
+      message: 'Webhook processed successfully',
+      webhookId: result.webhookId,
+    });
   } else {
     res
       .status(result.retry ? 500 : 400)
@@ -121,32 +115,52 @@ router.post('/webhooks/airtel', express.json(), async (req, res) => {
   }
 });
 
-// ====================== Lenco Webhook (fixed) ======================
+// ====================== Lenco Webhook (with debug) ======================
 // Lenco docs: header X-Lenco-Signature is HMAC SHA512 over JSON payload,
-// using webhook_hash_key = SHA256(API_SECRET_KEY).[web:121]
+// using webhook_hash_key = SHA256(API_SECRET_KEY).
 
 const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY || '';
 const LENCO_WEBHOOK_HASH_KEY = LENCO_SECRET_KEY
   ? crypto.createHash('sha256').update(LENCO_SECRET_KEY).digest('hex')
   : '';
 
+function computeLencoSignature(payload: any): string | null {
+  if (!LENCO_WEBHOOK_HASH_KEY) return null;
+
+  return crypto
+    .createHmac('sha512', LENCO_WEBHOOK_HASH_KEY)
+    .update(JSON.stringify(payload))
+    .digest('hex');
+}
+
 function verifyLencoSignature(payload: any, signature: string | undefined): boolean {
   if (!LENCO_WEBHOOK_HASH_KEY || !signature) return false;
 
-  const computed = crypto
-    .createHmac('sha512', LENCO_WEBHOOK_HASH_KEY) // HMAC SHA512[web:121]
-    .update(JSON.stringify(payload))
-    .digest('hex');
+  const computed = computeLencoSignature(payload);
+  if (!computed) return false;
 
   return computed === signature;
 }
 
 router.post('/webhooks/lenco', express.json(), async (req, res) => {
+  // Debug: log headers and body exactly as we see them
+  console.log('[LENCO WEBHOOK DEBUG] headers', {
+    'x-lenco-signature': req.headers['x-lenco-signature'],
+    'x-signature': req.headers['x-signature'],
+  });
+  console.log('[LENCO WEBHOOK DEBUG] raw body', JSON.stringify(req.body));
+
   const signature = (req.headers['x-lenco-signature'] ||
     req.headers['x-signature']) as string | undefined;
 
+  const computed = computeLencoSignature(req.body);
+
   if (!verifyLencoSignature(req.body, signature)) {
-    console.warn('[LENCO WEBHOOK] Invalid signature');
+    console.warn('[LENCO WEBHOOK] Invalid signature', {
+      received: signature,
+      computed,
+    });
+
     // Still log it for debugging, but do not process as valid payment
     await supabase.from('webhook_logs').insert({
       id: `wh_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -156,16 +170,24 @@ router.post('/webhooks/lenco', express.json(), async (req, res) => {
       status: 'invalid_signature',
       received_at: new Date().toISOString(),
     });
-    return res.status(401).json({ error: 'Invalid signature' });
+
+    // In production you might not want to expose computed/received;
+    // this is mainly to help debugging now.
+    return res.status(401).json({
+      error: 'Invalid signature',
+      receivedSignature: signature,
+      computedSignature: computed,
+    });
   }
 
   // At this point, the event is verified as coming from Lenco
   const result = await processWebhook('lenco', req.body, signature || null, undefined);
 
   if (result.success) {
-    return res
-      .status(200)
-      .json({ message: 'Lenco webhook processed successfully', webhookId: result.webhookId });
+    return res.status(200).json({
+      message: 'Lenco webhook processed successfully',
+      webhookId: result.webhookId,
+    });
   }
 
   return res
