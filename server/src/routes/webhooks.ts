@@ -1,7 +1,7 @@
 // server/src/routes/webhooks.ts
 import express from 'express';
 import type { Request, Response } from 'express';
-import { WebhookHandler } from '../../enerlectra-core/src/domain/webhook/webhook-handler';
+import { WebhookHandler } from '../../enerlectra-core/src/adapters/webhooks/webhook-handler';
 import { supabase } from '../../enerlectra-core/src/lib/supabase';
 import { paymentOrchestrator } from '../services/payment-orchestrator';
 
