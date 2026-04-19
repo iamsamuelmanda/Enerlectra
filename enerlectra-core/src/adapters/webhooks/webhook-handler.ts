@@ -131,6 +131,15 @@ export class WebhookHandler {
     const webhookId = await this.logWebhook('LENCO', rawPayload);
 
     try {
+      // --- DEBUG: log what we are actually verifying ---
+      console.log('[LENCO DEBUG] Signature header:', signature);
+      console.log('[LENCO DEBUG] Raw payload (first 500 chars):', rawPayload.slice(0, 500));
+      console.log(
+        '[LENCO DEBUG] Webhook secret length:',
+        webhookSecret ? webhookSecret.length : 0
+      );
+      // --------------------------------------------------
+
       if (signature) {
         const valid = WebhookSignatureVerifier.verifyLencoSignature(
           rawPayload,
@@ -144,6 +153,7 @@ export class WebhookHandler {
             'FAILED',
             'Invalid signature'
           );
+          console.warn('[LENCO DEBUG] Signature verification failed');
           return {
             success: false,
             webhookId,
