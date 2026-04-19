@@ -3,10 +3,13 @@ import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 import type { Logger } from 'pino';
 import crypto from 'node:crypto';
 
+
 // ====================== CONFIGURATION ======================
-const LENCO_API_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2';
+const LENCO_API_URL =
+  process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2';
 const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY!;
 const LENCO_ACCOUNT_ID = process.env.LENCO_ACCOUNT_ID!;
+
 
 // ====================== TYPES ======================
 export interface PayoutRequest {
@@ -26,70 +29,73 @@ export interface PayoutResult {
   errorMessage?: string;
 }
 
+
 // ====================== VALIDATION ======================
 function validatePhoneNumber(phone: string): boolean {
-  return /^\+260\d{9}$/.test(phone);
+  // Accept common Zambian formats users may enter:
+  // +260966860393, 0966860393, 966860393, 260966860393
+  const digits = phone.replace(/\D/g, '');
+
+  // Valid if:
+  // - starts with 260 and has 12 digits, or
+  // - starts with 0 and has 10 digits, or
+  // - has exactly 9 digits (local)
+  if (/^260\d{9}$/.test(digits)) return true;
+  if (/^0\d{9}$/.test(digits)) return true;
+  if (/^\d{9}$/.test(digits)) return true;
+
+  return false;
 }
+
 
 // ====================== OPERATOR DETECTION & PHONE FORMATTING ======================
 /**
  * Detects the mobile network operator based on Zambian phone number prefix.
- * Returns the operator identifier expected by the Lenco API (capitalized).
+ * Returns the operator identifier expected by the Lenco API (lowercase).
  */
-function detectOperator(phone: string): 'MTN' | 'AIRTEL' | 'ZAMTEL' {
-  const local = phone.replace(/[+\s]/g, '').slice(-9);
-  
-  // MTN prefixes: 096, 076, 077
-  if (/^(96|76|77)/.test(local)) {
-    return 'MTN';
-  }
-  
+function detectOperator(phone: string): 'mtn' | 'airtel' | 'zamtel' {
+  const local = phone.replace(/\D/g, '').slice(-9); // e.g. "966860393"
+
+  // MTN prefixes: 096, 076, 077 → local: 96/76/77
+  if (/^(96|76|77)/.test(local)) return 'mtn';
+
   // Airtel prefixes: 097
-  if (/^(97)/.test(local)) {
-    return 'AIRTEL';
-  }
-  
+  if (/^(97)/.test(local)) return 'airtel';
+
   // Zamtel prefixes: 095, 075
-  if (/^(95|75)/.test(local)) {
-    return 'ZAMTEL';
-  }
-  
-  // Fallback to MTN for unrecognized prefixes
-  return 'MTN';
+  if (/^(95|75)/.test(local)) return 'zamtel';
+
+  // Fallback to mtn for unrecognized prefixes
+  return 'mtn';
 }
 
 /**
  * Formats the phone number for Lenco API.
- * Returns the full international number without the '+' sign (e.g., "260966860393").
+ * Normalizes to MSISDN: "260" + 9-digit local number, e.g. "260966860393".
  */
 function formatPhoneForLenco(phone: string): string {
-  // Remove all non-digit characters
-  const digits = phone.replace(/\D/g, '');
-  
-  // If it starts with '0', convert to international format
-  if (digits.startsWith('0')) {
-    return '260' + digits.slice(1);
-  }
-  
-  // If it already has the country code, return as is
-  if (digits.startsWith('260')) {
-    return digits;
-  }
-  
-  // Otherwise, assume it's a local number and add the country code
-  return '260' + digits;
+  const digits = phone.replace(/\D/g, ''); // keep only digits
+
+  // Always work from the last 9 digits as the local number
+  const local9 = digits.slice(-9); // e.g. "966860393"
+
+  // Prepend Zambia country code without plus → "260966860393"
+  return '260' + local9;
 }
+
 
 // ====================== MAIN FUNCTION ======================
 export async function requestLencoPayout(
   params: PayoutRequest,
-  logger: Logger
+  logger: Logger,
 ): Promise<PayoutResult> {
   const log = logger.child({ userId: params.userId, amount: params.amount });
 
   // 1. Validate inputs
   if (!validatePhoneNumber(params.phoneNumber)) {
-    throw new Error('Invalid phone number format. Must be +260XXXXXXXXX.');
+    throw new Error(
+      'Invalid phone number format. Use a valid Zambian number (e.g. +260966860393 or 0966860393).',
+    );
   }
 
   if (params.amount <= 0) {
@@ -101,22 +107,23 @@ export async function requestLencoPayout(
   }
 
   // 2. Generate reference and idempotency key
-  const reference = `ENR-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+  const reference = `ENR-${crypto
+    .randomBytes(6)
+    .toString('hex')
+    .toUpperCase()}`;
   const idempotencyKey = params.idempotencyKey || crypto.randomUUID();
 
   // 3. Insert pending record in our database
-  const { error: dbError } = await supabase
-    .from('settlement_payouts')
-    .insert({
-      user_id: params.userId,
-      cluster_id: params.clusterId,
-      reading_id: params.readingId || null,
-      amount_zmw: params.amount,
-      phone_number: params.phoneNumber,
-      status: 'pending',
-      reference,
-      narration: params.narration || 'Enerlectra energy credit settlement',
-    });
+  const { error: dbError } = await supabase.from('settlement_payouts').insert({
+    user_id: params.userId,
+    cluster_id: params.clusterId,
+    reading_id: params.readingId || null,
+    amount_zmw: params.amount,
+    phone_number: params.phoneNumber,
+    status: 'pending',
+    reference,
+    narration: params.narration || 'Enerlectra energy credit settlement',
+  });
 
   if (dbError) {
     log.error({ error: dbError }, 'Failed to create settlement record');
@@ -128,29 +135,37 @@ export async function requestLencoPayout(
     // Format phone and detect operator
     const formattedPhone = formatPhoneForLenco(params.phoneNumber);
     const operator = detectOperator(params.phoneNumber);
-    
-    log.info({ formattedPhone, operator }, 'Sending payout request to Lenco');
 
-    const response = await fetch(`${LENCO_API_URL}/collections/mobile-money`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LENCO_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey,
-      },
-      body: JSON.stringify({
-        accountId: LENCO_ACCOUNT_ID,
-        amount: params.amount.toFixed(2),
-        currency: 'ZMW',
-        mobileMoneyDetails: {
-          country: 'zm',
-          phone: formattedPhone,                     // Full international format: "260966860393"
-          operator: operator,                        // Capitalized: "MTN", "AIRTEL", or "ZAMTEL"
+    log.info(
+      { formattedPhone, operator },
+      'Sending payout request to Lenco',
+    );
+
+    const response = await fetch(
+      `${LENCO_API_URL}/collections/mobile-money`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${LENCO_SECRET_KEY}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
         },
-        narration: params.narration || 'Enerlectra energy credit settlement',
-        reference,
-      }),
-    });
+        body: JSON.stringify({
+          accountId: LENCO_ACCOUNT_ID,
+          amount: params.amount.toFixed(2),
+          currency: 'ZMW',
+          mobileMoneyDetails: {
+            country: 'ZM',          // ISO code, uppercase
+            phone: formattedPhone,  // e.g. "260966860393"
+            operator: operator,     // "mtn" | "airtel" | "zamtel"
+          },
+          narration:
+            params.narration ||
+            'Enerlectra energy credit settlement',
+          reference,
+        }),
+      },
+    );
 
     const result = await response.json();
 
@@ -163,7 +178,10 @@ export async function requestLencoPayout(
         })
         .eq('reference', reference);
 
-      log.error({ status: response.status, result }, 'Lenco payout failed');
+      log.error(
+        { status: response.status, result },
+        'Lenco payout failed',
+      );
       throw new Error(result.message || 'Payout failed');
     }
 
@@ -184,15 +202,17 @@ export async function requestLencoPayout(
       status: 'processing',
       providerRef,
     };
-
   } catch (error: any) {
     log.error({ error }, 'Lenco payout exception');
     throw error;
   }
 }
 
+
 // ====================== STATUS QUERY ======================
-export async function getPayoutStatus(reference: string): Promise<PayoutResult> {
+export async function getPayoutStatus(
+  reference: string,
+): Promise<PayoutResult> {
   const { data, error } = await supabase
     .from('settlement_payouts')
     .select('status, provider_ref, error_message')
