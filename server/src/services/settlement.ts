@@ -8,7 +8,7 @@ import crypto from 'node:crypto';
 const LENCO_API_URL =
   process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2';
 const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY!;
-const LENCO_ACCOUNT_ID = process.env.LENCO_ACCOUNT_ID!;
+const LENCO_ACCOUNT_ID = process.env.LENCO_ACCOUNT_ID!; // still used for our own tracking if needed
 
 
 // ====================== TYPES ======================
@@ -52,8 +52,9 @@ function validatePhoneNumber(phone: string): boolean {
 /**
  * Detects the mobile network operator based on Zambian phone number prefix.
  * Returns the operator identifier expected by the Lenco API (lowercase).
+ * For Zambia, allowed operators: "airtel" | "mtn".[web:109]
  */
-function detectOperator(phone: string): 'mtn' | 'airtel' | 'zamtel' {
+function detectOperator(phone: string): 'mtn' | 'airtel' {
   const local = phone.replace(/\D/g, '').slice(-9); // e.g. "966860393"
 
   // MTN prefixes: 096, 076, 077 → local: 96/76/77
@@ -62,25 +63,19 @@ function detectOperator(phone: string): 'mtn' | 'airtel' | 'zamtel' {
   // Airtel prefixes: 097
   if (/^(97)/.test(local)) return 'airtel';
 
-  // Zamtel prefixes: 095, 075
-  if (/^(95|75)/.test(local)) return 'zamtel';
-
   // Fallback to mtn for unrecognized prefixes
   return 'mtn';
 }
 
 /**
  * Formats the phone number for Lenco API.
- * Normalizes to MSISDN: "260" + 9-digit local number, e.g. "260966860393".
+ * Lenco expects a `phone` string on the top-level body; docs do not enforce MSISDN vs local,
+ * but for Zambia it's safest to send the 9-digit local number.[web:109]
+ * Example: "+260966860393" → "966860393".
  */
 function formatPhoneForLenco(phone: string): string {
-  const digits = phone.replace(/\D/g, ''); // keep only digits
-
-  // Always work from the last 9 digits as the local number
-  const local9 = digits.slice(-9); // e.g. "966860393"
-
-  // Prepend Zambia country code without plus → "260966860393"
-  return '260' + local9;
+  const digits = phone.replace(/\D/g, '');
+  return digits.slice(-9);
 }
 
 
@@ -132,7 +127,6 @@ export async function requestLencoPayout(
 
   // 4. Call Lenco v2 Mobile Money Collection endpoint
   try {
-    // Format phone and detect operator
     const formattedPhone = formatPhoneForLenco(params.phoneNumber);
     const operator = detectOperator(params.phoneNumber);
 
@@ -151,18 +145,12 @@ export async function requestLencoPayout(
           'Idempotency-Key': idempotencyKey,
         },
         body: JSON.stringify({
-          accountId: LENCO_ACCOUNT_ID,
-          amount: params.amount.toFixed(2),
-          currency: 'ZMW',
-          mobileMoneyDetails: {
-            country: 'ZM',          // ISO code, uppercase
-            phone: formattedPhone,  // e.g. "260966860393"
-            operator: operator,     // "mtn" | "airtel" | "zamtel"
-          },
-          narration:
-            params.narration ||
-            'Enerlectra energy credit settlement',
-          reference,
+          amount: Number(params.amount.toFixed(2)), // Body param: amount (double)[web:109]
+          reference,                                // Body param: reference (string)[web:109]
+          phone: formattedPhone,                    // Body param: phone (string)[web:109]
+          operator,                                 // Body param: operator: "airtel" | "mtn"[web:109]
+          country: 'zm',                            // Optional: "zm" or "mw"[web:109]
+          bearer: 'merchant',                       // Optional: defaults to "merchant"[web:109]
         }),
       },
     );
@@ -185,12 +173,19 @@ export async function requestLencoPayout(
       throw new Error(result.message || 'Payout failed');
     }
 
-    // 5. Update DB with provider reference
-    const providerRef = result.data?.reference || result.data?.providerRef;
+    // 5. Update DB with provider reference (from Lenco's "data")
+    const providerRef =
+      result.data?.lencoReference ||
+      result.data?.reference ||
+      result.data?.id;
+
     await supabase
       .from('settlement_payouts')
       .update({
-        status: 'processing',
+        status:
+          result.data?.status === 'successful'
+            ? 'completed'
+            : 'processing',
         provider_ref: providerRef,
       })
       .eq('reference', reference);
@@ -199,7 +194,10 @@ export async function requestLencoPayout(
 
     return {
       reference,
-      status: 'processing',
+      status:
+        result.data?.status === 'successful'
+          ? 'completed'
+          : 'processing',
       providerRef,
     };
   } catch (error: any) {
