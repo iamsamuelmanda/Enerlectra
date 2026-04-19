@@ -11,12 +11,12 @@ import {
   addNgwee,
   subtractNgwee,
   ZERO_NGWEE,
-  formatNgwee
+  formatNgwee,
 } from '../settlement/settlement-types';
 import {
   PaymentRail,
   ReconciliationReport,
-  TreasuryState
+  TreasuryState,
 } from './treasury-types';
 import { TreasuryService, TreasuryConfig } from './treasury-service';
 
@@ -52,26 +52,35 @@ export class TreasuryReconciliation {
       actions.push(`Reconciling ${rail}...`);
 
       const discrepancy = liquidity.discrepancyNgwee;
-      const absDiscrepancy = discrepancy < 0n ? discrepancy * -1n : discrepancy;
+      const absDiscrepancy =
+        discrepancy < 0n ? discrepancy * -1n : discrepancy;
 
       let status: 'BALANCED' | 'MINOR_DRIFT' | 'MAJOR_DISCREPANCY';
 
       if (absDiscrepancy <= this.config.reconciliationToleranceNgwee) {
         status = 'BALANCED';
-        actions.push(`✅ ${rail}: Balanced (discrepancy: ${formatNgwee(discrepancy)})`);
+        actions.push(
+          `✅ ${rail}: Balanced (discrepancy: ${formatNgwee(discrepancy)})`
+        );
       } else if (absDiscrepancy < this.config.criticalDiscrepancyThreshold) {
         status = 'MINOR_DRIFT';
-        actions.push(`⚠️  ${rail}: Minor drift (discrepancy: ${formatNgwee(discrepancy)})`);
+        actions.push(
+          `⚠️  ${rail}: Minor drift (discrepancy: ${formatNgwee(discrepancy)})`
+        );
         alerts.push({
           severity: 'WARNING',
-          message: `${rail} has minor drift: ${formatNgwee(discrepancy)}`
+          message: `${rail} has minor drift: ${formatNgwee(discrepancy)}`,
         });
       } else {
         status = 'MAJOR_DISCREPANCY';
-        actions.push(`❌ ${rail}: MAJOR DISCREPANCY (${formatNgwee(discrepancy)})`);
+        actions.push(
+          `❌ ${rail}: MAJOR DISCREPANCY (${formatNgwee(discrepancy)})`
+        );
         alerts.push({
           severity: 'CRITICAL',
-          message: `${rail} has major discrepancy: ${formatNgwee(discrepancy)}. PAYOUTS FROZEN.`
+          message: `${rail} has major discrepancy: ${formatNgwee(
+            discrepancy
+          )}. PAYOUTS FROZEN.`,
         });
       }
 
@@ -80,7 +89,7 @@ export class TreasuryReconciliation {
         internalBalance: liquidity.internalBalanceNgwee,
         externalBalance: liquidity.externalBalanceNgwee,
         discrepancy,
-        status
+        status,
       });
     }
 
@@ -91,20 +100,24 @@ export class TreasuryReconciliation {
     // Take actions based on findings
     if (!systemBalanced) {
       actions.push('⚠️  SYSTEM NOT BALANCED');
-      
+
       if (totalDiscrepancy >= this.config.criticalDiscrepancyThreshold) {
         actions.push('🚨 CRITICAL THRESHOLD EXCEEDED - FREEZING PAYOUTS');
         await this.freezePayouts();
-        
+
         alerts.push({
           severity: 'CRITICAL',
-          message: `Total discrepancy ${formatNgwee(totalDiscrepancy)} exceeds critical threshold. All payouts frozen. Manual intervention required.`
+          message: `Total discrepancy ${formatNgwee(
+            totalDiscrepancy
+          )} exceeds critical threshold. All payouts frozen. Manual intervention required.`,
         });
       } else {
         actions.push('⚠️  Minor drift detected - monitoring');
         alerts.push({
           severity: 'WARNING',
-          message: `Total discrepancy: ${formatNgwee(totalDiscrepancy)}. Within tolerance but requires attention.`
+          message: `Total discrepancy: ${formatNgwee(
+            totalDiscrepancy
+          )}. Within tolerance but requires attention.`,
         });
       }
     } else {
@@ -119,7 +132,7 @@ export class TreasuryReconciliation {
       totalDiscrepancy,
       systemBalanced,
       actions,
-      alerts
+      alerts,
     });
 
     // Return report
@@ -129,7 +142,7 @@ export class TreasuryReconciliation {
       totalDiscrepancy,
       systemBalanced,
       actions,
-      alerts
+      alerts,
     };
   }
 
@@ -142,7 +155,7 @@ export class TreasuryReconciliation {
       .update({
         payouts_frozen: true,
         frozen_at: new Date().toISOString(),
-        freeze_reason: 'Critical treasury discrepancy'
+        freeze_reason: 'Critical treasury discrepancy',
       })
       .eq('active', true);
   }
@@ -157,7 +170,7 @@ export class TreasuryReconciliation {
         payouts_frozen: false,
         unfrozen_at: new Date().toISOString(),
         unfrozen_by: approvedBy,
-        unfreeze_notes: notes
+        unfreeze_notes: notes,
       })
       .eq('active', true);
   }
@@ -197,24 +210,24 @@ export class TreasuryReconciliation {
       totalDiscrepancy: ngwee(BigInt(r.total_discrepancy_ngwee)),
       systemBalanced: r.system_balanced,
       actions: r.actions,
-      alerts: r.alerts
+      alerts: r.alerts,
     }));
   }
 
   /**
    * Log reconciliation to database
    */
-  private async logReconciliation(report: ReconciliationReport): Promise<void> {
-    await this.supabase
-      .from('treasury_reconciliations')
-      .insert({
-        timestamp: report.timestamp.toISOString(),
-        rail_reports: report.railReports,
-        total_discrepancy_ngwee: report.totalDiscrepancy.toString(),
-        system_balanced: report.systemBalanced,
-        actions: report.actions,
-        alerts: report.alerts
-      });
+  private async logReconciliation(
+    report: ReconciliationReport
+  ): Promise<void> {
+    await this.supabase.from('treasury_reconciliations').insert({
+      timestamp: report.timestamp.toISOString(),
+      rail_reports: report.railReports,
+      total_discrepancy_ngwee: report.totalDiscrepancy.toString(),
+      system_balanced: report.systemBalanced,
+      actions: report.actions,
+      alerts: report.alerts,
+    });
   }
 
   /**
@@ -225,7 +238,7 @@ export class TreasuryReconciliation {
     endDate: Date
   ): Promise<string> {
     const history = await this.getReconciliationHistory(startDate, endDate);
-    
+
     let report = `TREASURY RECONCILIATION REPORT\n`;
     report += `Period: ${startDate.toISOString()} to ${endDate.toISOString()}\n`;
     report += `Generated: ${new Date().toISOString()}\n`;
@@ -239,7 +252,7 @@ export class TreasuryReconciliation {
       report += `Total Discrepancy: ${formatNgwee(rec.totalDiscrepancy)}\n`;
       report += `\n`;
       report += `Rail Status:\n`;
-      
+
       for (const railReport of rec.railReports) {
         report += `  ${railReport.rail}:\n`;
         report += `    Internal: ${formatNgwee(railReport.internalBalance)}\n`;
@@ -247,9 +260,9 @@ export class TreasuryReconciliation {
         report += `    Discrepancy: ${formatNgwee(railReport.discrepancy)}\n`;
         report += `    Status: ${railReport.status}\n`;
       }
-      
+
       report += `\n`;
-      
+
       if (rec.alerts.length > 0) {
         report += `Alerts:\n`;
         for (const alert of rec.alerts) {
@@ -257,7 +270,7 @@ export class TreasuryReconciliation {
         }
         report += `\n`;
       }
-      
+
       report += `───────────────────────────────────────────────────────────\n`;
       report += `\n`;
     }
@@ -268,15 +281,19 @@ export class TreasuryReconciliation {
   /**
    * Calculate average daily drift (for trending)
    */
-  async calculateAverageDrift(days: number = 30): Promise<{
+  async calculateAverageDrift(
+    days: number = 30
+  ): Promise<{
     averageDriftNgwee: Ngwee;
     maxDriftNgwee: Ngwee;
     daysOutOfBalance: number;
     trend: 'IMPROVING' | 'STABLE' | 'DEGRADING';
   }> {
     const endDate = new Date();
-    const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-    
+    const startDate = new Date(
+      endDate.getTime() - days * 24 * 60 * 60 * 1000
+    );
+
     const history = await this.getReconciliationHistory(startDate, endDate);
 
     if (history.length === 0) {
@@ -284,23 +301,34 @@ export class TreasuryReconciliation {
         averageDriftNgwee: ZERO_NGWEE,
         maxDriftNgwee: ZERO_NGWEE,
         daysOutOfBalance: 0,
-        trend: 'STABLE'
+        trend: 'STABLE',
       };
     }
 
     // Calculate metrics
-    const drifts = history.map(h => {
-      const abs = h.totalDiscrepancy < 0n 
-        ? h.totalDiscrepancy * -1n 
-        : h.totalDiscrepancy;
-      return abs;
+    const drifts: Ngwee[] = history.map(h => {
+      const abs =
+        h.totalDiscrepancy < 0n
+          ? h.totalDiscrepancy * -1n
+          : h.totalDiscrepancy;
+      return ngwee(abs);
     });
 
-    const totalDrift = drifts.reduce((sum, d) => addNgwee(sum, d), ZERO_NGWEE);
-    const averageDriftNgwee = ngwee(totalDrift / BigInt(drifts.length));
-    const maxDriftNgwee = drifts.reduce((max, d) => d > max ? d : max, ZERO_NGWEE);
-    
-    const daysOutOfBalance = history.filter(h => !h.systemBalanced).length;
+    const totalDrift = drifts.reduce(
+      (sum, d) => addNgwee(sum, d),
+      ZERO_NGWEE
+    );
+    const averageDriftNgwee = ngwee(
+      totalDrift / BigInt(drifts.length)
+    );
+    const maxDriftNgwee = drifts.reduce(
+      (max, d) => (d > max ? d : max),
+      ZERO_NGWEE
+    );
+
+    const daysOutOfBalance = history.filter(
+      h => !h.systemBalanced
+    ).length;
 
     // Calculate trend (first half vs second half)
     const midpoint = Math.floor(history.length / 2);
@@ -309,24 +337,32 @@ export class TreasuryReconciliation {
 
     const avgFirstHalf = this.calculateAverage(
       firstHalf.map(h => {
-        const abs = h.totalDiscrepancy < 0n ? h.totalDiscrepancy * -1n : h.totalDiscrepancy;
-        return abs;
+        const abs =
+          h.totalDiscrepancy < 0n
+            ? h.totalDiscrepancy * -1n
+            : h.totalDiscrepancy;
+        return ngwee(abs);
       })
     );
 
     const avgSecondHalf = this.calculateAverage(
       secondHalf.map(h => {
-        const abs = h.totalDiscrepancy < 0n ? h.totalDiscrepancy * -1n : h.totalDiscrepancy;
-        return abs;
+        const abs =
+          h.totalDiscrepancy < 0n
+            ? h.totalDiscrepancy * -1n
+            : h.totalDiscrepancy;
+        return ngwee(abs);
       })
     );
 
     let trend: 'IMPROVING' | 'STABLE' | 'DEGRADING';
     const change = Number(avgSecondHalf - avgFirstHalf);
-    
-    if (change < -500) { // Improving by > 5 ZMW
+
+    if (change < -500) {
+      // Improving by > 5 ZMW
       trend = 'IMPROVING';
-    } else if (change > 500) { // Degrading by > 5 ZMW
+    } else if (change > 500) {
+      // Degrading by > 5 ZMW
       trend = 'DEGRADING';
     } else {
       trend = 'STABLE';
@@ -336,7 +372,7 @@ export class TreasuryReconciliation {
       averageDriftNgwee,
       maxDriftNgwee,
       daysOutOfBalance,
-      trend
+      trend,
     };
   }
 

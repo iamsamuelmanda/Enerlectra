@@ -75,18 +75,19 @@ export class AirtelMoneyAdapter {
 
   constructor(config: AirtelConfig) {
     this.config = config;
-    
-    const baseURL = config.environment === 'sandbox'
-      ? 'https://openapiuat.airtel.africa'
-      : 'https://openapi.airtel.africa';
+
+    const baseURL =
+      config.environment === 'sandbox'
+        ? 'https://openapiuat.airtel.africa'
+        : 'https://openapi.airtel.africa';
 
     this.client = axios.create({
       baseURL,
       headers: {
         'Content-Type': 'application/json',
         'X-Country': config.country,
-        'X-Currency': 'ZMW'
-      }
+        'X-Currency': 'ZMW',
+      },
     });
   }
 
@@ -98,25 +99,28 @@ export class AirtelMoneyAdapter {
    * Get OAuth access token
    */
   private async getAccessToken(): Promise<string> {
-    if (this.accessToken && this.tokenExpiresAt && this.tokenExpiresAt > new Date()) {
+    if (
+      this.accessToken &&
+      this.tokenExpiresAt &&
+      this.tokenExpiresAt > new Date()
+    ) {
       return this.accessToken;
     }
 
     try {
-      const response = await this.client.post(
-        '/auth/oauth2/token',
-        {
-          client_id: this.config.clientId,
-          client_secret: this.config.clientSecret,
-          grant_type: 'client_credentials'
-        }
-      );
+      const response = await this.client.post('/auth/oauth2/token', {
+        client_id: this.config.clientId,
+        client_secret: this.config.clientSecret,
+        grant_type: 'client_credentials',
+      });
 
       this.accessToken = response.data.access_token;
-      
+
       // Tokens expire in ~3600 seconds (1 hour)
       const expiresIn = response.data.expires_in || 3600;
-      this.tokenExpiresAt = new Date(Date.now() + (expiresIn - 300) * 1000); // 5 min buffer
+      this.tokenExpiresAt = new Date(
+        Date.now() + (expiresIn - 300) * 1000
+      ); // 5 min buffer
 
       return this.accessToken;
     } catch (error: any) {
@@ -150,14 +154,14 @@ export class AirtelMoneyAdapter {
         subscriber: {
           country: this.config.country,
           currency: 'ZMW',
-          msisdn: this.formatPhoneNumber(phoneNumber)
+          msisdn: this.formatPhoneNumber(phoneNumber),
         },
         transaction: {
           amount,
           country: this.config.country,
           currency: 'ZMW',
-          id: transactionId
-        }
+          id: transactionId,
+        },
       };
 
       const response = await this.client.post(
@@ -165,9 +169,9 @@ export class AirtelMoneyAdapter {
         request,
         {
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'X-Callback-Url': this.config.callbackUrl
-          }
+            Authorization: `Bearer ${token}`,
+            'X-Callback-Url': this.config.callbackUrl,
+          },
         }
       );
 
@@ -175,17 +179,21 @@ export class AirtelMoneyAdapter {
 
       return {
         transactionId: result.data.transaction.id,
-        status: result.data.transaction.status
+        status: result.data.transaction.status,
       };
     } catch (error: any) {
-      throw new Error(`Airtel request payment failed: ${error.message}`);
+      throw new Error(
+        `Airtel request payment failed: ${error.message}`
+      );
     }
   }
 
   /**
    * Check payment status
    */
-  async getPaymentStatus(transactionId: string): Promise<{
+  async getPaymentStatus(
+    transactionId: string
+  ): Promise<{
     status: 'SUCCESS' | 'PENDING' | 'FAILED';
     message: string;
   }> {
@@ -196,8 +204,8 @@ export class AirtelMoneyAdapter {
         `/standard/v1/payments/${transactionId}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -205,10 +213,12 @@ export class AirtelMoneyAdapter {
 
       return {
         status: result.data.transaction.status,
-        message: result.status.message
+        message: result.status.message,
       };
     } catch (error: any) {
-      throw new Error(`Airtel get payment status failed: ${error.message}`);
+      throw new Error(
+        `Airtel get payment status failed: ${error.message}`
+      );
     }
   }
 
@@ -226,14 +236,22 @@ export class AirtelMoneyAdapter {
     while (Date.now() - startTime < timeoutMs) {
       const status = await this.getPaymentStatus(transactionId);
 
-      if (status.status === 'SUCCESS' || status.status === 'FAILED') {
-        return status;
+      if (
+        status.status === 'SUCCESS' ||
+        status.status === 'FAILED'
+      ) {
+        return {
+          status: status.status,
+          message: status.message,
+        };
       }
 
       await this.sleep(pollIntervalSeconds * 1000);
     }
 
-    throw new Error(`Payment confirmation timeout after ${timeoutSeconds} seconds`);
+    throw new Error(
+      `Payment confirmation timeout after ${timeoutSeconds} seconds`
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -260,14 +278,14 @@ export class AirtelMoneyAdapter {
 
       const request: AirtelDisbursementRequest = {
         payee: {
-          msisdn: this.formatPhoneNumber(phoneNumber)
+          msisdn: this.formatPhoneNumber(phoneNumber),
         },
         reference: externalId,
         pin: merchantPin,
         transaction: {
           amount,
-          id: transactionId
-        }
+          id: transactionId,
+        },
       };
 
       const response = await this.client.post(
@@ -275,8 +293,8 @@ export class AirtelMoneyAdapter {
         request,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -284,17 +302,21 @@ export class AirtelMoneyAdapter {
 
       return {
         transactionId: result.data.transaction.id,
-        status: result.status.success ? 'SUCCESS' : 'PENDING'
+        status: result.status.success ? 'SUCCESS' : 'PENDING',
       };
     } catch (error: any) {
-      throw new Error(`Airtel send payout failed: ${error.message}`);
+      throw new Error(
+        `Airtel send payout failed: ${error.message}`
+      );
     }
   }
 
   /**
    * Check payout status
    */
-  async getPayoutStatus(transactionId: string): Promise<{
+  async getPayoutStatus(
+    transactionId: string
+  ): Promise<{
     status: 'SUCCESS' | 'PENDING' | 'FAILED';
     message: string;
   }> {
@@ -305,8 +327,8 @@ export class AirtelMoneyAdapter {
         `/standard/v1/disbursements/${transactionId}`,
         {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
@@ -314,10 +336,12 @@ export class AirtelMoneyAdapter {
 
       return {
         status: result.data.transaction.status,
-        message: result.status.message
+        message: result.status.message,
       };
     } catch (error: any) {
-      throw new Error(`Airtel get payout status failed: ${error.message}`);
+      throw new Error(
+        `Airtel get payout status failed: ${error.message}`
+      );
     }
   }
 
@@ -339,17 +363,19 @@ export class AirtelMoneyAdapter {
         '/standard/v1/users/balance',
         {
           headers: {
-            'Authorization': `Bearer ${token}`
-          }
+            Authorization: `Bearer ${token}`,
+          },
         }
       );
 
       return {
         balance: response.data.data.balance,
-        currency: response.data.data.currency
+        currency: response.data.data.currency,
       };
     } catch (error: any) {
-      throw new Error(`Airtel get balance failed: ${error.message}`);
+      throw new Error(
+        `Airtel get balance failed: ${error.message}`
+      );
     }
   }
 
@@ -383,7 +409,9 @@ export class AirtelMoneyAdapter {
 // FACTORY
 // ═══════════════════════════════════════════════════════════════
 
-export function createAirtelAdapter(config: AirtelConfig): AirtelMoneyAdapter {
+export function createAirtelAdapter(
+  config: AirtelConfig
+): AirtelMoneyAdapter {
   return new AirtelMoneyAdapter(config);
 }
 
@@ -393,11 +421,15 @@ export function createAirtelAdapter(config: AirtelConfig): AirtelMoneyAdapter {
 
 export function getAirtelConfigFromEnv(): AirtelConfig {
   return {
-    environment: (process.env.AIRTEL_ENVIRONMENT as 'sandbox' | 'production') || 'sandbox',
+    environment:
+      (process.env.AIRTEL_ENVIRONMENT as 'sandbox' | 'production') ||
+      'sandbox',
     clientId: process.env.AIRTEL_CLIENT_ID || '',
     clientSecret: process.env.AIRTEL_CLIENT_SECRET || '',
     apiKey: process.env.AIRTEL_API_KEY || '',
-    callbackUrl: process.env.AIRTEL_CALLBACK_URL || 'https://enerlectra.com/webhooks/airtel',
-    country: process.env.AIRTEL_COUNTRY || 'ZM'
+    callbackUrl:
+      process.env.AIRTEL_CALLBACK_URL ||
+      'https://enerlectra.com/webhooks/airtel',
+    country: process.env.AIRTEL_COUNTRY || 'ZM',
   };
 }

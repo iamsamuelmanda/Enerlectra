@@ -1,9 +1,9 @@
-// server/services/settlementsSupabase.ts
-import { supabase } from '../lib/supabase';
+// src/services/settlementsSupabase.ts
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 import {
   Settlement,
   ParticipantSettlement,
-} from '../../enerlectra-core/src/domain/marketplace/engines/SettlementEngine';
+} from '../domain/marketplace/engines/SettlementEngine';
 
 function mapSettlementRow(row: any): Settlement {
   return {
@@ -54,7 +54,6 @@ function mapSettlementRow(row: any): Settlement {
 export async function createSettlement(
   settlement: Settlement,
 ): Promise<Settlement> {
-  // Insert settlement
   const { error: setError } = await supabase.from('settlements').insert({
     id: settlement.id,
     cluster_id: settlement.clusterId,
@@ -78,13 +77,15 @@ export async function createSettlement(
   });
 
   if (setError) {
-    console.error('createSettlement settlement insert error', setError);
+    console.error(
+      'createSettlement settlement insert error',
+      setError,
+    );
     throw setError;
   }
 
-  // Insert participant settlements
   if (settlement.settlements && settlement.settlements.length > 0) {
-    const participantRows = settlement.settlements.map((p) => ({
+    const participantRows = settlement.settlements.map(p => ({
       settlement_id: settlement.id,
       user_id: p.userId,
       user_name: p.userName,
@@ -137,9 +138,12 @@ export async function updateSettlementStatus(
     throw new Error(`Settlement ${settlementId} not found`);
   }
 
-  // Load with participants
   const full = await getSettlementById(settlementId);
-  if (!full) throw new Error(`Settlement ${settlementId} not found after update`);
+  if (!full) {
+    throw new Error(
+      `Settlement ${settlementId} not found after update`,
+    );
+  }
   return full;
 }
 
@@ -164,7 +168,10 @@ export async function updateParticipantSettlementStatus(
     .eq('id', participantSettlementId);
 
   if (error) {
-    console.error('updateParticipantSettlementStatus error', error);
+    console.error(
+      'updateParticipantSettlementStatus error',
+      error,
+    );
     throw error;
   }
 }
@@ -250,7 +257,10 @@ export async function getLatestSettlementForCluster(
     .maybeSingle();
 
   if (error) {
-    console.error('getLatestSettlementForCluster error', error);
+    console.error(
+      'getLatestSettlementForCluster error',
+      error,
+    );
     throw error;
   }
 
@@ -304,7 +314,10 @@ export async function getSettlementHistoryForCluster(
     .limit(limit);
 
   if (error) {
-    console.error('getSettlementHistoryForCluster error', error);
+    console.error(
+      'getSettlementHistoryForCluster error',
+      error,
+    );
     throw error;
   }
 

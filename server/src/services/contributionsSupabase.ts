@@ -1,4 +1,4 @@
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 
 export type DbContribution = {
   id: string;

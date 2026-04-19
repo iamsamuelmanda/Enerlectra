@@ -1,188 +1,200 @@
+// server/src/routes/distribution.ts
 import { Router } from 'express';
-
-// go up from server/routes -> server -> project root
-import { SettlementPolicy } from '../../enerlectra-core/src/domain/settlementPolicy';
-import { getClusterState } from '../services/settlementStateSupabase';
-import { distributeOutcome } from '../../enerlectra-core/src/engines/distribution.ts';
-import { getSnapshotById } from '../../enerlectra-core/src/engines/snapshot/snapshotStore.ts';
-import { appendAuditEvent } from '../../enerlectra-core/src/engines/audit/auditLog.ts';
-import {
-  insertFinalDistribution,
-  hasFinalDistributionForSnapshot,
-} from '../services/distributionSupabase.ts';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 
-/**
- * GET /distribution/clusters/:id
- * Simulate a distribution without persisting.
- * Required query params:
- *  - snapshotId
- *  - totalKwh
- */
-router.get('/clusters/:id', async (req, res) => {
-  const { id: clusterId } = req.params;
-  const state = await getClusterState(clusterId);
-if (!SettlementPolicy.canSimulate(state)) {
-  return res.status(409).json({
-    error: `Simulation is not allowed while cluster is in ${state} state`,
-  });
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  throw new Error('Supabase configuration missing for distribution routes');
 }
 
-  const { snapshotId, totalKwh } = req.query;
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+);
 
-  if (!snapshotId || !totalKwh) {
-    return res.status(400).json({
-      error: 'snapshotId and totalKwh are required',
-    });
-  }
+// Simple state machine (replace with your actual states)
+const ALLOWED_SIMULATION_STATES = ['DRAFT', 'PILOT', 'RECONCILED'];
 
-  const total = Number(totalKwh);
-  if (!Number.isFinite(total) || total <= 0) {
-    return res.status(400).json({
-      error: 'totalKwh must be a number > 0',
-    });
-  }
-
-  let snapshot;
+// Simulate distribution without persisting
+router.get('/clusters/:id', async (req, res) => {
+  const { id: clusterId } = req.params;
+  
   try {
-    snapshot = getSnapshotById(clusterId, String(snapshotId));
-  } catch (err: any) {
-    return res.status(404).json({ error: err.message });
-  }
+    // Check cluster state
+    const { data: cluster } = await supabase
+      .from('clusters')
+      .select('settlement_state')
+      .eq('id', clusterId)
+      .single();
 
-  const ownership = snapshot.effectiveOwnership.map((o: any) => ({
-    userId: o.userId,
-    pct: o.pct,
-  }));
+    const state = cluster?.settlement_state ?? 'DRAFT';
+    if (!ALLOWED_SIMULATION_STATES.includes(state)) {
+      return res.status(409).json({
+        error: `Simulation not allowed while cluster is in ${state} state`,
+      });
+    }
 
-  const distribution = distributeOutcome(ownership, total);
+    const { snapshotId, totalKwh } = req.query;
 
-  appendAuditEvent({
-    eventType: 'DISTRIBUTION_SIMULATED',
-    clusterId,
-    payload: {
+    if (!snapshotId || !totalKwh) {
+      return res.status(400).json({
+        error: 'snapshotId and totalKwh are required',
+      });
+    }
+
+    const total = Number(totalKwh);
+    if (!Number.isFinite(total) || total <= 0) {
+      return res.status(400).json({
+        error: 'totalKwh must be a number > 0',
+      });
+    }
+
+    // Get ownership snapshot
+    const { data: snapshot } = await supabase
+      .from('ownership_snapshots')
+      .select('id, user_id, ownership_pct')
+      .eq('cluster_id', clusterId)
+      .eq('id', snapshotId as string)
+      .single();
+
+    if (!snapshot) {
+      return res.status(404).json({ error: 'Snapshot not found' });
+    }
+
+    // Simple proportional distribution
+    const ownership = [{ userId: snapshot.user_id, pct: snapshot.ownership_pct }];
+    const distribution = ownership.map((o) => ({
+      userId: o.userId,
+      pct: o.pct,
+      kwh: Math.round((o.pct / 100) * total * 100) / 100,
+    }));
+
+    // Log simulation audit
+    await supabase.from('audit_events').insert({
+      event_type: 'DISTRIBUTION_SIMULATED',
+      cluster_id: clusterId,
+      payload: {
+        snapshotId,
+        totalKwh: total,
+        recipients: distribution.length,
+      },
+    });
+
+    res.json({
+      clusterId,
       snapshotId,
       totalKwh: total,
-      recipients: distribution.length,
-    },
-  });
-
-  return res.json({
-    clusterId,
-    snapshotId,
-    totalKwh: total,
-    distribution,
-  });
+      distribution,
+    });
+  } catch (err: any) {
+    console.error('[DISTRIBUTION SIM ERROR]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
-/**
- * POST /distribution/clusters/:id/finalize
- * Finalize and persist a distribution for a specific cluster, returning a real distributionId.
- * Body:
- *  - snapshotId (string)
- *  - totalKwh (number)
- */
+// Finalize distribution (persists to DB)
 router.post('/clusters/:id/finalize', async (req, res) => {
   const { id: clusterId } = req.params;
   const { snapshotId, totalKwh } = req.body;
 
-  if (!snapshotId || totalKwh == null) {
-    return res.status(400).json({
-      error: 'snapshotId and totalKwh are required',
-    });
-  }
-
-  const total = Number(totalKwh);
-  if (!Number.isFinite(total) || total <= 0) {
-    return res.status(400).json({
-      error: 'totalKwh must be a number > 0',
-    });
-  }
-
-  const snapId = String(snapshotId);
-
-  // 1) Idempotency: check Supabase for existing final distribution for this snapshot
   try {
-    const already = await hasFinalDistributionForSnapshot(snapId);
-    if (already) {
+    if (!snapshotId || totalKwh == null) {
+      return res.status(400).json({
+        error: 'snapshotId and totalKwh are required',
+      });
+    }
+
+    const total = Number(totalKwh);
+    if (!Number.isFinite(total) || total <= 0) {
+      return res.status(400).json({
+        error: 'totalKwh must be a number > 0',
+      });
+    }
+
+    const snapId = String(snapshotId);
+
+    // Check for existing final distribution
+    const { data: existing } = await supabase
+      .from('final_distributions')
+      .select('id')
+      .eq('snapshot_id', snapId)
+      .single();
+
+    if (existing) {
       return res.status(400).json({
         error: 'This snapshot has already been finalized',
       });
     }
-  } catch (err: any) {
-    console.error('hasFinalDistributionForSnapshot failed', err);
-    return res.status(500).json({
-      error:
-        err.message ?? 'Failed to check existing final distribution for snapshot',
-    });
-  }
 
-  // 2) Ensure snapshot exists and belongs to this cluster
-  let snapshot;
-  try {
-    snapshot = getSnapshotById(clusterId, snapId);
-  } catch (err: any) {
-    return res.status(404).json({ error: err.message });
-  }
+    // Get snapshot
+    const { data: snapshot } = await supabase
+      .from('ownership_snapshots')
+      .select('id, user_id, ownership_pct')
+      .eq('cluster_id', clusterId)
+      .eq('id', snapId)
+      .single();
 
-  const ownership = snapshot.effectiveOwnership.map((o: any) => ({
-    userId: o.userId,
-    pct: o.pct,
-  }));
+    if (!snapshot) {
+      return res.status(404).json({ error: 'Snapshot not found' });
+    }
 
-  // 3) Deterministic distribution
-  const rawDistribution = distributeOutcome(ownership, total);
+    // Compute distribution
+    const ownership = [{ userId: snapshot.user_id, pct: snapshot.ownership_pct }];
+    const rawDistribution = ownership.map((o) => ({
+      userId: o.userId,
+      pct: o.pct,
+      kwh: Math.round((o.pct / 100) * total * 100) / 100,
+    }));
 
-  const allocations = rawDistribution.map((d: any) => ({
-    userId: d.userId,
-    allocatedKwh: d.kwh,
-    ownershipPct: d.pct,
-  }));
+    const allocations = rawDistribution.map((d) => ({
+      userId: d.userId,
+      allocatedKwh: d.kwh,
+      ownershipPct: d.pct,
+    }));
 
-  const distributionId = `dist_${Math.random().toString(36).slice(2, 10)}`;
+    const distributionId = `dist_${Date.now()}`;
 
-  // 4) Persist final distribution in Supabase
-  let record;
-  try {
-    record = await insertFinalDistribution({
-      distributionId,
-      clusterId,
-      snapshotId: snapId,
-      totalKwh: total,
-      allocations,
-    });
-  } catch (err: any) {
-    console.error('insertFinalDistribution failed', err);
-    return res
-      .status(500)
-      .json({ error: err.message ?? 'Failed to persist final distribution' });
-  }
+    // Persist final distribution
+    const { data: record, error } = await supabase
+      .from('final_distributions')
+      .insert({
+        id: distributionId,
+        cluster_id: clusterId,
+        snapshot_id: snapId,
+        total_kwh: total,
+        allocations,
+        finalized_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-  // 5) Audit
-  try {
-    appendAuditEvent({
-      eventType: 'DISTRIBUTION_FINALIZED',
-      clusterId,
+    if (error) throw error;
+
+    // Audit
+    await supabase.from('audit_events').insert({
+      event_type: 'DISTRIBUTION_FINALIZED',
+      cluster_id: clusterId,
       payload: {
         snapshotId: snapId,
-        distributionId: record.id,
+        distributionId,
         totalKwh: total,
         recipients: allocations.length,
       },
     });
-  } catch (err) {
-    console.error('Failed to append audit event:', err);
-  }
 
-  return res.json({
-    distributionId: record.id,
-    finalizedAt: record.finalized_at,
-    clusterId: record.cluster_id,
-    snapshotId: record.snapshot_id,
-    totalKwh: record.total_kwh,
-    allocations: record.allocations,
-  });
+    res.json({
+      distributionId: record.id,
+      finalizedAt: record.finalized_at,
+      clusterId: record.cluster_id,
+      snapshotId: record.snapshot_id,
+      totalKwh: record.total_kwh,
+      allocations: record.allocations,
+    });
+  } catch (err: any) {
+    console.error('[DISTRIBUTION FINALIZE ERROR]', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

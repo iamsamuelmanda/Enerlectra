@@ -1,13 +1,21 @@
-// server/services/clustersSupabase.ts
-import { supabase } from '../lib/supabase';
-import { ClusterState } from '../../enerlectra-core/src/domain/marketplace/engines/AntiWhaleEngine';
-import { LifecycleState } from '../../enerlectra-core/src/domain/lifecycle/types';
+// src/services/clustersSupabase.ts
 
-export interface ClusterRecord extends ClusterState {
+import { supabase } from '../lib/supabase';
+import { LifecycleState } from '../domain/lifecycle/types';
+
+// Shape is similar to ClusterState but defined locally for the service layer.
+export interface ClusterRecord {
+  id: string;
   name: string;
   location: string;
+  lifecycleState: LifecycleState;
+  targetUSD: number;
+  currentUSD: number;
+  fundingPct: number;
+  targetKw: number;
   targetStorageKwh: number;
   monthlyKwh: number;
+  isLocked: boolean;
   participantCount: number;
   createdAt: Date;
   fundedAt: Date | null;
@@ -31,7 +39,7 @@ function mapRow(row: any): ClusterRecord {
     id: row.id,
     name: row.name,
     location: row.location,
-    lifecycleState: row.lifecycle_state,
+    lifecycleState: row.lifecycle_state as LifecycleState,
     targetUSD: Number(row.target_usd),
     currentUSD: Number(row.current_usd),
     fundingPct: Number(row.funding_pct),
@@ -112,7 +120,7 @@ export async function updateClusterLifecycleState(
     .select('*')
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error('updateClusterLifecycleState error', error);
     throw new Error(`Cluster ${clusterId} not found or update failed`);
   }
@@ -125,7 +133,6 @@ export async function updateClusterFunding(
   amountUSD: number,
   participantDelta: number = 1,
 ): Promise<ClusterRecord> {
-  // We need to read current values first to compute funding_pct as in SQL version
   const { data: existing, error: getError } = await supabase
     .from('clusters')
     .select('current_usd,target_usd,participant_count')
@@ -138,7 +145,8 @@ export async function updateClusterFunding(
   }
 
   const newCurrent = Number(existing.current_usd) + amountUSD;
-  const fundingPct = (newCurrent / Number(existing.target_usd)) * 100;
+  const fundingPct =
+    (newCurrent / Number(existing.target_usd)) * 100;
   const newParticipantCount =
     Number(existing.participant_count) + participantDelta;
 
@@ -153,7 +161,7 @@ export async function updateClusterFunding(
     .select('*')
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error('updateClusterFunding error', error);
     throw error;
   }
@@ -242,7 +250,9 @@ export async function getClustersNearingDeadline(
   hoursRemaining: number = 24,
 ): Promise<ClusterRecord[]> {
   const now = new Date();
-  const upper = new Date(now.getTime() + hoursRemaining * 60 * 60 * 1000);
+  const upper = new Date(
+    now.getTime() + hoursRemaining * 60 * 60 * 1000,
+  );
 
   const { data, error } = await supabase
     .from('clusters')

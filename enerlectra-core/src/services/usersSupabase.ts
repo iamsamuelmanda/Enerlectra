@@ -1,9 +1,20 @@
-// server/services/usersSupabase.ts
+// src/services/usersSupabase.ts
 import { supabase } from '../lib/supabase';
-import {
-  UserState,
-  UserClass,
-} from '../../enerlectra-core/src/domain/marketplace/engines/AntiWhaleEngine';
+
+// Minimal copies of the AntiWhale user types used at the service layer.
+// If you want to keep them in sync, you can later import the canonical types instead.
+export type UserClass =
+  | 'MICRO'
+  | 'RETAIL'
+  | 'PROFESSIONAL'
+  | 'INSTITUTIONAL';
+
+export interface UserState {
+  id: string;
+  currentClass: UserClass;
+  totalInvestedUSD: number;
+  clusterCount: number;
+}
 
 export interface UserRecord extends UserState {
   name: string;
@@ -30,7 +41,7 @@ function mapRow(row: any): UserRecord {
     location: row.location,
     currentClass: row.current_class,
     totalInvestedUSD: Number(row.total_invested_usd),
-    clusterCount: row.cluster_count,
+    clusterCount: Number(row.cluster_count),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   };
@@ -108,7 +119,7 @@ export async function updateUserClass(
     .select('*')
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error('updateUserClass error', error);
     throw new Error(`User ${userId} not found or update failed`);
   }
@@ -120,7 +131,6 @@ export async function updateUserTotalInvested(
   userId: string,
   delta: number,
 ): Promise<UserRecord> {
-  // Read current first
   const { data: existing, error: getError } = await supabase
     .from('users')
     .select('total_invested_usd')
@@ -128,7 +138,10 @@ export async function updateUserTotalInvested(
     .single();
 
   if (getError || !existing) {
-    console.error('updateUserTotalInvested get existing error', getError);
+    console.error(
+      'updateUserTotalInvested get existing error',
+      getError,
+    );
     throw new Error(`User ${userId} not found`);
   }
 
@@ -144,7 +157,7 @@ export async function updateUserTotalInvested(
     .select('*')
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error('updateUserTotalInvested error', error);
     throw error;
   }
@@ -162,7 +175,10 @@ export async function incrementUserClusterCount(
     .single();
 
   if (getError || !existing) {
-    console.error('incrementUserClusterCount get existing error', getError);
+    console.error(
+      'incrementUserClusterCount get existing error',
+      getError,
+    );
     throw new Error(`User ${userId} not found`);
   }
 
@@ -178,7 +194,7 @@ export async function incrementUserClusterCount(
     .select('*')
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error('incrementUserClusterCount error', error);
     throw error;
   }

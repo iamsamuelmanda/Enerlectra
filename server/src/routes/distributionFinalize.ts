@@ -1,178 +1,158 @@
+// server/src/routes/distributionFinalize.ts
 import { Router } from 'express';
-import { distributeOutcome } from '../../enerlectra-core/src/engines/distribution.ts';
-import { SettlementPolicy } from '../../enerlectra-core/src/domain/settlementPolicy';
-import {
-  getClusterState,
-  setClusterState,
-} from '../services/settlementStateSupabase';
-import { SETTLEMENT_STATES } from '../../enerlectra-core/src/domain/settlementState';
-import {
-  getSnapshotById,
-  isSnapshotFinalized,
-  finalizeSnapshot,
-} from '../../enerlectra-core/src/engines/snapshot/snapshotStore.ts';
-import { appendAuditEvent } from '../../enerlectra-core/src/engines/audit/auditLog.ts';
-import {
-  insertFinalDistribution,
-  hasFinalDistributionForSnapshot,
-  getFinalDistributionFromDb,
-} from '../services/distributionSupabase.ts';
+import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
 
-router.post('/finalize', async (req, res) => {
-  const { clusterId, snapshotId, totalKwh } = req.body;
-  const state = await getClusterState(clusterId);
-if (!SettlementPolicy.canFinalize(state)) {
-  return res.status(409).json({
-    error: `Cannot finalize distribution while cluster is in ${state} state. Expected PREVIEW.`,
-  });
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+  throw new Error('Supabase configuration missing for distribution finalize routes');
 }
 
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY,
+);
 
-  if (!clusterId || !snapshotId || totalKwh == null) {
-    return res.status(400).json({
-      error: 'clusterId, snapshotId, and totalKwh are required',
-    });
-  }
+// Simple settlement states
+const SETTLEMENT_STATES = {
+  DRAFT: 'DRAFT',
+  PILOT: 'PILOT',
+  RECONCILED: 'RECONCILED',
+  DISTRIBUTING: 'DISTRIBUTING',
+  FINAL: 'FINAL',
+} as const;
 
-  const total = Number(totalKwh);
-  if (!Number.isFinite(total) || total <= 0) {
-    return res.status(400).json({
-      error: 'totalKwh must be a number > 0',
-    });
-  }
+type SettlementState = typeof SETTLEMENT_STATES[keyof typeof SETTLEMENT_STATES];
 
-  const snapId = String(snapshotId);
+const ALLOWED_FINALIZE_STATES = ['RECONCILED', 'DISTRIBUTING'];
 
-  // 1) Idempotency: if already finalized, return existing distribution
-  if (isSnapshotFinalized(clusterId, snapId)) {
-    try {
-      const existing = await getFinalDistributionFromDbBySnapshot(snapId);
-      if (!existing) {
-        return res.status(500).json({
-          error: `Snapshot ${snapId} marked finalized but no distribution record found`,
-        });
-      }
+router.post('/finalize', async (req, res) => {
+  const { clusterId, snapshotId, totalKwh } = req.body;
+
+  try {
+    // Check cluster state
+    const { data: cluster } = await supabase
+      .from('clusters')
+      .select('settlement_state')
+      .eq('id', clusterId)
+      .single();
+
+    const state = cluster?.settlement_state ?? 'DRAFT';
+    if (!ALLOWED_FINALIZE_STATES.includes(state)) {
+      return res.status(409).json({
+        error: `Cannot finalize while cluster is in ${state} state. Expected ${ALLOWED_FINALIZE_STATES.join(', ')}.`,
+      });
+    }
+
+    if (!clusterId || !snapshotId || totalKwh == null) {
+      return res.status(400).json({
+        error: 'clusterId, snapshotId, and totalKwh are required',
+      });
+    }
+
+    const total = Number(totalKwh);
+    if (!Number.isFinite(total) || total <= 0) {
+      return res.status(400).json({
+        error: 'totalKwh must be a number > 0',
+      });
+    }
+
+    const snapId = String(snapshotId);
+
+    // Check if already finalized
+    const { data: existing } = await supabase
+      .from('final_distributions')
+      .select('id')
+      .eq('snapshot_id', snapId)
+      .single();
+
+    if (existing) {
+      const { data: fullRecord } = await supabase
+        .from('final_distributions')
+        .select('*')
+        .eq('id', existing.id)
+        .single();
 
       return res.status(409).json({
         error: 'Distribution already finalized for this snapshot',
-        distribution: existing,
-      });
-    } catch (err: any) {
-      console.error('getFinalDistributionFromDbBySnapshot failed', err);
-      return res.status(500).json({
-        error:
-          err.message ??
-          'Failed to load finalized distribution for this snapshot',
+        distribution: fullRecord,
       });
     }
-  }
 
-  try {
-    const already = await hasFinalDistributionForSnapshot(snapId);
-    if (already) {
-      return res.status(409).json({
-        error: 'Distribution already finalized for this snapshot',
-      });
+    // Get snapshot
+    const { data: snapshot } = await supabase
+      .from('ownership_snapshots')
+      .select('id, user_id, ownership_pct')
+      .eq('cluster_id', clusterId)
+      .eq('id', snapId)
+      .single();
+
+    if (!snapshot) {
+      return res.status(404).json({ error: 'Snapshot not found' });
     }
-  } catch (err: any) {
-    console.error('hasFinalDistributionForSnapshot failed', err);
-    return res.status(500).json({
-      error:
-        err.message ?? 'Failed to check existing final distribution for snapshot',
-    });
-  }
 
-  // 2) Ensure snapshot exists and belongs to this cluster
-  let snapshot;
-  try {
-    snapshot = getSnapshotById(clusterId, snapId);
-  } catch (err: any) {
-    return res.status(404).json({ error: err.message });
-  }
+    // Compute distribution
+    const ownership = [{ userId: snapshot.user_id, pct: snapshot.ownership_pct }];
+    const distribution = ownership.map((o) => ({
+      userId: o.userId,
+      pct: o.pct,
+      kwh: Math.round((o.pct / 100) * total * 100) / 100,
+    }));
 
-  const ownership = snapshot.effectiveOwnership.map((o: any) => ({
-    userId: o.userId,
-    pct: o.pct,
-  }));
+    const allocations = distribution.map((d) => ({
+      userId: d.userId,
+      allocatedKwh: d.kwh,
+      ownershipPct: d.pct,
+    }));
 
-  // 3) Deterministic distribution for this snapshot
-  const distribution = distributeOutcome(ownership, total);
+    const distributionId = `dist_${Date.now()}`;
 
-  const allocations = distribution.map((d: any) => ({
-    userId: d.userId,
-    allocatedKwh: d.kwh,
-    ownershipPct: d.pct,
-  }));
+    // Persist final distribution
+    const { data: record, error } = await supabase
+      .from('final_distributions')
+      .insert({
+        id: distributionId,
+        cluster_id: clusterId,
+        snapshot_id: snapId,
+        total_kwh: total,
+        allocations,
+        finalized_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-  const distributionId = `dist_${Math.random().toString(36).slice(2, 10)}`;
+    if (error) throw error;
 
-  // 4) Persist final distribution FIRST (Supabase)
-  let record;
-  try {
-    record = await insertFinalDistribution({
-      distributionId,
-      clusterId,
-      snapshotId: snapId,
-      totalKwh: total,
-      allocations,
-    });
-  } catch (err: any) {
-    console.error('insertFinalDistribution failed', err);
-    return res
-      .status(500)
-      .json({ error: err.message ?? 'Failed to persist final distribution' });
-  }
+    // Update cluster state
+    await supabase
+      .from('clusters')
+      .update({ settlement_state: SETTLEMENT_STATES.FINAL })
+      .eq('id', clusterId);
 
-  // 5) Lock snapshot AFTER distribution exists
-  try {
-    finalizeSnapshot(clusterId, snapId);
-  } catch (err: any) {
-    console.error('finalizeSnapshot failed', err);
-    // You may decide to return an error or just log it; for now, log only.
-  }
-
-  // 6) Audit
-  try {
-    appendAuditEvent({
-      eventType: 'DISTRIBUTION_FINALIZED',
-      clusterId,
+    // Audit
+    await supabase.from('audit_events').insert({
+      event_type: 'DISTRIBUTION_FINALIZED',
+      cluster_id: clusterId,
       payload: {
         snapshotId: snapId,
-        distributionId: record.id,
+        distributionId,
         totalKwh: total,
         recipients: distribution.length,
       },
     });
-  } catch (err) {
-    console.error('Failed to append audit event:', err);
-  }
-  try {
-    await setClusterState(clusterId, SETTLEMENT_STATES.FINAL);
+
+    res.status(201).json({
+      distributionId: record.id,
+      finalizedAt: record.finalized_at,
+      clusterId: record.cluster_id,
+      snapshotId: record.snapshot_id,
+      totalKwh: record.total_kwh,
+      allocations: record.allocations,
+    });
   } catch (err: any) {
-    console.error('Failed to move cluster to FINAL:', err);
+    console.error('[DISTRIBUTION FINALIZE ERROR]', err);
+    res.status(500).json({ error: err.message });
   }
-  
-
-  return res.status(201).json({
-    distributionId: record.id,
-    finalizedAt: record.finalized_at,
-    clusterId: record.cluster_id,
-    snapshotId: record.snapshot_id,
-    totalKwh: record.total_kwh,
-    allocations: record.allocations,
-  });
 });
-
-/**
- * Helper to load a final distribution by snapshot, from Supabase.
- */
-async function getFinalDistributionFromDbBySnapshot(snapshotId: string) {
-  const { id } =
-    (await getFinalDistributionFromDb(snapshotId)) || ({} as any);
-  if (!id) return null;
-  return getFinalDistributionFromDb(id);
-}
 
 export default router;

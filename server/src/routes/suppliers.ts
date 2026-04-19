@@ -1,68 +1,80 @@
-import { atomicWriteJson } from '../../enerlectra-core/src/engines/atomicWrite.ts'
-import { storeFile } from '../../enerlectra-core/src/engines/storePath.ts'
-import { Router } from 'express'
-import * as fs from 'fs'
-import * as path from 'path'
-import { generateId } from '../../enerlectra-core/src/utils/id.ts'
+// src/routes/suppliers.ts
+import { Router } from 'express';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import * as fs from 'fs';
+import * as path from 'path';
 
-const router = Router()
+const router = Router();
 
-// Add these:
-const suppliersFile = storeFile('suppliers.json')
-const productsFile = storeFile('products.json')
+const dataDir = path.join(process.cwd(), 'data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
+
+function generateId(prefix: string): string {
+  return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+}
 
 function readJsonArray(filePath: string): any[] {
   if (!fs.existsSync(filePath)) {
-    fs.mkdirSync(path.dirname(filePath), { recursive: true })
-    atomicWriteJson(filePath, [])
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, JSON.stringify([], null, 2));
   }
-  const raw = fs.readFileSync(filePath, 'utf8')
-  return raw.trim() ? JSON.parse(raw) : []
+  const raw = fs.readFileSync(filePath, 'utf8');
+  return raw.trim() ? JSON.parse(raw) : [];
 }
 
 function writeJsonArray(filePath: string, data: any[]): void {
-  atomicWriteJson(filePath, data)
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
+const suppliersFile = path.join(dataDir, 'suppliers.json');
+const productsFile = path.join(dataDir, 'products.json');
+
 // POST /suppliers
-router.post('/suppliers', (req, res) => {
-  const { name, contact } = req.body
+router.post('/suppliers', async (req, res) => {
+  const { name, contact } = req.body;
 
   if (!name || !contact) {
-    return res.status(400).json({ error: 'Invalid supplier payload' })
+    return res.status(400).json({ error: 'Invalid supplier payload' });
   }
-
-  const suppliers = readJsonArray(suppliersFile)
 
   const supplier = {
     supplierId: generateId('sup'),
     name,
     contact,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+  };
+
+  // Hybrid: JSON + Supabase
+  const suppliers = readJsonArray(suppliersFile);
+  suppliers.push(supplier);
+  writeJsonArray(suppliersFile, suppliers);
+
+  // Also persist to Supabase
+  try {
+    await supabase.from('suppliers').insert(supplier);
+  } catch (error) {
+    console.error('Supabase insert failed:', error);
   }
 
-  suppliers.push(supplier)
-  writeJsonArray(suppliersFile, suppliers)
-
-  res.status(201).json(supplier)
-})
+  res.status(201).json(supplier);
+});
 
 // POST /suppliers/:id/products
-router.post('/suppliers/:id/products', (req, res) => {
-  const { id } = req.params
-  const { type, model, capacityKW, priceZMW } = req.body
+router.post('/suppliers/:id/products', async (req, res) => {
+  const { id } = req.params;
+  const { type, model, capacityKW, priceZMW } = req.body;
 
   if (!type || !model || capacityKW == null || priceZMW == null) {
-    return res.status(400).json({ error: 'Invalid product payload' })
+    return res.status(400).json({ error: 'Invalid product payload' });
   }
 
-  const suppliers = readJsonArray(suppliersFile)
-  const supplier = suppliers.find((s: any) => s.supplierId === id)
+  const suppliers = readJsonArray(suppliersFile);
+  const supplier = suppliers.find((s: any) => s.supplierId === id);
   if (!supplier) {
-    return res.status(404).json({ error: 'Supplier not found' })
+    return res.status(404).json({ error: 'Supplier not found' });
   }
-
-  const products = readJsonArray(productsFile)
 
   const product = {
     productId: generateId('prd'),
@@ -71,13 +83,21 @@ router.post('/suppliers/:id/products', (req, res) => {
     model,
     capacityKW,
     priceZMW,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+  };
+
+  const products = readJsonArray(productsFile);
+  products.push(product);
+  writeJsonArray(productsFile, products);
+
+  // Also persist to Supabase
+  try {
+    await supabase.from('products').insert(product);
+  } catch (error) {
+    console.error('Supabase insert failed:', error);
   }
 
-  products.push(product)
-  writeJsonArray(productsFile, products)
+  res.status(201).json(product);
+});
 
-  res.status(201).json(product)
-})
-
-export default router
+export default router;

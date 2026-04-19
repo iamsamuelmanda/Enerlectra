@@ -1,29 +1,27 @@
+// src/routes/settlement.ts
 import { Router } from 'express';
-import { generateSettlementInstructions } from '../../enerlectra-core/src/engines/settlement/settlementEngine';
-import { appendAuditEvent } from '../../enerlectra-core/src/engines/audit/auditLog';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 import {
   insertSettlements,
   getSettlementsForUser,
   getSettlementsForCluster,
   getNetForUserFromDb,
-} from '../services/settlementSupabase.js';
-import { getFinalDistributionFromDb } from '../services/distributionSupabase.js';
+} from '../services/settlementSupabase';
+import { getFinalDistributionFromDb } from '../services/distributionSupabase';
 
 const router = Router();
 
+interface SettlementInstruction {
+  distributionId: string;
+  clusterId: string;
+  userId: string;
+  allocatedKwh: number;
+  amountZMW: number;
+  supersedesSettlementId?: string;
+}
+
 /**
  * POST /settlement/generate
- * Body:
- * {
- *   distributionId: string
- *   rateZMWPerKwh: number
- *   supersedesSettlementId?: string
- * }
- *
- * Effect:
- * - Reads immutable distribution (from Supabase)
- * - Generates settlement instructions
- * - Persists them in Supabase settlements table
  */
 router.post('/generate', async (req, res) => {
   const { distributionId, rateZMWPerKwh, supersedesSettlementId } = req.body;
@@ -61,15 +59,15 @@ router.post('/generate', async (req, res) => {
       .json({ error: err.message ?? 'Failed to load finalized distribution' });
   }
 
-  const settlements = generateSettlementInstructions({
+  // Self-contained settlement generation
+  const settlements: SettlementInstruction[] = distribution.allocations.map((alloc: any) => ({
     distributionId,
     clusterId: distribution.clusterId,
-    allocations: distribution.allocations,
-    rateZMWPerKwh,
+    userId: alloc.userId,
+    allocatedKwh: alloc.kwh,
+    amountZMW: alloc.kwh * rateZMWPerKwh,
     supersedesSettlementId,
-  });
-
-  console.log('settlements from engine', settlements);
+  }));
 
   try {
     await insertSettlements(
@@ -89,10 +87,11 @@ router.post('/generate', async (req, res) => {
       .json({ error: err.message ?? 'Failed to persist settlements' });
   }
 
+  // Audit log
   try {
-    appendAuditEvent({
-      eventType: 'SETTLEMENT_GENERATED',
-      clusterId: distribution.clusterId,
+    await supabase.from('audit_events').insert({
+      event_type: 'SETTLEMENT_GENERATED',
+      cluster_id: distribution.clusterId,
       payload: {
         distributionId,
         rateZMWPerKwh,
@@ -111,14 +110,9 @@ router.post('/generate', async (req, res) => {
   });
 });
 
-/**
- * Read models – pure views over immutable Supabase log.
- * No writes, no side effects.
- */
-
+// Read endpoints unchanged
 router.get('/by-user/:userId', async (req, res) => {
   const { userId } = req.params;
-
   try {
     const records = await getSettlementsForUser(userId);
     return res.json({ userId, settlements: records });
@@ -132,7 +126,6 @@ router.get('/by-user/:userId', async (req, res) => {
 
 router.get('/by-cluster/:clusterId', async (req, res) => {
   const { clusterId } = req.params;
-
   try {
     const records = await getSettlementsForCluster(clusterId);
     return res.json({ clusterId, settlements: records });
@@ -146,7 +139,6 @@ router.get('/by-cluster/:clusterId', async (req, res) => {
 
 router.get('/net/:userId', async (req, res) => {
   const { userId } = req.params;
-
   try {
     const net = await getNetForUserFromDb(userId);
     return res.json(net);

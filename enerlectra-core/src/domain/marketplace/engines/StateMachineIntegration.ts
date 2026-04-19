@@ -1,6 +1,6 @@
 /**
  * State Machine Integration
- * 
+ *
  * Handles lifecycle transitions triggered by marketplace events.
  */
 
@@ -33,7 +33,7 @@ export class StateMachineIntegration {
   static async transitionState(
     currentState: LifecycleState,
     trigger: keyof typeof MARKETPLACE_TRIGGERS,
-    conditionData: Record<string, any>,
+    conditionData: Record<string, any>
   ): Promise<TransitionResult> {
     const transitionRule = MARKETPLACE_TRIGGERS[trigger];
 
@@ -46,7 +46,9 @@ export class StateMachineIntegration {
     }
 
     // Evaluate condition
-    const conditionMet = transitionRule.condition(...Object.values(conditionData));
+    const conditionMet = (transitionRule.condition as any)(
+      ...Object.values(conditionData)
+    );
 
     if (!conditionMet) {
       return {
@@ -68,14 +70,12 @@ export class StateMachineIntegration {
    */
   static async checkContributionTrigger(
     currentState: LifecycleState,
-    newFundingPct: number,
+    newFundingPct: number
   ): Promise<TransitionResult> {
     if (currentState === 'FUNDING' && newFundingPct >= 100) {
-      return this.transitionState(
-        currentState,
-        'FULL_FUNDING',
-        { fundingPct: newFundingPct },
-      );
+      return this.transitionState(currentState, 'FULL_FUNDING', {
+        fundingPct: newFundingPct,
+      });
     }
 
     return { allowed: false };
@@ -88,7 +88,7 @@ export class StateMachineIntegration {
     trigger: keyof typeof MARKETPLACE_TRIGGERS,
     fromState: LifecycleState,
     toState: LifecycleState,
-    metadata: Record<string, any>,
+    metadata: Record<string, any>
   ): StateTransitionEvent {
     return {
       trigger,

@@ -1,4 +1,4 @@
-// lib/supabaseServer.ts
+// enerlectra-core/src/lib/supabaseServer.ts
 import { createClient } from '@supabase/supabase-js';
 
 export function getSupabaseServerClient(jwt?: string) {
@@ -13,7 +13,7 @@ export function getSupabaseServerClient(jwt?: string) {
         autoRefreshToken: false,
         persistSession: false,
       },
-    }
+    },
   );
 
   return client;

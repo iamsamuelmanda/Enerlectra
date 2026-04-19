@@ -1,6 +1,17 @@
-// enerlectra-core/src/services/aggregateOwnership.ts
-import { Transaction } from "../domain/Transaction";
-import { AggregatedOwnership } from "../domain/Aggregation";
+// src/services/aggregateOwnership.ts
+
+// Minimal Transaction shape needed for aggregation.
+// If you have a canonical Transaction type elsewhere, you can import it instead.
+export interface Transaction {
+  userId: string;
+  amountPCU: number;
+}
+
+export interface AggregatedOwnership {
+  userId: string;
+  totalPCU: number;
+  percent: number;
+}
 
 export function aggregateOwnership(
   transactions: Transaction[],
@@ -16,6 +27,8 @@ export function aggregateOwnership(
   return Object.entries(byUser).map(([userId, totalPCU]) => ({
     userId,
     totalPCU,
-    percent: total === 0 ? 0 : Number(((totalPCU / total) * 100).toFixed(2)),
+    percent: total === 0
+      ? 0
+      : Number(((totalPCU / total) * 100).toFixed(2)),
   }));
 }

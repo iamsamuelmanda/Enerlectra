@@ -2,9 +2,8 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const apiKey = process.env.ANTHROPIC_API_KEY || process.env.CLAUDE_API_KEY;
 
-const anthropic = apiKey
-  ? new Anthropic({ apiKey })
-  : null;
+// Loosen the type so we can safely call messages.create regardless of SDK typings
+const anthropic: any = apiKey ? new Anthropic({ apiKey }) : null;
 
 /**
  * ENERLECTRA AI SIMULATION ENGINE
@@ -15,11 +14,13 @@ export const runClusterSimulation = async (req: any, res: any) => {
 
   try {
     if (!clusterData) {
-      return res.status(400).json({ error: 'Missing clusterData for simulation.' });
+      return res
+        .status(400)
+        .json({ error: 'Missing clusterData for simulation.' });
     }
 
-    // If Claude is not configured OR SDK initialised broken, return deterministic fallback
-    if (!anthropic || !anthropic.messages) {
+    // If Claude is not configured, return deterministic fallback
+    if (!anthropic) {
       const targetKw = Number(clusterData?.target_kw ?? 0);
       const monthlyKwh = Number(clusterData?.monthly_kwh ?? 0);
       const name = clusterData?.name || 'this cluster';
@@ -32,7 +33,9 @@ export const runClusterSimulation = async (req: any, res: any) => {
         riskLevel: 'Medium',
         logic: [
           `The cluster is fully funded and located in a diesel- and grid-dependent context, where each kWh of solar yield has strong cost displacement potential.`,
-          `A ${targetKw || 150} kW system with roughly ${monthlyKwh || 20000} kWh per month offsets a meaningful share of baseline energy expenditure.`,
+          `A ${targetKw || 150} kW system with roughly ${
+            monthlyKwh || 20000
+          } kWh per month offsets a meaningful share of baseline energy expenditure.`,
           'Key risks are weather-driven yield variability, FX volatility on imported equipment, and potential changes in local tariff structures.',
           'Mitigation strategies include performance guarantees, minimum savings floors, and a rolling 12-month review of yield against model assumptions.',
         ],
@@ -68,12 +71,20 @@ ${JSON.stringify(clusterData)}
       ],
     });
 
-    const first = msg.content[0];
-    const content = first.type === 'text' ? first.text : '';
+    const first = msg.content?.[0];
+    const content =
+      first && first.type === 'text'
+        ? (first as any).text
+        : (msg as any).content?.toString?.() ?? '';
+
     const cleanJson = content.replace(/```json|```/g, '').trim();
     const result = JSON.parse(cleanJson);
 
-    console.log(`🤖 [AI] Simulation processed for: ${clusterData.name || 'Unknown Cluster'}`);
+    console.log(
+      `🤖 [AI] Simulation processed for: ${
+        clusterData.name || 'Unknown Cluster'
+      }`,
+    );
     return res.status(200).json(result);
   } catch (error: any) {
     console.error('Simulation Error:', error);

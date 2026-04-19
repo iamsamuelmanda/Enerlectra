@@ -1,9 +1,9 @@
-// server/services/snapshotsSupabase.ts
+// src/services/snapshotsSupabase.ts
 import { supabase } from '../lib/supabase';
 import {
   ClusterSnapshot,
-} from '../../enerlectra-core/src/domain/marketplace/engines/SnapshotEngine';
-import { LifecycleState } from '../../enerlectra-core/src/domain/lifecycle/types';
+} from '../domain/marketplace/engines/SnapshotEngine';
+import { LifecycleState } from '../domain/lifecycle/types';
 
 function mapRow(row: any): ClusterSnapshot {
   return {
@@ -11,7 +11,8 @@ function mapRow(row: any): ClusterSnapshot {
     clusterId: row.cluster_id,
     version: row.version,
     lifecycleState: row.lifecycle_state as LifecycleState,
-    timestamp: new Date(row.created_at),
+    timestamp: row.created_at, // ISO string
+
     triggeredBy: row.triggered_by,
 
     targetUSD: Number(row.target_usd),
@@ -56,8 +57,7 @@ function mapRow(row: any): ClusterSnapshot {
 export async function createSnapshot(
   snapshot: ClusterSnapshot,
 ): Promise<ClusterSnapshot> {
-  // Insert snapshot
-  const { data: snapData, error: snapError } = await supabase
+  const { error: snapError } = await supabase
     .from('snapshots')
     .insert({
       id: snapshot.id,
@@ -79,18 +79,18 @@ export async function createSnapshot(
       previous_snapshot_id: snapshot.previousSnapshotId,
       hash: snapshot.hash,
       metadata: snapshot.metadata ?? null,
-    })
-    .select('*')
-    .single();
+    });
 
   if (snapError) {
-    console.error('createSnapshot snapshot insert error', snapError);
+    console.error(
+      'createSnapshot snapshot insert error',
+      snapError,
+    );
     throw snapError;
   }
 
-  // Insert participants
   if (snapshot.participants && snapshot.participants.length > 0) {
-    const participantsRows = snapshot.participants.map((p) => ({
+    const participantsRows = snapshot.participants.map(p => ({
       snapshot_id: snapshot.id,
       user_id: p.userId,
       user_name: p.userName,
@@ -110,12 +110,14 @@ export async function createSnapshot(
       .insert(participantsRows);
 
     if (partError) {
-      console.error('createSnapshot participants insert error', partError);
+      console.error(
+        'createSnapshot participants insert error',
+        partError,
+      );
       throw partError;
     }
   }
 
-  // Return the full snapshot including participants
   return snapshot;
 }
 
@@ -157,19 +159,21 @@ export async function getSnapshotById(
 
   const row: any = {
     ...data,
-    participants: (data.snapshot_participants || []).map((sp: any) => ({
-      userId: sp.user_id,
-      userName: sp.user_name,
-      userClass: sp.user_class,
-      pcus: sp.pcus,
-      ownershipPct: sp.ownership_pct,
-      kwhPerMonth: sp.kwh_per_month,
-      monthlyValueZMW: sp.monthly_value_zmw,
-      contributionCount: sp.contribution_count,
-      firstContributionAt: sp.first_contribution_at,
-      lastContributionAt: sp.last_contribution_at,
-      earlyInvestorBonus: sp.early_investor_bonus,
-    })),
+    participants: (data.snapshot_participants || []).map(
+      (sp: any) => ({
+        userId: sp.user_id,
+        userName: sp.user_name,
+        userClass: sp.user_class,
+        pcus: sp.pcus,
+        ownershipPct: sp.ownership_pct,
+        kwhPerMonth: sp.kwh_per_month,
+        monthlyValueZMW: sp.monthly_value_zmw,
+        contributionCount: sp.contribution_count,
+        firstContributionAt: sp.first_contribution_at,
+        lastContributionAt: sp.last_contribution_at,
+        earlyInvestorBonus: sp.early_investor_bonus,
+      }),
+    ),
   };
 
   return mapRow(row);
@@ -208,7 +212,10 @@ export async function getLatestSnapshotForCluster(
     .maybeSingle();
 
   if (error) {
-    console.error('getLatestSnapshotForCluster error', error);
+    console.error(
+      'getLatestSnapshotForCluster error',
+      error,
+    );
     throw error;
   }
 
@@ -216,19 +223,21 @@ export async function getLatestSnapshotForCluster(
 
   const row: any = {
     ...data,
-    participants: (data.snapshot_participants || []).map((sp: any) => ({
-      userId: sp.user_id,
-      userName: sp.user_name,
-      userClass: sp.user_class,
-      pcus: sp.pcus,
-      ownershipPct: sp.ownership_pct,
-      kwhPerMonth: sp.kwh_per_month,
-      monthlyValueZMW: sp.monthly_value_zmw,
-      contributionCount: sp.contribution_count,
-      firstContributionAt: sp.first_contribution_at,
-      lastContributionAt: sp.last_contribution_at,
-      earlyInvestorBonus: sp.early_investor_bonus,
-    })),
+    participants: (data.snapshot_participants || []).map(
+      (sp: any) => ({
+        userId: sp.user_id,
+        userName: sp.user_name,
+        userClass: sp.user_class,
+        pcus: sp.pcus,
+        ownershipPct: sp.ownership_pct,
+        kwhPerMonth: sp.kwh_per_month,
+        monthlyValueZMW: sp.monthly_value_zmw,
+        contributionCount: sp.contribution_count,
+        firstContributionAt: sp.first_contribution_at,
+        lastContributionAt: sp.last_contribution_at,
+        earlyInvestorBonus: sp.early_investor_bonus,
+      }),
+    ),
   };
 
   return mapRow(row);
@@ -267,26 +276,31 @@ export async function getSnapshotHistoryForCluster(
     .limit(limit);
 
   if (error) {
-    console.error('getSnapshotHistoryForCluster error', error);
+    console.error(
+      'getSnapshotHistoryForCluster error',
+      error,
+    );
     throw error;
   }
 
   return (data || []).map((row: any) =>
     mapRow({
       ...row,
-      participants: (row.snapshot_participants || []).map((sp: any) => ({
-        userId: sp.user_id,
-        userName: sp.user_name,
-        userClass: sp.user_class,
-        pcus: sp.pcus,
-        ownershipPct: sp.ownership_pct,
-        kwhPerMonth: sp.kwh_per_month,
-        monthlyValueZMW: sp.monthly_value_zmw,
-        contributionCount: sp.contribution_count,
-        firstContributionAt: sp.first_contribution_at,
-        lastContributionAt: sp.last_contribution_at,
-        earlyInvestorBonus: sp.early_investor_bonus,
-      })),
+      participants: (row.snapshot_participants || []).map(
+        (sp: any) => ({
+          userId: sp.user_id,
+          userName: sp.user_name,
+          userClass: sp.user_class,
+          pcus: sp.pcus,
+          ownershipPct: sp.ownership_pct,
+          kwhPerMonth: sp.kwh_per_month,
+          monthlyValueZMW: sp.monthly_value_zmw,
+          contributionCount: sp.contribution_count,
+          firstContributionAt: sp.first_contribution_at,
+          lastContributionAt: sp.last_contribution_at,
+          earlyInvestorBonus: sp.early_investor_bonus,
+        }),
+      ),
     }),
   );
 }
@@ -324,26 +338,31 @@ export async function getSnapshotsByStateTransition(
     .order('created_at', { ascending: false });
 
   if (error) {
-    console.error('getSnapshotsByStateTransition error', error);
+    console.error(
+      'getSnapshotsByStateTransition error',
+      error,
+    );
     throw error;
   }
 
   return (data || []).map((row: any) =>
     mapRow({
       ...row,
-      participants: (row.snapshot_participants || []).map((sp: any) => ({
-        userId: sp.user_id,
-        userName: sp.user_name,
-        userClass: sp.user_class,
-        pcus: sp.pcus,
-        ownershipPct: sp.ownership_pct,
-        kwhPerMonth: sp.kwh_per_month,
-        monthlyValueZMW: sp.monthly_value_zmw,
-        contributionCount: sp.contribution_count,
-        firstContributionAt: sp.first_contribution_at,
-        lastContributionAt: sp.last_contribution_at,
-        earlyInvestorBonus: sp.early_investor_bonus,
-      })),
+      participants: (row.snapshot_participants || []).map(
+        (sp: any) => ({
+          userId: sp.user_id,
+          userName: sp.user_name,
+          userClass: sp.user_class,
+          pcus: sp.pcus,
+          ownershipPct: sp.ownership_pct,
+          kwhPerMonth: sp.kwh_per_month,
+          monthlyValueZMW: sp.monthly_value_zmw,
+          contributionCount: sp.contribution_count,
+          firstContributionAt: sp.first_contribution_at,
+          lastContributionAt: sp.last_contribution_at,
+          earlyInvestorBonus: sp.early_investor_bonus,
+        }),
+      ),
     }),
   );
 }

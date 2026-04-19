@@ -1,27 +1,42 @@
-// server/routes/ownershipLedger.ts
-import { Router } from "express";
-import { getContributionsForCluster } from "../services/contributionsSupabase.ts";
-import { aggregateOwnership } from "../../enerlectra-core/src/services/aggregateOwnership.ts";
-import { explainOwnershipCalculation } from "../../enerlectra-core/src/services/explainCalculation.ts";
-import { Transaction } from "../../enerlectra-core/src/domain/Transaction";
-import { SettlementPolicy } from "../../enerlectra-core/src/domain/settlementPolicy";
-import { getClusterState } from "../services/settlementStateSupabase";
+// src/routes/ownershipLedger.ts
+import { Router } from 'express';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { getContributionsForCluster } from '../services/contributionsSupabase';
 
 const router = Router();
+
+type SettlementState = 'DRAFT' | 'PILOT' | 'ACTIVE' | 'SETTLED' | 'CLOSED';
+
+interface OwnershipEntry {
+  userId: string;
+  totalPCU: number;
+  percent: number;
+}
+
+async function getClusterState(clusterId: string): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('clusters')
+      .select('state')
+      .eq('id', clusterId)
+      .single();
+    return data?.state || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * GET /ownership-ledger/clusters/:id
  * Returns aggregated ownership per user + explanation text, derived from Supabase contributions.
- * Read-only; allowed in DRAFT, PREVIEW, FINAL.
  */
-router.get("/clusters/:id", async (req, res) => {
+router.get('/clusters/:id', async (req, res) => {
   const { id: clusterId } = req.params;
 
   if (!clusterId) {
-    return res.status(400).json({ error: "clusterId is required" });
+    return res.status(400).json({ error: 'clusterId is required' });
   }
 
-  // Ensure cluster exists / has a state (optional, but keeps behavior consistent)
   let state: string | null = null;
   try {
     state = await getClusterState(clusterId);
@@ -38,23 +53,26 @@ router.get("/clusters/:id", async (req, res) => {
       });
     }
 
-    // Map Supabase rows → Transaction[]
-    const txs: Transaction[] = dbContribs.map((c: any) => ({
-      id: c.id,
-      userId: c.contributor_id || c.contributor_name,
-      clusterId: c.cluster_id,
-      amountPCU: c.pcus,
-      createdAt: c.created_at,
-    }));
+    // Self-contained aggregation
+    const userTotals: Record<string, number> = {};
+    dbContribs.forEach((c: any) => {
+      const userId = c.contributor_id || c.user_id || c.contributor_name || 'unknown';
+      userTotals[userId] = (userTotals[userId] || 0) + (c.pcus || c.units || 0);
+    });
 
-    const aggregated = aggregateOwnership(txs);
-    const clusterTotal = aggregated.reduce((sum, a) => sum + a.totalPCU, 0);
+    const aggregated: OwnershipEntry[] = Object.entries(userTotals).map(([userId, totalPCU]) => {
+      const clusterTotal = Object.values(userTotals).reduce((sum: number, v: number) => sum + v, 0);
+      const percent = clusterTotal > 0 ? (totalPCU / clusterTotal) * 100 : 0;
+      return { userId, totalPCU, percent: Math.round(percent * 100) / 100 };
+    });
 
-    const entries = aggregated.map(a => ({
-      userId: a.userId,
-      totalPCU: a.totalPCU,
-      percent: a.percent,
-      explanation: explainOwnershipCalculation(a.totalPCU, clusterTotal),
+    const clusterTotal = aggregated.reduce((sum: number, entry: OwnershipEntry) => sum + entry.totalPCU, 0);
+
+    const entries = aggregated.map(entry => ({
+      userId: entry.userId,
+      totalPCU: entry.totalPCU,
+      percent: entry.percent,
+      explanation: `User contributed ${entry.totalPCU.toLocaleString()} PCU (${entry.percent}%) of cluster total`,
     }));
 
     return res.json({
@@ -64,9 +82,9 @@ router.get("/clusters/:id", async (req, res) => {
       entries,
     });
   } catch (err: any) {
-    console.error("ownership-ledger failed:", err);
+    console.error('ownership-ledger failed:', err);
     return res.status(500).json({
-      error: err.message ?? "Failed to compute ownership from ledger",
+      error: err.message ?? 'Failed to compute ownership from ledger',
     });
   }
 });

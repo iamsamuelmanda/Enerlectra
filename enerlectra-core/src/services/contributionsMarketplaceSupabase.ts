@@ -1,5 +1,5 @@
-// server/services/contributionsMarketplaceSupabase.ts
-import { supabase } from '../lib/supabase';
+// src/services/contributionsMarketplaceSupabase.ts
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 
 export type ContributionStatus =
   | 'PENDING'
@@ -17,7 +17,11 @@ export interface ContributionRecord {
   exchangeRate: number;
   pcus: number;
   status: ContributionStatus;
-  paymentMethod: 'MTN_MOBILE_MONEY' | 'AIRTEL_MONEY' | 'BANK_TRANSFER' | 'CARD';
+  paymentMethod:
+    | 'MTN_MOBILE_MONEY'
+    | 'AIRTEL_MONEY'
+    | 'BANK_TRANSFER'
+    | 'CARD';
   projectedOwnershipPct: number;
   earlyInvestorBonus: number;
   isLocked: boolean;
@@ -27,8 +31,8 @@ export interface ContributionRecord {
   completedAt: Date | null;
   ipAddress?: string;
   userAgent?: string;
-  transactionReference?: string;        // ← Important for Lenco
-  paymentResponse?: any;                // ← Stores full Lenco response
+  transactionReference?: string;
+  paymentResponse?: any;
 }
 
 export interface CreateContributionParams {
@@ -42,7 +46,7 @@ export interface CreateContributionParams {
   earlyInvestorBonus: number;
   ipAddress?: string;
   userAgent?: string;
-  transactionReference?: string;        // ← New from Lenco
+  transactionReference?: string;
 }
 
 /** Map Supabase row to clean TypeScript object */
@@ -78,7 +82,9 @@ export async function createContribution(
   params: CreateContributionParams,
 ): Promise<ContributionRecord> {
   const gracePeriodExpiresAt = new Date();
-  gracePeriodExpiresAt.setHours(gracePeriodExpiresAt.getHours() + 24);
+  gracePeriodExpiresAt.setHours(
+    gracePeriodExpiresAt.getHours() + 24,
+  );
 
   const { data, error } = await supabase
     .from('contributions')
@@ -115,7 +121,7 @@ export async function createContribution(
 export async function markContributionCompleted(
   contributionId: string,
   transactionReference: string,
-  paymentResponse?: any
+  paymentResponse?: any,
 ): Promise<ContributionRecord> {
   const { data, error } = await supabase
     .from('contributions')
@@ -132,7 +138,9 @@ export async function markContributionCompleted(
 
   if (error || !data) {
     console.error('markContributionCompleted error', error);
-    throw new Error(`Cannot mark contribution ${contributionId} as completed`);
+    throw new Error(
+      `Cannot mark contribution ${contributionId} as completed`,
+    );
   }
 
   return mapRow(data);
@@ -144,7 +152,7 @@ export async function markContributionCompleted(
 export async function markContributionFailed(
   contributionId: string,
   reason: string,
-  paymentResponse?: any
+  paymentResponse?: any,
 ): Promise<ContributionRecord> {
   const { data, error } = await supabase
     .from('contributions')
@@ -159,7 +167,9 @@ export async function markContributionFailed(
 
   if (error || !data) {
     console.error('markContributionFailed error', error);
-    throw new Error(`Cannot mark contribution ${contributionId} as failed`);
+    throw new Error(
+      `Cannot mark contribution ${contributionId} as failed`,
+    );
   }
 
   return mapRow(data);
@@ -223,12 +233,14 @@ export async function canWithdrawContribution(
 ): Promise<boolean> {
   const { data, error } = await supabase
     .from('contributions')
-    .select(`
+    .select(
+      `
       status,
       is_locked,
       grace_period_expires_at,
       clusters!inner(funding_pct)
-    `)
+    `,
+    )
     .eq('id', contributionId)
     .maybeSingle();
 
@@ -239,9 +251,10 @@ export async function canWithdrawContribution(
   if (row.is_locked || row.status === 'LOCKED') return false;
   if (new Date() > new Date(row.grace_period_expires_at)) return false;
 
-  const fundingPct = row.clusters?.funding_pct != null 
-    ? Number(row.clusters.funding_pct) 
-    : 0;
+  const fundingPct =
+    row.clusters?.funding_pct != null
+      ? Number(row.clusters.funding_pct)
+      : 0;
 
   return fundingPct < 80;
 }

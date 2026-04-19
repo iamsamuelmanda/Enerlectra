@@ -5,11 +5,13 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { LedgerService } from '../domain/accounts/ledger-service';
-import { AccountInvariants } from '../domain/accounts/invariants';
-import { AccountUnit } from '../domain/accounts/account';
-import { computeStateHash } from '../domain/settlement/settlement-cycle';
-import { LedgerHashVerifier } from '../domain/ledger/ledger-hash-verifier';
+
+// PATH FIXES: '../domain/...' -> '../...'
+import { LedgerService } from '../accounts/ledger-service';
+import { AccountInvariants } from '../accounts/invariants';
+import { AccountUnit } from '../accounts/account';
+import { computeStateHash } from '../settlement/settlement-cycle';
+import { LedgerHashVerifier } from '../ledger/ledger-hash-verifier';
 
 export interface ReplayResult {
   settlement_cycle_id: string;
@@ -100,11 +102,11 @@ export async function replayCycle(
       total_value: parseFloat(cycle_data.total_value),
       entitlements_hash: cycle_data.entitlements_hash,
       ledger_hash: cycle_data.ledger_hash,
-      previous_cycle_hash: cycle_data.previous_cycle_hash
+      previous_cycle_hash: cycle_data.previous_cycle_hash,
     });
 
     hash_verified = computed_hash === cycle_data.state_hash;
-    
+
     if (!hash_verified) {
       issues.push(
         `State hash mismatch: computed=${computed_hash}, stored=${cycle_data.state_hash}`
@@ -118,7 +120,8 @@ export async function replayCycle(
   // STEP 5: Overall Cryptographic Integrity
   // ═══════════════════════════════════════════════════════════
 
-  const cryptographic_integrity = hash_chain_intact && hash_verified && balance_verified;
+  const cryptographic_integrity =
+    hash_chain_intact && hash_verified && balance_verified;
 
   return {
     settlement_cycle_id,
@@ -127,7 +130,7 @@ export async function replayCycle(
     hash_verified,
     hash_chain_intact,
     cryptographic_integrity,
-    issues
+    issues,
   };
 }
 
@@ -172,14 +175,16 @@ export async function verifyEntireLedger(
   errors: string[];
 }> {
   const hashVerifier = new LedgerHashVerifier(supabase);
-  
+
   const verification = await hashVerifier.verifyHashChain();
 
-  const integrity_percentage = verification.total_entries > 0
-    ? (verification.verified_entries / verification.total_entries) * 100
-    : 100;
+  const integrity_percentage =
+    verification.total_entries > 0
+      ? (verification.verified_entries / verification.total_entries) * 100
+      : 100;
 
-  const cryptographically_sound = verification.valid && integrity_percentage === 100;
+  const cryptographically_sound =
+    verification.valid && integrity_percentage === 100;
 
   return {
     total_entries: verification.total_entries,
@@ -188,6 +193,6 @@ export async function verifyEntireLedger(
     broken_links: verification.broken_links,
     integrity_percentage,
     cryptographically_sound,
-    errors: verification.errors
+    errors: verification.errors,
   };
 }

@@ -1,19 +1,25 @@
 /**
  * Cluster Repository
- * 
+ *
  * Handles cluster state persistence.
  * Clusters ARE mutable (lifecycle state changes).
  */
 
 import { Pool } from 'pg';
-import { ClusterState } from '../../domain/marketplace/engines/AntiWhaleEngine';
 import { LifecycleState } from '../../domain/lifecycle/types';
 
-export interface ClusterRecord extends ClusterState {
+export interface ClusterRecord {
+  id: string;
   name: string;
   location: string;
+  lifecycleState: LifecycleState;
+  targetUSD: number;
+  currentUSD: number;
+  fundingPct: number;
+  targetKw: number;
   targetStorageKwh: number;
   monthlyKwh: number;
+  isLocked: boolean;
   participantCount: number;
   createdAt: Date;
   fundedAt: Date | null;
@@ -34,7 +40,7 @@ export interface CreateClusterParams {
 
 export class ClusterRepository {
   constructor(private pool: Pool) {}
-  
+
   /**
    * Create new cluster
    */
@@ -64,10 +70,10 @@ export class ClusterRepository {
         params.deadline,
       ]
     );
-    
+
     return this.mapRow(result.rows[0]);
   }
-  
+
   /**
    * Update lifecycle state
    */
@@ -76,11 +82,11 @@ export class ClusterRepository {
     newState: LifecycleState
   ): Promise<ClusterRecord> {
     const timestampField = this.getTimestampField(newState);
-    
+
     const result = await this.pool.query(
       `
       UPDATE clusters
-      SET 
+      SET
         lifecycle_state = $2,
         ${timestampField ? `${timestampField} = NOW(),` : ''}
         is_locked = CASE WHEN $2 IN ('FINALIZED', 'CANCELLED', 'FAILED') THEN TRUE ELSE is_locked END
@@ -89,14 +95,14 @@ export class ClusterRepository {
       `,
       [clusterId, newState]
     );
-    
+
     if (result.rows.length === 0) {
       throw new Error(`Cluster ${clusterId} not found`);
     }
-    
+
     return this.mapRow(result.rows[0]);
   }
-  
+
   /**
    * Update funding progress (called after contribution)
    */
@@ -108,7 +114,7 @@ export class ClusterRepository {
     const result = await this.pool.query(
       `
       UPDATE clusters
-      SET 
+      SET
         current_usd = current_usd + $2,
         funding_pct = ((current_usd + $2) / target_usd) * 100,
         participant_count = participant_count + $3
@@ -117,14 +123,14 @@ export class ClusterRepository {
       `,
       [clusterId, amountUSD, participantDelta]
     );
-    
+
     if (result.rows.length === 0) {
       throw new Error(`Cluster ${clusterId} not found`);
     }
-    
+
     return this.mapRow(result.rows[0]);
   }
-  
+
   /**
    * Get cluster by ID
    */
@@ -135,14 +141,14 @@ export class ClusterRepository {
       `,
       [clusterId]
     );
-    
+
     if (result.rows.length === 0) {
       return null;
     }
-    
+
     return this.mapRow(result.rows[0]);
   }
-  
+
   /**
    * Get all active clusters (accepting contributions)
    */
@@ -156,10 +162,10 @@ export class ClusterRepository {
       ORDER BY funding_pct DESC, created_at DESC
       `
     );
-    
+
     return result.rows.map(row => this.mapRow(row));
   }
-  
+
   /**
    * Get clusters by location
    */
@@ -173,10 +179,10 @@ export class ClusterRepository {
       `,
       [location]
     );
-    
+
     return result.rows.map(row => this.mapRow(row));
   }
-  
+
   /**
    * Get clusters by state
    */
@@ -189,14 +195,16 @@ export class ClusterRepository {
       `,
       [state]
     );
-    
+
     return result.rows.map(row => this.mapRow(row));
   }
-  
+
   /**
    * Get clusters nearing deadline (for alerts)
    */
-  async getNearingDeadline(hoursRemaining: number = 24): Promise<ClusterRecord[]> {
+  async getNearingDeadline(
+    hoursRemaining: number = 24
+  ): Promise<ClusterRecord[]> {
     const result = await this.pool.query(
       `
       SELECT * FROM clusters
@@ -208,10 +216,10 @@ export class ClusterRepository {
       `,
       [hoursRemaining]
     );
-    
+
     return result.rows.map(row => this.mapRow(row));
   }
-  
+
   /**
    * Get clusters that reached 100% (need supplier matching)
    */
@@ -224,22 +232,26 @@ export class ClusterRepository {
       ORDER BY funded_at ASC NULLS LAST
       `
     );
-    
+
     return result.rows.map(row => this.mapRow(row));
   }
-  
+
   /**
    * Helper: Get timestamp field for lifecycle state
    */
   private getTimestampField(state: LifecycleState): string | null {
     switch (state) {
-      case 'FUNDED': return 'funded_at';
-      case 'OPERATIONAL': return 'operational_at';
-      case 'FINALIZED': return 'finalized_at';
-      default: return null;
+      case 'FUNDED':
+        return 'funded_at';
+      case 'OPERATIONAL':
+        return 'operational_at';
+      case 'FINALIZED':
+        return 'finalized_at';
+      default:
+        return null;
     }
   }
-  
+
   /**
    * Map database row to domain model
    */

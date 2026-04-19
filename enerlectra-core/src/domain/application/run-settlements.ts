@@ -4,7 +4,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { SettlementService, ProductionReport, ContributorAllocation } from '../domain/settlement/settlement-service';
+// PATH FIX: '../domain/settlement/...' -> '../settlement/...'
+import {
+  SettlementService,
+  ProductionReport,
+  ContributorAllocation,
+} from '../settlement/settlement-service';
 
 export interface RunSettlementRequest {
   cluster_id: string;
@@ -44,9 +49,11 @@ export async function runDailySettlement(
       settlement_date: request.settlement_date,
       kwh_reported: request.production_report.kwh_reported,
       kwh_verified: request.production_report.kwh_verified,
-      price_per_kwh: request.production_report.price_per_kwh
+      price_per_kwh: request.production_report.price_per_kwh,
     });
-    operations.push(`✓ Production reported: ${cycle.kwh_verified} kWh @ ${cycle.price_per_kwh} ZMW/kWh`);
+    operations.push(
+      `✓ Production reported: ${cycle.kwh_verified} kWh @ ${cycle.price_per_kwh} ZMW/kWh`
+    );
 
     // STEP 2: Compute Value
     operations.push('Computing value...');
@@ -59,7 +66,9 @@ export async function runDailySettlement(
       cycle.settlement_cycle_id,
       request.contributor_allocations
     );
-    operations.push(`✓ Entitlements allocated to ${request.contributor_allocations.length} contributors`);
+    operations.push(
+      `✓ Entitlements allocated to ${request.contributor_allocations.length} contributors`
+    );
 
     // STEP 4: Reconcile Balances
     operations.push('Reconciling balances...');
@@ -69,22 +78,23 @@ export async function runDailySettlement(
     // STEP 5: Enter Finality Window
     operations.push('Entering finality window...');
     cycle = await service.enterFinalityWindow(cycle.settlement_cycle_id);
-    operations.push(`✓ Finality window started (ends: ${cycle.challenge_window_end?.toISOString()})`);
+    operations.push(
+      `✓ Finality window started (ends: ${cycle.challenge_window_end?.toISOString()})`
+    );
 
     return {
       success: true,
       settlement_cycle_id: cycle.settlement_cycle_id,
       final_state: cycle.state,
-      operations_completed: operations
+      operations_completed: operations,
     };
-
   } catch (error: any) {
     return {
       success: false,
       settlement_cycle_id: request.cluster_id + ':' + request.settlement_date,
       final_state: 'ERROR',
       operations_completed: operations,
-      error: error.message
+      error: error.message,
     };
   }
 }
@@ -103,22 +113,23 @@ export async function attemptFinalization(
   try {
     operations.push('Attempting finalization...');
     const cycle = await service.finalizeSettlement(settlement_cycle_id);
-    operations.push(`✓ Settlement finalized at ${cycle.finalized_at?.toISOString()}`);
+    operations.push(
+      `✓ Settlement finalized at ${cycle.finalized_at?.toISOString()}`
+    );
 
     return {
       success: true,
       settlement_cycle_id,
       final_state: cycle.state,
-      operations_completed: operations
+      operations_completed: operations,
     };
-
   } catch (error: any) {
     return {
       success: false,
       settlement_cycle_id,
       final_state: 'FINALIZATION_FAILED',
       operations_completed: operations,
-      error: error.message
+      error: error.message,
     };
   }
 }
