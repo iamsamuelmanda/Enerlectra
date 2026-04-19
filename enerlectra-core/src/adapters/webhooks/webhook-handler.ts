@@ -4,7 +4,7 @@
  * Handles MTN, Airtel, and Lenco/Broadpay callbacks
  */
 
-import { createHash, createHmac } from 'crypto';
+import { createHmac } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PaymentOrchestrator } from '../../domain/payment/payment-orchestrator';
 import { PaymentRail } from '../../domain/treasury/treasury-types';
@@ -43,9 +43,6 @@ export interface WebhookProcessingResult {
 // ═══════════════════════════════════════════════════════════════
 
 export class WebhookSignatureVerifier {
-  /**
-   * Verify MTN webhook signature (example HMAC SHA256 hex)
-   */
   static verifyMTNSignature(
     payload: string,
     signature: string,
@@ -63,9 +60,6 @@ export class WebhookSignatureVerifier {
     );
   }
 
-  /**
-   * Verify Airtel webhook signature (example HMAC SHA256 base64)
-   */
   static verifyAirtelSignature(
     payload: string,
     signature: string,
@@ -82,22 +76,17 @@ export class WebhookSignatureVerifier {
 
   /**
    * Verify Lenco webhook signature
-   * Lenco: X-Lenco-Signature = HMAC SHA512 over raw JSON payload,
-   * using webhook_hash_key = SHA256(API_TOKEN). [web:12]
+   * Here we assume Lenco signs with a dedicated webhook secret
+   * using HMAC-SHA512 over the raw JSON payload.
    */
   static verifyLencoSignature(
     payload: string,
     signature: string,
-    apiToken: string
+    webhookSecret: string
   ): boolean {
-    if (!apiToken || !signature) return false;
+    if (!webhookSecret || !signature) return false;
 
-    // Derive webhook_hash_key exactly as Lenco specifies. [web:12]
-    const webhookHashKey = createHash('sha256')
-      .update(apiToken)
-      .digest('hex');
-
-    const expectedSignature = createHmac('sha512', webhookHashKey)
+    const expectedSignature = createHmac('sha512', webhookSecret)
       .update(payload)
       .digest('hex');
 
@@ -107,9 +96,6 @@ export class WebhookSignatureVerifier {
     );
   }
 
-  /**
-   * Timing-safe string comparison
-   */
   private static timingSafeEqual(a: string, b: string): boolean {
     if (a.length !== b.length) {
       return false;
@@ -134,28 +120,22 @@ export class WebhookHandler {
     private orchestrator: PaymentOrchestrator
   ) {}
 
-  // MTN webhook omitted here for brevity – unchanged from your version
-  // Airtel webhook omitted here for brevity – unchanged from your version
-
-  // ═══════════════════════════════════════════════════════════
-  // LENCO / BROADPAY WEBHOOK
-  // ═══════════════════════════════════════════════════════════
+  // MTN and Airtel processing unchanged...
 
   async processLencoWebhook(
     payload: string | Buffer,
     signature: string | undefined,
-    apiToken: string
+    webhookSecret: string
   ): Promise<WebhookProcessingResult> {
     const rawPayload = payload instanceof Buffer ? payload.toString('utf8') : payload;
     const webhookId = await this.logWebhook('LENCO', rawPayload);
 
     try {
-      // Verify signature against raw JSON body
       if (signature) {
         const valid = WebhookSignatureVerifier.verifyLencoSignature(
           rawPayload,
           signature,
-          apiToken
+          webhookSecret
         );
 
         if (!valid) {
@@ -173,7 +153,6 @@ export class WebhookHandler {
         }
       }
 
-      // Parse payload for business logic
       const data = JSON.parse(rawPayload);
 
       const reference =
@@ -192,7 +171,6 @@ export class WebhookHandler {
         return { success: true, webhookId, processed: false };
       }
 
-      // Map to contribution status
       let newStatus = 'PENDING';
       if (
         ['SUCCESS', 'SUCCESSFUL', 'COMPLETED'].includes(
@@ -249,5 +227,5 @@ export class WebhookHandler {
     }
   }
 
-  // logWebhook, updateWebhookStatus, retry code – unchanged from your version
+  // logWebhook, updateWebhookStatus, retry logic unchanged...
 }

@@ -14,9 +14,8 @@ const webhookHandler = new WebhookHandler(supabase, paymentOrchestrator);
 const MTN_WEBHOOK_SECRET = process.env.MTN_WEBHOOK_SECRET || '';
 const AIRTEL_WEBHOOK_SECRET = process.env.AIRTEL_WEBHOOK_SECRET || '';
 
-// IMPORTANT: use the key that actually exists in Render
-// This should be the same token you use for Authorization: Bearer <token> with Lenco
-const LENCO_API_TOKEN = process.env.LENCO_SECRET_KEY || '';
+// IMPORTANT: use the dedicated webhook signing secret from Render
+const LENCO_WEBHOOK_SECRET = process.env.LENCO_WEBHOOK_SECRET || '';
 
 // ====================== MTN Webhook ======================
 
@@ -90,7 +89,7 @@ router.post(
 
 // ====================== Lenco Webhook ======================
 // Lenco: X-Lenco-Signature header, HMAC SHA512 over raw JSON body,
-// key = SHA256(API_TOKEN). We use express.raw() to preserve body. [web:12]
+// using a dedicated webhook secret as key.
 
 router.post(
   '/webhooks/lenco',
@@ -110,7 +109,7 @@ router.post(
       const result = await webhookHandler.processLencoWebhook(
         rawBody,
         signature,
-        LENCO_API_TOKEN
+        LENCO_WEBHOOK_SECRET
       );
 
       if (result.success) {
