@@ -3,7 +3,7 @@ import express from 'express';
 import type { Request, Response } from 'express';
 import { WebhookHandler } from '../../enerlectra-core/src/domain/webhook/webhook-handler';
 import { supabase } from '../../enerlectra-core/src/lib/supabase';
-import { paymentOrchestrator } from '../services/payment-orchestrator'; // adjust import to your actual orchestrator factory
+import { paymentOrchestrator } from '../services/payment-orchestrator';
 
 const router = express.Router();
 
@@ -13,7 +13,10 @@ const webhookHandler = new WebhookHandler(supabase, paymentOrchestrator);
 // Helper to get secrets from env (no hardcoding)
 const MTN_WEBHOOK_SECRET = process.env.MTN_WEBHOOK_SECRET || '';
 const AIRTEL_WEBHOOK_SECRET = process.env.AIRTEL_WEBHOOK_SECRET || '';
-const LENCO_API_TOKEN = process.env.LENCO_API_TOKEN || ''; // Lenco API token you use for Bearer [web:12]
+
+// IMPORTANT: use the key that actually exists in Render
+// This should be the same token you use for Authorization: Bearer <token> with Lenco
+const LENCO_API_TOKEN = process.env.LENCO_SECRET_KEY || '';
 
 // ====================== MTN Webhook ======================
 
@@ -87,7 +90,7 @@ router.post(
 
 // ====================== Lenco Webhook ======================
 // Lenco: X-Lenco-Signature header, HMAC SHA512 over raw JSON body,
-// key = SHA256(API_TOKEN), so we must use express.raw() here. [web:12]
+// key = SHA256(API_TOKEN). We use express.raw() to preserve body. [web:12]
 
 router.post(
   '/webhooks/lenco',
@@ -97,8 +100,12 @@ router.post(
       const signature = (req.headers['x-lenco-signature'] ||
         req.headers['x-signature']) as string | undefined;
 
+      if (!signature) {
+        console.warn('[LENCO WEBHOOK] Missing X-Lenco-Signature header');
+      }
+
       const rawBody =
-        req.body instanceof Buffer ? req.body.toString() : String(req.body ?? '');
+        req.body instanceof Buffer ? req.body.toString('utf8') : String(req.body ?? '');
 
       const result = await webhookHandler.processLencoWebhook(
         rawBody,
