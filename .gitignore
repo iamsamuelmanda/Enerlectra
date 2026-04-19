@@ -53,3 +53,6 @@ gasReporterOutput.json
 
 .vercel
 node_modules/
+*.txt
+scripts/debug-*.ts
+integrations/telegram-bot/scripts/test-redis.js

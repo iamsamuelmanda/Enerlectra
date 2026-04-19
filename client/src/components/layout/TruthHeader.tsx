@@ -1,4 +1,5 @@
-// src/components/TruthHeader.tsx
+// src/components/layout/TruthHeader.tsx
+
 import { useEffect, useState } from 'react';
 import {
   Activity,
@@ -9,241 +10,287 @@ import {
   AlertCircle,
   Zap,
   Info,
+  ExternalLink,
+  ChevronDown,
 } from 'lucide-react';
+import { useMarketState } from '@/hooks/useMarketState';
 
-interface MarketState {
-  fxRate: number | null;
-  liveFx: boolean;
-  currentPremium: number;
-  temporalBand: 'peak' | 'standard' | 'off-peak';
-  zescoReferenceRate: number | null;
-  zescoTariffCode: string | null;
-  zescoTariffBand: string | null;
-  zescoTariffValidFrom: string | null;
-  zescoTariffValidTo: string | null;
-  lastPcuPriceKz: number | null;
-  lastPcuWindowAt: string | null;
-  timestamp: string;
-}
+const ZESCO_TARIFF_URL = 'https://www.erb.org.zm/tariffs';
 
 export function TruthHeader() {
-  const [market, setMarket] = useState<MarketState | null>(null);
-  const [error, setError] = useState(false);
   const [localTime, setLocalTime] = useState(new Date());
+  const [expanded, setExpanded] = useState(false);
+  const { market, error, lastUpdatedAt } = useMarketState();
 
+  // Live clock
   useEffect(() => {
     const timer = setInterval(() => setLocalTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  useEffect(() => {
-    const fetchMarket = async () => {
-      try {
-        const base = (
-          import.meta.env.VITE_API_URL ||
-          'https://enerlectra-backend.onrender.com'
-        ).replace(/\/api$/, '');
-        const res = await fetch(`${base}/api/protocol/market-state`);
-        if (!res.ok) throw new Error('bad response');
-        const data = await res.json();
-
-        setMarket({
-          fxRate: data.fxRate ?? null,
-          liveFx: !!data.liveFx,
-          currentPremium: data.currentPremium ?? 1.0,
-          temporalBand: data.temporalBand ?? 'standard',
-          zescoReferenceRate: data.zescoReferenceRate ?? null,
-          zescoTariffCode: data.zescoTariffCode ?? null,
-          zescoTariffBand: data.zescoTariffBand ?? null,
-          zescoTariffValidFrom: data.zescoTariffValidFrom ?? null,
-          zescoTariffValidTo: data.zescoTariffValidTo ?? null,
-          lastPcuPriceKz: data.lastPcuPriceKz ?? null,
-          lastPcuWindowAt: data.lastPcuWindowAt ?? null,
-          timestamp: data.timestamp,
-        });
-        setError(false);
-      } catch {
-        setError(true);
-        setMarket((prev) => (prev ? { ...prev, liveFx: false } : null));
-      }
-    };
-
-    fetchMarket();
-    const interval = setInterval(fetchMarket, 60_000);
-    return () => clearInterval(interval);
-  }, []);
-
+  // Derived values
   const fxRate = market?.fxRate ?? null;
   const premium = market?.currentPremium ?? 1.0;
-  const band = market?.temporalBand ?? 'standard';
+  const bandKey = market?.temporalBand ?? 'standard';
   const liveFx = market?.liveFx ?? false;
   const zescoRate = market?.zescoReferenceRate ?? null;
   const lastPcuPrice = market?.lastPcuPriceKz ?? null;
   const lastPcuWindowAt = market?.lastPcuWindowAt ?? null;
-  const lastUpdate = market?.timestamp ?? null;
 
-  const bandLabel = {
-    peak: 'Peak',
-    standard: 'Standard',
-    'off-peak': 'Off‑peak',
-  }[band];
+  const bandConfig =
+    {
+      peak: {
+        label: 'Peak hours',
+        explanation: 'Busy evening time: more people using power, higher pressure on price.',
+      },
+      standard: {
+        label: 'Normal hours',
+        explanation: 'Daytime hours: demand is steady, prices near normal.',
+      },
+      'off-peak': {
+        label: 'Off‑peak hours',
+        explanation: 'Night and quiet times: fewer users, prices can be softer.',
+      },
+    }[bandKey] ?? {
+      label: 'Normal hours',
+      explanation: 'Daytime hours: demand is steady, prices near normal.',
+    };
 
-  const bandStyles = {
-    peak: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-    standard: 'text-violet-400 bg-violet-500/10 border-violet-500/20',
-    'off-peak': 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  }[band];
-
-  const timeDisplay = localTime.toLocaleTimeString('en-GB', {
+  const timeDisplay = localTime.toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
-    second: '2-digit',
   });
-  const dateDisplay = localTime.toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-  });
+
+  const premiumDelta = (premium - 1) * 100;
+  const premiumPct = Math.abs(premiumDelta).toFixed(1);
+  const premiumSign =
+    premiumDelta > 0 ? '+' : premiumDelta < 0 ? '−' : '';
+  const premiumColor =
+    premiumDelta >= 0 ? 'text-rose-400' : 'text-emerald-400';
+
+  const lastPcuTimeLabel = lastPcuWindowAt
+    ? new Date(lastPcuWindowAt).toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
+
+  const oracleTimeLabel = lastUpdatedAt
+    ? lastUpdatedAt.toLocaleTimeString([], {
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null;
 
   return (
-    <div className="w-full sticky top-0 z-[100] border-b border-white/10 bg-slate-950/85 backdrop-blur-2xl py-5 px-4 md:px-8 shadow-header-soft">
-      <div className="max-w-[1440px] mx-auto rounded-4xl border border-white/10 bg-header-gradient px-4 md:px-6 py-4 md:py-5">
-      <div className="flex flex-wrap items-center justify-between gap-6">
-        <div className="flex items-center gap-4 md:gap-6 w-full md:w-auto justify-between md:justify-start">
-          <div
-            className={`flex items-center gap-2.5 text-xs font-semibold uppercase tracking-wide ${
-              !error ? 'text-emerald-400' : 'text-amber-400'
-            }`}
-          >
-            {!error ? (
-              <Activity size={16} className="animate-pulse" />
-            ) : (
-              <AlertCircle size={16} />
-            )}
-            <span>{!error ? 'System Online' : 'Connection Lost'}</span>
-          </div>
+    <header className="w-full sticky top-0 z-[45]">
+      {/* Background / border kept subtle to avoid competing with main Header */}
+      <div className="absolute inset-0 bg-[#0d0d1a]/92 backdrop-blur-xl border-b border-white/[0.05]" />
+      <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-[#667eea]/40 to-transparent" />
 
-          <div className="hidden md:flex items-center gap-3 text-white/70 text-xs border-l border-white/15 pl-6">
-            <Clock size={14} />
-            <span className="text-white/90 font-medium tabular-nums">
-              {timeDisplay}
-            </span>
-            <span className="text-white/60">{dateDisplay}</span>
-            <span
-              className={`px-2 py-0.5 rounded-full border text-[10px] font-bold tracking-wide ${bandStyles}`}
-            >
-              {bandLabel}
-            </span>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 md:gap-7 w-full md:w-auto">
-          {/* FX index */}
-          <div className="hidden sm:flex flex-col items-end min-w-[170px]">
-            <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
-              <Globe size={12} /> Exchange Rate (USD → ZMW)
-            </span>
-            <span className="text-base font-bold text-white/90 tabular-nums">
-              {fxRate !== null ? `${fxRate.toFixed(2)} ZMW` : '—'}
-            </span>
-            <span className="text-[10px] text-white/50">
-              {liveFx ? 'Live feed' : 'Stale / unavailable'}
-            </span>
-          </div>
-
-          {/* Time-of-day heuristic */}
-          <div className="hidden sm:flex flex-col items-end min-w-[170px]">
-            <span className="text-[11px] text-white/60 uppercase tracking-wider flex items-center gap-1">
-              <TrendingUp size={12} /> Time‑based Rate
-              <span className="group relative ml-1 cursor-help">
-                <Info size={10} className="text-white/50" />
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 border border-white/10 rounded-lg text-[10px] text-white/70 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  Time-based multiplier · Peak 18:00–22:00 · Off‑peak
-                  22:00–06:00
-                </div>
-              </span>
-            </span>
-            <span
-              className={`text-base font-bold tabular-nums ${
-                premium >= 1 ? 'text-rose-400' : 'text-emerald-400'
+      <div className="relative max-w-7xl mx-auto px-4 md:px-6">
+        {/* ── COMPACT BAR ─────────────────────────────────────── */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 pb-1.5">
+          {/* Left: status + time */}
+          <div className="flex items-center gap-2.5 min-w-0">
+            {/* Status pill */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[10px] font-semibold uppercase tracking-[0.14em] transition-all ${
+                !error
+                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
+                  : 'text-amber-400 bg-amber-500/10 border-amber-500/25'
               }`}
             >
-              {premium > 1 ? '+' : ''}
-              {((premium - 1) * 100).toFixed(1)}%
+              {!error ? (
+                <Activity size={11} className="animate-pulse" />
+              ) : (
+                <AlertCircle size={11} />
+              )}
+              <span className="truncate">
+                {!error ? 'Enerlectra online' : 'Connection offline'}
+              </span>
+            </div>
+
+            {/* Time (small) */}
+            <div className="hidden sm:flex items-center gap-1.5 text-[10px] text-white/60 font-mono">
+              <Clock size={11} className="text-white/35" />
+              <span className="tabular-nums">{timeDisplay}</span>
+            </div>
+          </div>
+
+          {/* Right: key chips + toggle */}
+          <div className="flex flex-wrap items-center justify-end gap-2 min-w-0 flex-1">
+            {/* FX chip */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.07] text-[10px] text-white/80">
+              <Globe size={11} className="text-white/55" />
+              <span className="uppercase tracking-[0.16em] text-[9px] text-white/45">
+                USD→ZMW
+              </span>
+              <span className="font-mono tabular-nums">
+                {fxRate !== null ? fxRate.toFixed(2) : '—'}
+              </span>
+              <span
+                className={`ml-1 text-[9px] ${
+                  liveFx ? 'text-emerald-400' : 'text-white/35'
+                }`}
+              >
+                {liveFx ? 'live' : 'saved'}
+              </span>
+            </div>
+
+            {/* ZESCO chip */}
+            <a
+              href={ZESCO_TARIFF_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label="View official ERB ZESCO tariff schedule"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.07] text-[10px] text-white/80 hover:border-[#667eea]/50 hover:bg-[#667eea]/10 transition-colors"
+            >
+              <Zap size={11} className="text-amber-300/80" />
+              <span className="uppercase tracking-[0.16em] text-[9px] text-white/45">
+                ZESCO base
+              </span>
+              <span className="font-mono tabular-nums">
+                {zescoRate !== null ? `K${zescoRate.toFixed(2)}` : '—'}
+              </span>
+              <ExternalLink size={10} className="text-white/25" />
+            </a>
+
+            {/* PCU chip */}
+            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.04] border border-white/[0.07] text-[10px] text-white/80">
+              <Cpu size={11} className="text-[#667eea]/80" />
+              <span className="uppercase tracking-[0.16em] text-[9px] text-white/45">
+                PCU
+              </span>
+              <span className="font-mono tabular-nums">
+                {lastPcuPrice !== null ? `K${lastPcuPrice.toFixed(2)}` : '—'}
+              </span>
+              {lastPcuTimeLabel && (
+                <span className="text-[9px] text-white/35">
+                  {lastPcuTimeLabel}
+                </span>
+              )}
+            </div>
+
+            {/* Toggle */}
+            <button
+              type="button"
+              onClick={() => setExpanded(prev => !prev)}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-white/[0.12] text-[10px] text-white/75 bg-white/[0.02] hover:bg-white/[0.06] transition-colors"
+            >
+              <Info size={11} className="text-white/50" />
+              <span className="hidden sm:inline">
+                Why this price?
+              </span>
+              <span className="sm:hidden">Why?</span>
+              <ChevronDown
+                size={11}
+                className={`transition-transform ${
+                  expanded ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        {/* Slim footer strip */}
+        <div className="flex items-center justify-between gap-3 pb-1.5 border-t border-white/[0.04] pt-1">
+          <div className="flex items-center gap-3 text-[9px] text-white/35 font-mono">
+            <span className="flex items-center gap-1.5">
+              <Zap size={9} className="text-amber-400/60" />
+              1 kWh = 1 PCU
             </span>
-            <span className="text-[10px] text-white/50">estimated guide</span>
+            <span className="hidden xs:inline opacity-30">·</span>
+            <span className="flex items-center gap-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  !error
+                    ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]'
+                    : 'bg-rose-500'
+                }`}
+              />
+              {!error
+                ? 'Ledger tracking live'
+                : 'Ledger tracking paused'}
+            </span>
           </div>
 
-          {/* True prices: ZESCO reference + last PCU settlement */}
-          <div className="w-full sm:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-white/8 border border-white/15 px-4 sm:px-6 md:px-7 py-3.5 rounded-2xl min-w-fit shadow-card">
-            <div className="flex flex-col items-start sm:items-end sm:mr-4">
-              <span className="text-[11px] text-white/60 uppercase tracking-wider">
-                Utility Price Guide
-              </span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-white tabular-nums">
-                  {zescoRate !== null ? `K${zescoRate.toFixed(2)}` : '—'}
-                </span>
-                <span className="text-[11px] text-white/50">per kWh</span>
-              </div>
-              <span className="text-[10px] text-white/50">
-                based on current tariff data
-              </span>
+          <span className="text-[9px] text-white/25 font-mono tabular-nums">
+            {oracleTimeLabel
+              ? `oracle ${oracleTimeLabel}`
+              : 'oracle starting…'}
+          </span>
+        </div>
+
+        {/* ── EXPANDABLE PANEL ─────────────────────────────── */}
+        {expanded && (
+          <section className="mt-1.5 mb-2 rounded-xl border border-white/[0.08] bg-white/[0.02] px-3.5 py-3 text-[11px] text-white/75 leading-relaxed space-y-2.5">
+            <div className="flex items-start gap-2">
+              <Info size={12} className="mt-[2px] text-white/55" />
+              <p>
+                This strip explains what really shapes your power price:
+                the dollar rate, the official ZESCO tariff, and the PCU
+                trades on Enerlectra. When these move, the cost of your
+                energy moves too.
+              </p>
             </div>
 
-            <div className="flex flex-col items-start sm:items-end">
-              <span className="text-[11px] text-white/60 uppercase tracking-wider">
-                Last Community Payout Rate
-              </span>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-bold text-white tabular-nums">
-                  {lastPcuPrice !== null
-                    ? `K${lastPcuPrice.toFixed(2)}`
-                    : '—'}
-                </span>
-                <span className="text-[11px] text-white/50">per unit</span>
+            <div className="grid md:grid-cols-3 gap-2.5">
+              <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-3">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1">
+                  <Globe size={11} />
+                  Dollar → Kwacha
+                </div>
+                <p>
+                  This is how many Kwacha you need for 1 US dollar. When
+                  the dollar gets stronger, importing fuel and power
+                  becomes more expensive, and that pressure reaches your
+                  tariff.
+                </p>
               </div>
-              <span className="text-[10px] text-white/50">
-                {lastPcuWindowAt
-                  ? `window ${new Date(lastPcuWindowAt).toLocaleTimeString(
-                      'en-GB',
-                      { hour: '2-digit', minute: '2-digit' }
-                    )}`
-                  : 'no payout history yet'}
-              </span>
+
+              <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-3">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1">
+                  <TrendingUp size={11} />
+                  Time of day
+                </div>
+                <p className={premiumColor}>
+                  {premiumSign}
+                  {premiumPct}% · {bandConfig.label}
+                </p>
+                <p className="mt-0.5">
+                  In busy hours many people use power at the same time. In
+                  quiet hours fewer people are using it. Enerlectra adds a
+                  small adjustment for this, so the price follows real
+                  demand. {bandConfig.explanation}
+                </p>
+              </div>
+
+              <div className="rounded-lg bg-white/[0.02] border border-white/[0.05] p-3">
+                <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.16em] text-white/45 font-semibold mb-1">
+                  <Cpu size={11} />
+                  From tariff to PCU
+                </div>
+                <p>
+                  ZESCO&apos;s base price comes from the regulator. Enerlectra
+                  starts there, then blends in the FX rate and time of day
+                  to get a fair PCU price. 1 PCU is 1 unit of energy, so
+                  this number is the clearest picture of your real cost.
+                </p>
+                <a
+                  href={ZESCO_TARIFF_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-1 inline-flex items-center gap-1 text-[10px] text-[#8fa2ff] hover:text-[#b1c2ff]"
+                >
+                  <ExternalLink size={10} />
+                  See official ZESCO tariff (ERB)
+                </a>
+              </div>
             </div>
-
-            <Cpu size={22} className="hidden sm:block text-white/50 ml-2" />
-          </div>
-        </div>
+          </section>
+        )}
       </div>
-
-      <div className="flex flex-wrap items-center justify-center gap-6 text-[11px] text-white/60 border-t border-white/10 pt-4 mt-4">
-        <div className="flex items-center gap-2">
-          <Zap size={12} className="text-amber-400/60" />
-          <span>Energy unit: 1 kWh = 1 PCU</span>
-        </div>
-        <span className="opacity-30">|</span>
-        <div className="flex items-center gap-2">
-          <span
-            className={`w-1.5 h-1.5 rounded-full ${
-              !error ? 'bg-emerald-500' : 'bg-rose-500'
-            }`}
-          />
-          <span>{!error ? 'Connected' : 'Offline'}</span>
-        </div>
-        <span className="opacity-30">|</span>
-        <span>
-          Updated:{' '}
-          {lastUpdate
-            ? new Date(lastUpdate).toLocaleTimeString('en-GB', {
-                hour: '2-digit',
-                minute: '2-digit',
-              })
-            : '—'}
-        </span>
-      </div>
-      </div>
-    </div>
+    </header>
   );
 }

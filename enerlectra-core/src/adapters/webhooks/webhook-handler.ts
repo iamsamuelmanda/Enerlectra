@@ -4,7 +4,7 @@
  * Handles MTN, Airtel, and Lenco/Broadpay callbacks
  */
 
-import { createHmac } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PaymentOrchestrator } from '../../domain/payment/payment-orchestrator';
 import { PaymentRail } from '../../domain/treasury/treasury-types';
@@ -44,48 +44,70 @@ export interface WebhookProcessingResult {
 
 export class WebhookSignatureVerifier {
   /**
-   * Verify MTN webhook signature
+   * Verify MTN webhook signature (example HMAC SHA256 hex)
    */
   static verifyMTNSignature(
     payload: string,
     signature: string,
     secret: string
   ): boolean {
+    if (!secret || !signature) return false;
+
     const expectedSignature = createHmac('sha256', secret)
       .update(payload)
       .digest('hex');
 
-    return signature === expectedSignature;
+    return this.timingSafeEqual(
+      expectedSignature.toLowerCase(),
+      signature.toLowerCase()
+    );
   }
 
   /**
-   * Verify Airtel webhook signature
+   * Verify Airtel webhook signature (example HMAC SHA256 base64)
    */
   static verifyAirtelSignature(
     payload: string,
     signature: string,
     secret: string
   ): boolean {
+    if (!secret || !signature) return false;
+
     const expectedSignature = createHmac('sha256', secret)
       .update(payload)
       .digest('base64');
 
-    return signature === expectedSignature;
+    return this.timingSafeEqual(
+      expectedSignature,
+      signature
+    );
   }
 
   /**
    * Verify Lenco webhook signature
+   * Lenco: X-Lenco-Signature = HMAC SHA512 over raw JSON payload,
+   * using webhook_hash_key = SHA256(API_TOKEN). [web:12]
    */
   static verifyLencoSignature(
     payload: string,
     signature: string,
-    secret: string
+    apiToken: string
   ): boolean {
-    const expectedSignature = createHmac('sha256', secret)
+    if (!apiToken || !signature) return false;
+
+    // Derive webhook_hash_key exactly as Lenco specifies. [web:12]
+    const webhookHashKey = createHash('sha256')
+      .update(apiToken)
+      .digest('hex');
+
+    const expectedSignature = createHmac('sha512', webhookHashKey)
       .update(payload)
       .digest('hex');
 
-    return signature === expectedSignature;
+    return this.timingSafeEqual(
+      expectedSignature.toLowerCase(),
+      signature.toLowerCase()
+    );
   }
 
   /**
@@ -118,6 +140,7 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // MTN WEBHOOK PROCESSING
   // ═══════════════════════════════════════════════════════════
+
   async processMTNWebhook(
     payload: string,
     signature: string | undefined,
@@ -219,6 +242,7 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // AIRTEL WEBHOOK PROCESSING
   // ═══════════════════════════════════════════════════════════
+
   async processAirtelWebhook(
     payload: string,
     signature: string | undefined,
@@ -328,20 +352,22 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // LENCO / BROADPAY WEBHOOK
   // ═══════════════════════════════════════════════════════════
+
   async processLencoWebhook(
     payload: string | Buffer,
     signature: string | undefined,
-    secret: string
+    apiToken: string
   ): Promise<WebhookProcessingResult> {
-    const webhookId = await this.logWebhook('LENCO', payload.toString());
+    const rawPayload = payload instanceof Buffer ? payload.toString() : payload;
+    const webhookId = await this.logWebhook('LENCO', rawPayload);
 
     try {
-      // Verify signature
+      // Verify signature against raw JSON body
       if (signature) {
         const valid = WebhookSignatureVerifier.verifyLencoSignature(
-          payload.toString(),
+          rawPayload,
           signature,
-          secret
+          apiToken
         );
 
         if (!valid) {
@@ -359,11 +385,8 @@ export class WebhookHandler {
         }
       }
 
-      // Parse payload
-      const data =
-        typeof payload === 'string'
-          ? JSON.parse(payload)
-          : JSON.parse(payload.toString());
+      // Parse payload for business logic
+      const data = JSON.parse(rawPayload);
 
       const reference =
         data.reference || data.transaction_id || data.data?.reference;
@@ -381,15 +404,17 @@ export class WebhookHandler {
         return { success: true, webhookId, processed: false };
       }
 
-      // Update contribution status
+      // Map to contribution status
       let newStatus = 'PENDING';
       if (
         ['SUCCESS', 'SUCCESSFUL', 'COMPLETED'].includes(
-          status?.toUpperCase()
+          status?.toUpperCase?.() ?? ''
         )
       ) {
         newStatus = 'COMPLETED';
-      } else if (['FAILED', 'ERROR'].includes(status?.toUpperCase())) {
+      } else if (
+        ['FAILED', 'ERROR'].includes(status?.toUpperCase?.() ?? '')
+      ) {
         newStatus = 'FAILED';
       }
 
@@ -412,7 +437,6 @@ export class WebhookHandler {
       }
 
       await this.updateWebhookStatus(webhookId, newStatus);
-
       console.log(`✅ Lenco webhook: ${reference} → ${newStatus}`);
 
       return {
@@ -440,6 +464,7 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // WEBHOOK LOGGING
   // ═══════════════════════════════════════════════════════════
+
   private async logWebhook(
     source: string,
     payload: string
@@ -480,6 +505,7 @@ export class WebhookHandler {
   // ═══════════════════════════════════════════════════════════
   // RETRY LOGIC
   // ═══════════════════════════════════════════════════════════
+
   async getFailedWebhooks(
     maxRetries: number = 3
   ): Promise<
@@ -505,9 +531,8 @@ export class WebhookHandler {
     webhookId: string,
     source: string,
     payload: string,
-    secret: string
+    secrets: { mtn: string; airtel: string; lenco: string }
   ): Promise<WebhookProcessingResult> {
-    // Increment retry_count safely (no this.supabase.sql)
     const { data: existing } = await this.supabase
       .from('webhook_logs')
       .select('retry_count')
@@ -525,11 +550,11 @@ export class WebhookHandler {
       .eq('id', webhookId);
 
     if (source === 'MTN') {
-      return this.processMTNWebhook(payload, undefined, secret);
+      return this.processMTNWebhook(payload, undefined, secrets.mtn);
     } else if (source === 'AIRTEL') {
-      return this.processAirtelWebhook(payload, undefined, secret);
+      return this.processAirtelWebhook(payload, undefined, secrets.airtel);
     } else if (source === 'LENCO') {
-      return this.processLencoWebhook(payload, undefined, secret);
+      return this.processLencoWebhook(payload, undefined, secrets.lenco);
     }
 
     return {
@@ -566,18 +591,11 @@ export class WebhookRetryScheduler {
     let stillFailed = 0;
 
     for (const webhook of failed) {
-      const secret =
-        webhook.source === 'MTN'
-          ? this.secrets.mtn
-          : webhook.source === 'AIRTEL'
-          ? this.secrets.airtel
-          : this.secrets.lenco;
-
       const result = await this.handler.retryWebhook(
         webhook.id,
         webhook.source,
         webhook.payload,
-        secret
+        this.secrets
       );
 
       if (result.success) {
