@@ -213,8 +213,8 @@ app.post('/api/webhooks/lenco', express.json(), async (req, res) => {
 
   const valid = verifyLencoSignature(rawBody, signature);
   if (!valid) {
-    logger.warn({ signaturePresent: !!signature }, '[LENCO WEBHOOK] Signature invalid — processing anyway');
-    // NOT rejecting yet — need to confirm header name first
+    logger.warn({ signaturePresent: !!signature }, '[LENCO WEBHOOK] Invalid signature — rejected');
+    return res.status(401).json({ error: 'Invalid signature' });
   }
 
   try {
