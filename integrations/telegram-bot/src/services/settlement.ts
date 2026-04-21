@@ -1,21 +1,25 @@
-// services/settlement.ts
-import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 import type { Logger } from 'pino';
 import crypto from 'node:crypto';
 
-// ====================== CONFIGURATION ======================
-const LENCO_API_URL = 'https://api.lenco.co/v1';
-const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY!;
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-// ====================== TYPES ======================
+const LENCO_API_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2';
+const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY!;
+const LENCO_ACCOUNT_ID = process.env.LENCO_ACCOUNT_ID!;
+
 export interface PayoutRequest {
-  userId: string;           // Supabase UUID
+  userId: string;
   clusterId: string;
-  readingId?: string;       // Optional link to meter_readings.id
-  amount: number;           // ZMW
-  phoneNumber: string;      // +260XXXXXXXXX
+  readingId?: string;
+  amount: number;
+  phoneNumber: string;
   narration?: string;
   idempotencyKey?: string;
+  reference?: string;
 }
 
 export interface PayoutResult {
@@ -25,32 +29,54 @@ export interface PayoutResult {
   errorMessage?: string;
 }
 
-// ====================== VALIDATION ======================
 function validatePhoneNumber(phone: string): boolean {
-  return /^\+260\d{9}$/.test(phone);
+  const digits = phone.replace(/\D/g, '');
+  return /^260\d{9}$/.test(digits) || /^0\d{9}$/.test(digits) || /^\d{9}$/.test(digits);
 }
 
-// ====================== MAIN FUNCTION ======================
-export async function requestLencoPayout(
-  params: PayoutRequest,
-  logger: Logger
-): Promise<PayoutResult> {
-  const log = logger.child({ userId: params.userId, amount: params.amount });
+function detectOperator(phone: string): 'mtn' | 'airtel' | 'zamtel' {
+  const local = phone.replace(/\D/g, '').slice(-9);
+  if (/^(96|76|77)/.test(local)) return 'mtn';
+  if (/^(97)/.test(local)) return 'airtel';
+  if (/^(95|75)/.test(local)) return 'zamtel';
+  return 'mtn';
+}
 
-  // 1. Validate inputs
+function formatPhoneForLenco(phone: string): string {
+  return phone.replace(/\D/g, '').slice(-9);
+}
+
+export async function createPendingRedemption(params: PayoutRequest, logger: Logger): Promise<PayoutResult> {
+  const log = logger.child({ userId: params.userId, amount: params.amount, clusterId: params.clusterId });
+
   if (!validatePhoneNumber(params.phoneNumber)) {
-    throw new Error('Invalid phone number format. Must be +260XXXXXXXXX.');
+    throw new Error('Invalid phone number. Use +260XXXXXXXXX or 097XXXXXXX.');
   }
-
   if (params.amount <= 0) {
     throw new Error('Amount must be positive.');
   }
+  if (!LENCO_ACCOUNT_ID) {
+    throw new Error('LENCO_ACCOUNT_ID is not configured.');
+  }
 
-  // 2. Generate reference and idempotency key
-  const reference = `ENR-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
-  const idempotencyKey = params.idempotencyKey || crypto.randomUUID();
+  const reference = params.reference || `ENR-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+  const idempotencyKey = params.idempotencyKey || reference;
 
-  // 3. Insert pending record in our DB
+  const { data: existing } = await supabase
+    .from('settlement_payouts')
+    .select('reference, status, provider_ref, error_message')
+    .eq('reference', reference)
+    .maybeSingle();
+
+  if (existing) {
+    return {
+      reference: existing.reference,
+      status: existing.status as PayoutResult['status'],
+      providerRef: existing.provider_ref,
+      errorMessage: existing.error_message,
+    };
+  }
+
   const { error: dbError } = await supabase
     .from('settlement_payouts')
     .insert({
@@ -65,69 +91,80 @@ export async function requestLencoPayout(
     });
 
   if (dbError) {
+    if ((dbError as any).code === '23505') {
+      const { data } = await supabase
+        .from('settlement_payouts')
+        .select('reference, status, provider_ref, error_message')
+        .eq('reference', reference)
+        .single();
+      if (data) {
+        return {
+          reference: data.reference,
+          status: data.status as PayoutResult['status'],
+          providerRef: data.provider_ref,
+          errorMessage: data.error_message,
+        };
+      }
+    }
     log.error({ error: dbError }, 'Failed to create settlement record');
-    throw new Error('Database error');
+    throw new Error('Database error creating settlement record');
   }
 
-  // 4. Call Lenco API
   try {
-    const response = await fetch(`${LENCO_API_URL}/payouts`, {
+    const formattedPhone = formatPhoneForLenco(params.phoneNumber);
+    const operator = detectOperator(params.phoneNumber);
+
+    log.info({ formattedPhone, operator }, 'Sending payout request to Lenco');
+
+    const response = await fetch(`${LENCO_API_URL}/transfers/mobile-money`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LENCO_SECRET_KEY}`,
+        Authorization: `Bearer ${LENCO_SECRET_KEY}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey,
       },
       body: JSON.stringify({
+        accountId: LENCO_ACCOUNT_ID,
         amount: params.amount,
-        currency: 'ZMW',
-        accountNumber: params.phoneNumber,
-        accountName: 'Enerlectra User',
-        narration: params.narration || 'Enerlectra energy credit settlement',
         reference,
+        narration: params.narration || 'Enerlectra energy credit settlement',
+        phone: formattedPhone,
+        operator,
+        country: 'zm',
       }),
     });
 
     const result = await response.json();
 
     if (!response.ok) {
-      // Update DB with failure
       await supabase
         .from('settlement_payouts')
-        .update({
-          status: 'failed',
-          error_message: result.message || 'Lenco API error',
-        })
+        .update({ status: 'failed', error_message: result.message || 'Lenco API error' })
         .eq('reference', reference);
 
       log.error({ status: response.status, result }, 'Lenco payout failed');
       throw new Error(result.message || 'Payout failed');
     }
 
-    // 5. Update DB with provider reference
+    const providerRef = result.data?.lencoReference || result.data?.id;
+
     await supabase
       .from('settlement_payouts')
-      .update({
-        status: 'processing',
-        provider_ref: result.data.providerRef,
-      })
+      .update({ status: 'processing', provider_ref: providerRef })
       .eq('reference', reference);
 
-    log.info({ reference, providerRef: result.data.providerRef }, 'Lenco payout initiated');
-
-    return {
-      reference,
-      status: 'processing',
-      providerRef: result.data.providerRef,
-    };
-
+    log.info({ reference, providerRef }, 'Lenco payout initiated');
+    return { reference, status: 'processing', providerRef };
   } catch (error: any) {
     log.error({ error }, 'Lenco payout exception');
     throw error;
   }
 }
 
-// ====================== STATUS QUERY ======================
+export async function requestLencoPayout(params: PayoutRequest, logger: Logger): Promise<PayoutResult> {
+  return createPendingRedemption(params, logger);
+}
+
 export async function getPayoutStatus(reference: string): Promise<PayoutResult> {
   const { data, error } = await supabase
     .from('settlement_payouts')
@@ -135,9 +172,7 @@ export async function getPayoutStatus(reference: string): Promise<PayoutResult> 
     .eq('reference', reference)
     .single();
 
-  if (error || !data) {
-    throw new Error('Payout not found');
-  }
+  if (error || !data) throw new Error('Payout not found');
 
   return {
     reference,
