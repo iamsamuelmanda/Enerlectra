@@ -132,10 +132,16 @@ async function resolveCluster(
   }
 
   logger.info({ userId }, 'No cluster membership — auto-enrolling into default cluster');
-  await supabase.from('cluster_members').insert({
-    cluster_id: DEFAULT_CLUSTER_ID,
-    user_id: userId,
-  }).select().single().catch(() => null);
+
+  // FIX: Use try/catch instead of .catch() on PostgrestBuilder
+  try {
+    await supabase.from('cluster_members').insert({
+      cluster_id: DEFAULT_CLUSTER_ID,
+      user_id: userId,
+    }).select().single();
+  } catch {
+    // ignore duplicate
+  }
 
   ctx.session.clusterId = DEFAULT_CLUSTER_ID;
   return { clusterId: DEFAULT_CLUSTER_ID, unitId: 'A1' };
