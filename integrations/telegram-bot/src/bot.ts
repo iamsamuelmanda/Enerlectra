@@ -11,7 +11,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import pino from 'pino';
 import crypto from 'node:crypto';
 
-import { readMeterOCR, MeterOcrResult, setLogger as setOcrLogger } from './services/ocr';
+import { readMeterOCR, MeterOcrResult, MeterType, setLogger as setOcrLogger } from './services/ocr';
 import { validateReading } from './services/validation';
 import { calculateValue } from './services/tariff-calculator';
 import { OCRRateLimiter } from './services/rate-limiter';
@@ -487,7 +487,7 @@ bot.command('transfer', async (ctx) => {
 bot.command('read', async (ctx) => {
   const parts = ctx.message.text.split(' ');
   const kwh = parseFloat(parts[1]);
-  const meterType = parts[2] || 'unknown';
+  const meterType: MeterType = (parts[2] as MeterType) || 'unknown';
   if (isNaN(kwh) || kwh <= 0) return ctx.reply('Usage: /read <kWh> [type]  e.g. /read 152.61');
 
   const userId = await resolveUserId(ctx.from.id.toString());
