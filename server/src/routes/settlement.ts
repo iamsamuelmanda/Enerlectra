@@ -1,12 +1,8 @@
-// src/routes/settlement.ts
 import { Router } from 'express';
 import { supabase } from '../../../enerlectra-core/src/lib/supabase';
-import {
-  insertSettlements,
-  getSettlementsForUser,
-  getSettlementsForCluster,
-  getNetForUserFromDb,
-} from '../services/settlementSupabase';
+import { authenticate } from '../middleware/auth';
+import { runClusterSettlement } from '../services/clusterSettlementEngine';
+import { insertSettlements, getSettlementsForUser, getSettlementsForCluster, getNetForUserFromDb } from '../services/settlementSupabase';
 import { getFinalDistributionFromDb } from '../services/distributionSupabase';
 
 const router = Router();
@@ -20,22 +16,21 @@ interface SettlementInstruction {
   supersedesSettlementId?: string;
 }
 
-/**
- * POST /settlement/generate
- */
+function asNumber(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 router.post('/generate', async (req, res) => {
   const { distributionId, rateZMWPerKwh, supersedesSettlementId } = req.body;
 
   if (!distributionId || rateZMWPerKwh == null) {
-    return res.status(400).json({
-      error: 'distributionId and rateZMWPerKwh are required',
-    });
+    return res.status(400).json({ error: 'distributionId and rateZMWPerKwh are required' });
   }
 
-  if (rateZMWPerKwh <= 0) {
-    return res.status(400).json({
-      error: 'rateZMWPerKwh must be > 0',
-    });
+  const rate = asNumber(rateZMWPerKwh);
+  if (!Number.isFinite(rate) || rate <= 0) {
+    return res.status(400).json({ error: 'rateZMWPerKwh must be > 0' });
   }
 
   let distribution;
@@ -54,47 +49,39 @@ router.post('/generate', async (req, res) => {
     };
   } catch (err: any) {
     console.error('getFinalDistributionFromDb failed', err);
-    return res
-      .status(500)
-      .json({ error: err.message ?? 'Failed to load finalized distribution' });
+    return res.status(500).json({ error: err.message ?? 'Failed to load finalized distribution' });
   }
 
-  // Self-contained settlement generation
   const settlements: SettlementInstruction[] = distribution.allocations.map((alloc: any) => ({
     distributionId,
     clusterId: distribution.clusterId,
     userId: alloc.userId,
-    allocatedKwh: alloc.kwh,
-    amountZMW: alloc.kwh * rateZMWPerKwh,
+    allocatedKwh: Number(alloc.kwh) || 0,
+    amountZMW: (Number(alloc.kwh) || 0) * rate,
     supersedesSettlementId,
   }));
 
   try {
-    await insertSettlements(
-      settlements.map((s) => ({
-        distributionId: s.distributionId,
-        clusterId: s.clusterId,
-        userId: s.userId,
-        kwh: s.allocatedKwh,
-        amountZMW: s.amountZMW,
-        supersedesSettlementId: s.supersedesSettlementId,
-      })),
-    );
+    await insertSettlements(settlements.map(s => ({
+      distributionId: s.distributionId,
+      clusterId: s.clusterId,
+      userId: s.userId,
+      kwh: s.allocatedKwh,
+      amountZMW: s.amountZMW,
+      supersedesSettlementId: s.supersedesSettlementId,
+    })));
   } catch (err: any) {
     console.error('insertSettlements failed', err);
-    return res
-      .status(500)
-      .json({ error: err.message ?? 'Failed to persist settlements' });
+    return res.status(500).json({ error: err.message ?? 'Failed to persist settlements' });
   }
 
-  // Audit log
   try {
     await supabase.from('audit_events').insert({
       event_type: 'SETTLEMENT_GENERATED',
       cluster_id: distribution.clusterId,
       payload: {
         distributionId,
-        rateZMWPerKwh,
+        rateZMWPerKwh: rate,
         supersedesSettlementId: supersedesSettlementId || null,
         count: settlements.length,
       },
@@ -103,14 +90,23 @@ router.post('/generate', async (req, res) => {
     console.error('Failed to append audit event:', err);
   }
 
-  return res.status(201).json({
-    distributionId,
-    rateZMWPerKwh,
-    settlements,
-  });
+  return res.status(201).json({ distributionId, rateZMWPerKwh: rate, settlements });
 });
 
-// Read endpoints unchanged
+router.post('/run', authenticate, async (req, res) => {
+  const { cluster_id, period } = req.body;
+  if (!cluster_id || !period) {
+    return res.status(400).json({ error: 'cluster_id and period are required' });
+  }
+
+  try {
+    const result = await runClusterSettlement(cluster_id, period);
+    return res.json({ success: true, result });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 router.get('/by-user/:userId', async (req, res) => {
   const { userId } = req.params;
   try {
@@ -118,9 +114,7 @@ router.get('/by-user/:userId', async (req, res) => {
     return res.json({ userId, settlements: records });
   } catch (err: any) {
     console.error('getSettlementsForUser failed', err);
-    return res
-      .status(500)
-      .json({ error: err.message ?? 'Failed to load settlements for user' });
+    return res.status(500).json({ error: err.message ?? 'Failed to load settlements for user' });
   }
 });
 
@@ -131,9 +125,7 @@ router.get('/by-cluster/:clusterId', async (req, res) => {
     return res.json({ clusterId, settlements: records });
   } catch (err: any) {
     console.error('getSettlementsForCluster failed', err);
-    return res.status(500).json({
-      error: err.message ?? 'Failed to load settlements for cluster',
-    });
+    return res.status(500).json({ error: err.message ?? 'Failed to load settlements for cluster' });
   }
 });
 
@@ -144,9 +136,7 @@ router.get('/net/:userId', async (req, res) => {
     return res.json(net);
   } catch (err: any) {
     console.error('getNetForUserFromDb failed', err);
-    return res
-      .status(500)
-      .json({ error: err.message ?? 'Failed to compute net for user' });
+    return res.status(500).json({ error: err.message ?? 'Failed to compute net for user' });
   }
 });
 

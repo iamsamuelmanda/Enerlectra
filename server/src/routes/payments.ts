@@ -1,9 +1,11 @@
-// server/src/routes/payments.ts
-import { Router } from 'express';
+import express, { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { requestLencoPayout } from '../services/settlement.js';
-import pino from 'pino';
 import crypto from 'node:crypto';
+import pino from 'pino';
+
+import { requestLencoPayout } from '../services/settlement.js';
+import { processBatchPayouts } from '../services/batchPayoutProcessor.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
@@ -13,9 +15,52 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY!
 );
 
-const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY;
+const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY || '';
+const WEBHOOK_MAX_AGE_SECONDS = Number(process.env.WEBHOOK_MAX_AGE_SECONDS || 300);
 
-// ====================== HELPERS ======================
+type AuthedRequest = express.Request & {
+  user?: { id: string };
+};
+
+function verifyLencoSignature(payload: string, signature: string | undefined): boolean {
+  if (!LENCO_SECRET_KEY || !signature) return false;
+
+  const webhookHashKey = crypto
+    .createHash('sha256')
+    .update(LENCO_SECRET_KEY)
+    .digest('hex');
+
+  const expected = crypto
+    .createHmac('sha512', webhookHashKey)
+    .update(payload)
+    .digest('hex');
+
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(signature, 'utf8'),
+      Buffer.from(expected, 'utf8')
+    );
+  } catch {
+    return false;
+  }
+}
+
+function extractTimestamp(headers: Record<string, any>): number | null {
+  const ts =
+    headers['x-webhook-timestamp'] ||
+    headers['x-timestamp'] ||
+    headers['x-lenco-timestamp'];
+
+  if (!ts) return null;
+  const n = Number(ts);
+  return Number.isFinite(n) ? n : null;
+}
+
+function verifyFreshness(timestamp: number | null): boolean {
+  if (timestamp === null) return true;
+  const age = Math.floor(Date.now() / 1000) - timestamp;
+  return age >= 0 && age <= WEBHOOK_MAX_AGE_SECONDS;
+}
 
 async function getLiveExchangeRate(from = 'USD', to = 'ZMW'): Promise<number> {
   const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
@@ -36,140 +81,154 @@ async function getLiveExchangeRate(from = 'USD', to = 'ZMW'): Promise<number> {
   return rate;
 }
 
-/**
- * Lenco webhook signature verification.
- * Scheme: webhookHashKey = sha256(API_TOKEN), expected = HMAC-SHA512(webhookHashKey, payload)
- * https://lenco-api.readme.io/reference/webhooks
- */
-function verifyLencoSignature(payload: string, signature: string | undefined): boolean {
-  if (!LENCO_SECRET_KEY || !signature) return false;
+async function assertNoDuplicateRedeem(idempotencyKey: string) {
+  const { data, error } = await supabase
+    .from('energy_transactions')
+    .select('reference, status, pcu_amount, zmw_amount')
+    .eq('idempotency_key', idempotencyKey)
+    .maybeSingle();
 
-  const webhookHashKey = crypto
-    .createHash('sha256')
-    .update(LENCO_SECRET_KEY)
-    .digest('hex');
-
-  const expected = crypto
-    .createHmac('sha512', webhookHashKey)
-    .update(payload)
-    .digest('hex');
-
-  try {
-    return crypto.timingSafeEqual(
-      Buffer.from(signature, 'utf8'),
-      Buffer.from(expected,  'utf8')
-    );
-  } catch {
-    return false;
-  }
+  if (error) throw error;
+  return data;
 }
 
-// ====================== POST /api/payments/redeem ======================
-// Redeem PCU for real mobile money via Lenco.
-// Takes userId from body — no JWT required (bot + frontend both use this).
+router.post(
+  '/redeem',
+  authenticate,
+  async (req: AuthedRequest, res) => {
+    try {
+      const userId = req.user?.id;
+      const { amount_pcu, phone_number } = req.body;
+      const idempotencyKey = String(req.headers['idempotency-key'] || '').trim();
 
-router.post('/redeem', async (req, res) => {
-  try {
-    const { userId, amount_pcu, phone_number } = req.body;
+      if (!userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
 
-    if (!userId || !amount_pcu || !phone_number) {
-      return res.status(400).json({ error: 'userId, amount_pcu, and phone_number are required' });
-    }
+      if (!idempotencyKey) {
+        return res.status(400).json({ error: 'Missing Idempotency-Key header' });
+      }
 
-    const amount = Number(amount_pcu);
-    if (!Number.isFinite(amount) || amount <= 0) {
-      return res.status(400).json({ error: 'amount_pcu must be a positive number' });
-    }
+      if (amount_pcu == null || !phone_number) {
+        return res.status(400).json({ error: 'amount_pcu and phone_number are required' });
+      }
 
-    const normalizedPhone = String(phone_number).replace(/\s+/g, '');
-    if (!/^\+260\d{9}$/.test(normalizedPhone)) {
-      return res.status(400).json({ error: 'phone_number must be in +260XXXXXXXXX format' });
-    }
+      const amount = Number(amount_pcu);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        return res.status(400).json({ error: 'amount_pcu must be a positive number' });
+      }
 
-    // 1. Verify PCU balance
-    const { data: wallet, error: walletError } = await supabase
-      .from('pcu_balances')
-      .select('balance_pcu')
-      .eq('user_id', userId)
-      .single();
+      if (amount > 1000000) {
+        return res.status(400).json({ error: 'amount_pcu exceeds allowed limit' });
+      }
 
-    if (walletError || !wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
-    }
-    if (Number(wallet.balance_pcu) < amount) {
-      return res.status(400).json({
-        error: `Insufficient PCU balance (have ${wallet.balance_pcu}, need ${amount})`,
+      const normalizedPhone = String(phone_number).replace(/\s+/g, '');
+      if (!/^\+260\d{9}$/.test(normalizedPhone)) {
+        return res.status(400).json({ error: 'phone_number must be in +260XXXXXXXXX format' });
+      }
+
+      const duplicate = await assertNoDuplicateRedeem(idempotencyKey);
+      if (duplicate) {
+        return res.status(200).json({ success: true, duplicate: true, ...duplicate });
+      }
+
+      const { data: wallet, error: walletError } = await supabase
+        .from('pcu_balances')
+        .select('balance_pcu')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (walletError) throw walletError;
+      if (!wallet) return res.status(404).json({ error: 'Wallet not found' });
+
+      if (Number(wallet.balance_pcu) < amount) {
+        return res.status(400).json({
+          error: `Insufficient PCU balance (have ${wallet.balance_pcu}, need ${amount})`,
+        });
+      }
+
+      const { data: membership, error: membershipError } = await supabase
+        .from('cluster_members')
+        .select('cluster_id')
+        .eq('user_id', userId)
+        .order('joined_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (membershipError) throw membershipError;
+
+      const clusterId = membership?.cluster_id ?? null;
+      const fxRate = await getLiveExchangeRate('USD', 'ZMW');
+      const amount_zmw = Number((amount * fxRate).toFixed(2));
+      const reference = `redeem_${userId}_${Date.now()}_${crypto.randomUUID()}`;
+
+      const { error: txInsertError } = await supabase.from('energy_transactions').insert({
+        idempotency_key: idempotencyKey,
+        from_user_id: userId,
+        to_user_id: null,
+        pcu_amount: amount,
+        zmw_amount: amount_zmw,
+        transaction_type: 'redeem',
+        status: 'pending',
+        reference,
+        cluster_id: clusterId,
+        metadata: {
+          phone_number: normalizedPhone,
+          fx_rate: fxRate,
+        },
       });
+
+      if (txInsertError) throw txInsertError;
+
+      const payout = await requestLencoPayout(
+        {
+          userId,
+          clusterId,
+          amount: amount_zmw,
+          phoneNumber: normalizedPhone,
+          narration: `PCU Redemption – ${amount} PCU → ZMW ${amount_zmw.toFixed(2)}`,
+          reference,
+        },
+        logger
+      );
+
+      const { error: updateError } = await supabase
+        .from('pcu_balances')
+        .update({
+          balance_pcu: Number(wallet.balance_pcu) - amount,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('user_id', userId);
+
+      if (updateError) throw updateError;
+
+      const { error: txUpdateError } = await supabase
+        .from('energy_transactions')
+        .update({
+          status: payout.status === 'processing' ? 'pending' : payout.status,
+          provider_ref: payout.providerRef,
+        })
+        .eq('reference', reference);
+
+      if (txUpdateError) throw txUpdateError;
+
+      return res.json({
+        success: true,
+        reference,
+        status: payout.status,
+        amount_pcu: amount,
+        amount_zmw,
+        remaining_pcu: Number(wallet.balance_pcu) - amount,
+        message: `Redemption of ${amount} PCU initiated.`,
+      });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Redemption failed');
+      return res.status(500).json({ error: error.message || 'Redemption failed', success: false });
     }
-
-    // 2. Get user's active cluster
-    const { data: membership } = await supabase
-      .from('cluster_members')
-      .select('cluster_id')
-      .eq('user_id', userId)
-      .order('joined_at', { ascending: false })
-      .limit(1)
-      .single();
-    const clusterId = membership?.cluster_id || 'clu_73x96b83';
-
-    // 3. Live exchange rate
-    const fxRate    = await getLiveExchangeRate('USD', 'ZMW');
-    const amount_zmw = amount * fxRate;
-
-    // 4. Trigger Lenco payout
-    const payout = await requestLencoPayout({
-      userId,
-      clusterId,
-      amount:      amount_zmw,
-      phoneNumber: normalizedPhone,
-      narration:   `PCU Redemption – ${amount} PCU → ZMW ${amount_zmw.toFixed(2)}`,
-    }, logger);
-
-    // 5. Deduct PCU balance
-    const { error: updateError } = await supabase
-      .from('pcu_balances')
-      .update({
-        balance_pcu: Number(wallet.balance_pcu) - amount,
-        updated_at:  new Date().toISOString(),
-      })
-      .eq('user_id', userId);
-    if (updateError) throw updateError;
-
-    // 6. Record transaction
-    await supabase.from('energy_transactions').insert({
-      from_user_id:     userId,
-      to_user_id:       null,
-      pcu_amount:       amount,
-      zmw_amount:       amount_zmw,
-      transaction_type: 'redeem',
-      status:           payout.status === 'processing' ? 'pending' : payout.status,
-      reference:        payout.reference,
-      metadata: {
-        phone_number: normalizedPhone,
-        fx_rate:      fxRate,
-        provider_ref: payout.providerRef,
-      },
-    });
-
-    res.json({
-      success:       true,
-      reference:     payout.reference,
-      status:        payout.status,
-      amount_pcu:    amount,
-      amount_zmw,
-      remaining_pcu: Number(wallet.balance_pcu) - amount,
-      message:       `Redemption of ${amount} PCU initiated. Payout of ZMW ${amount_zmw.toFixed(2)} to ${normalizedPhone} is processing.`,
-    });
-
-  } catch (error: any) {
-    logger.error({ err: error }, 'Redemption failed');
-    res.status(500).json({ error: error.message || 'Redemption failed', success: false });
   }
-});
+);
 
-// ====================== POST /api/payments/verify ======================
-
-router.post('/verify', async (req, res) => {
+router.post('/verify', authenticate, async (req: AuthedRequest, res) => {
   try {
     const { reference } = req.body;
     if (!reference) return res.status(400).json({ error: 'Missing reference' });
@@ -178,89 +237,118 @@ router.post('/verify', async (req, res) => {
       .from('energy_transactions')
       .select('status, reference')
       .eq('reference', reference)
-      .single();
+      .maybeSingle();
 
     if (error || !tx) return res.status(404).json({ error: 'Transaction not found' });
-    res.json({ success: true, status: tx.status });
-
+    return res.json({ success: true, status: tx.status });
   } catch (error: any) {
     logger.error({ err: error }, 'Verification failed');
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error.message || 'Verification failed' });
   }
 });
 
-// ====================== POST /api/payments/webhooks/lenco ======================
-// Lenco calls this after payout succeeds or fails.
-// Signature verification uses SHA256(API_TOKEN) as HMAC-SHA512 key.
+router.post(
+  '/webhooks/lenco',
+  express.raw({ type: 'application/json' }),
+  async (req: express.Request, res) => {
+    const signature = (
+      req.headers['x-lenco-signature'] ||
+      req.headers['x-lenco-webhook-signature'] ||
+      req.headers['x-signature']
+    ) as string | undefined;
 
-router.post('/webhooks/lenco', async (req, res) => {
-  const signature = (
-    req.headers['x-lenco-signature'] ||
-    req.headers['x-lenco-webhook-signature'] ||
-    req.headers['x-signature']
-  ) as string | undefined;
+    const rawBody = req.body instanceof Buffer ? req.body.toString('utf8') : String(req.body ?? '');
 
-  const rawBody = JSON.stringify(req.body);
+    logger.info(
+      {
+        signaturePresent: !!signature,
+        payloadLength: rawBody.length,
+        keyConfigured: !!LENCO_SECRET_KEY,
+      },
+      '[LENCO WEBHOOK] Incoming'
+    );
 
-  logger.info({
-    signaturePresent: !!signature,
-    payloadLength:    rawBody.length,
-    keyConfigured:    !!LENCO_SECRET_KEY,
-  }, '[LENCO WEBHOOK] Incoming');
+    if (!signature) {
+      return res.status(401).json({ error: 'Missing signature' });
+    }
 
-  if (!verifyLencoSignature(rawBody, signature)) {
-    logger.warn('[LENCO WEBHOOK] Signature verification failed — processing anyway for now');
-    // NOTE: During initial integration, log but don't reject.
-    // Uncomment the line below once signature is confirmed working:
-    // return res.status(401).json({ error: 'Invalid signature' });
+    if (!LENCO_SECRET_KEY) {
+      return res.status(500).json({ error: 'Webhook secret not configured' });
+    }
+
+    const timestamp = extractTimestamp(req.headers as any);
+    if (!verifyFreshness(timestamp)) {
+      return res.status(401).json({ error: 'Stale webhook' });
+    }
+
+    if (!verifyLencoSignature(rawBody, signature)) {
+      return res.status(401).json({ error: 'Invalid signature' });
+    }
+
+    try {
+      const payload = JSON.parse(rawBody);
+      const { reference, status, providerRef } = payload;
+
+      if (!reference || !status || !providerRef) {
+        return res.status(400).json({ error: 'Invalid webhook payload' });
+      }
+
+      const { data: existing, error: existingError } = await supabase
+        .from('webhook_events')
+        .select('id')
+        .eq('provider_ref', providerRef)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+      if (existing) return res.status(200).json({ received: true });
+
+      const { error: webhookInsertError } = await supabase.from('webhook_events').insert({
+        provider: 'lenco',
+        provider_ref: providerRef,
+        reference,
+        status,
+        payload,
+      });
+
+      if (webhookInsertError) throw webhookInsertError;
+
+      const txStatus =
+        status === 'SUCCESSFUL' ? 'completed'
+        : status === 'FAILED' ? 'failed'
+        : 'pending';
+
+      const { error: txUpdateError } = await supabase
+        .from('energy_transactions')
+        .update({ status: txStatus })
+        .eq('reference', reference);
+
+      if (txUpdateError) throw txUpdateError;
+
+      const { error: payoutUpdateError } = await supabase
+        .from('settlement_payouts')
+        .update({
+          status: txStatus,
+          completed_at: status === 'SUCCESSFUL' ? new Date().toISOString() : null,
+        })
+        .eq('reference', reference);
+
+      if (payoutUpdateError) throw payoutUpdateError;
+
+      logger.info({ reference, status, providerRef }, '[LENCO WEBHOOK] Payout updated');
+      return res.status(200).json({ received: true });
+    } catch (error: any) {
+      logger.error({ err: error }, 'Webhook processing failed');
+      return res.status(500).json({ error: 'Internal error' });
+    }
   }
+);
 
+router.post('/process-payouts', authenticate, async (_req: AuthedRequest, res) => {
   try {
-    const { reference, status, providerRef } = req.body;
-
-    // Idempotency check
-    const { data: existing } = await supabase
-      .from('webhook_events')
-      .select('id')
-      .eq('provider_ref', providerRef)
-      .single();
-
-    if (existing) return res.status(200).json({ received: true });
-
-    // Record webhook event
-    await supabase.from('webhook_events').insert({
-      provider:     'lenco',
-      provider_ref: providerRef,
-      reference,
-      status,
-      payload:      req.body,
-    });
-
-    // Update transaction status
-    const txStatus = status === 'SUCCESSFUL' ? 'completed'
-                   : status === 'FAILED'     ? 'failed'
-                   : 'pending';
-
-    await supabase
-      .from('energy_transactions')
-      .update({ status: txStatus })
-      .eq('reference', reference);
-
-    // Update settlement_payouts
-    await supabase
-      .from('settlement_payouts')
-      .update({
-        status:       txStatus,
-        completed_at: status === 'SUCCESSFUL' ? new Date().toISOString() : null,
-      })
-      .eq('reference', reference);
-
-    logger.info({ reference, status, providerRef }, '[LENCO WEBHOOK] Payout updated');
-    res.status(200).json({ received: true });
-
-  } catch (error: any) {
-    logger.error({ err: error }, 'Webhook processing failed');
-    res.status(500).json({ error: 'Internal error' });
+    const result = await processBatchPayouts();
+    return res.json({ success: true, result });
+  } catch (err: any) {
+    return res.status(500).json({ error: err.message || 'Batch payout failed' });
   }
 });
 

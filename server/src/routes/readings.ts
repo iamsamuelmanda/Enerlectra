@@ -1,181 +1,206 @@
-// src/routes/readings.ts
-import { Router } from "express";
-import { supabase } from "../../../enerlectra-core/src/lib/supabase";
-import { mintPCUForExportReading } from "../services/pcuMinting";
-import { reconcileEnergyAllocation } from "../../../enerlectra-core/src/engines/energyReconciliation";
+import { Router } from 'express';
+import { supabase } from '../lib/supabase.js';
+import { validateReading } from '../services/validation.js';
+import { mintPCUForExportReading } from '../services/pcuMinting.js';
+import { reconcileEnergyAllocation } from 'enerlectra-core';
+import { authenticate } from '../middleware/auth.js';
+import pino from 'pino';
 
-// Helper for period
-function getCurrentPeriod(): string {
-  const now = new Date();
-  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 const router = Router();
 
-/**
- * POST /readings/ingest
- * Ingest meter readings and automatically mint PCU for solar_export / solar_generation.
- */
-router.post("/readings/ingest", async (req, res) => {
-  const { readings = [] } = req.body;
+function getCurrentPeriod(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
 
-  if (!Array.isArray(readings) || readings.length === 0) {
-    return res.status(400).json({ error: "readings array is required" });
+router.post('/ingest', authenticate, async (req: any, res) => {
+  const {
+    cluster_id,
+    unit_id,
+    reading_kwh,
+    meter_type,
+    photo_url,
+    confidence,
+    source = 'telegram',
+    reading_key,
+  } = req.body;
+
+  const userId = req.user.id;
+
+  if (!cluster_id || !unit_id || reading_kwh == null || !meter_type) {
+    return res.status(400).json({ error: 'cluster_id, unit_id, reading_kwh, and meter_type are required' });
   }
 
-  const results = [];
-
-  for (const reading of readings) {
-    const {
-      id,
-      cluster_id,
-      user_id,
-      meter_type,
-      reading_kwh,
-      delta_kwh,
-      reporting_period: bodyPeriod,
-      ...rest
-    } = reading;
-
-    if (!cluster_id || !user_id || !meter_type) {
-      results.push({
-        id,
-        success: false,
-        error: "cluster_id, user_id, and meter_type are required",
-      });
-      continue;
-    }
-
-    try {
-      const reporting_period = bodyPeriod || getCurrentPeriod();
-
-      const { error: ingestError } = await supabase
-        .from("meter_readings")
-        .insert({
-          cluster_id,
-          user_id,
-          meter_type,
-          reading_kwh,
-          delta_kwh,
-          reporting_period,
-          ingest_at: new Date().toISOString(),
-          ...rest,
-        });
-
-      if (ingestError) {
-        results.push({
-          id,
-          success: false,
-          error: ingestError.message,
-        });
-        continue;
-      }
-
-      // 1 PCU = 1 kWh for valid export / generation
-      const amount_pcu = delta_kwh || 0;
-
-      // Mint PCU when reading is valid export or generation
-      if (
-        meter_type === "solar_export" ||
-        meter_type === "solar_generation"
-      ) {
-        try {
-          await mintPCUForExportReading({
-            id,
-            user_id,
-            delta_kwh: amount_pcu,
-          });
-        } catch (mintError: any) {
-          console.error("[READINGS INGEST - PCU MINTING ERROR]", mintError);
-          // Non-fatal; ingestion still succeeded
-        }
-      }
-
-      results.push({
-        id,
-        success: true,
-      });
-    } catch (error: any) {
-      console.error("[READINGS INGEST ERROR]", error);
-      results.push({
-        id,
-        success: false,
-        error: error.message,
-      });
-    }
+  if (!reading_key) {
+    return res.status(400).json({ error: 'reading_key is required for idempotency' });
   }
-
-  res.json({ results });
-});
-
-/**
- * POST /clusters/:clusterId/reconcile
- * Reconcile a cluster's readings against ownership for a given period.
- */
-router.post("/clusters/:clusterId/reconcile", async (req, res) => {
-  const { clusterId } = req.params;
-  const { period } = req.body;
 
   try {
-    const targetPeriod = period || getCurrentPeriod();
+    const { data: membership, error: membershipError } = await supabase
+      .from('cluster_members')
+      .select('cluster_id, unit_id')
+      .eq('user_id', userId)
+      .eq('cluster_id', cluster_id)
+      .eq('unit_id', unit_id)
+      .maybeSingle();
+
+    if (membershipError) throw membershipError;
+    if (!membership) {
+      return res.status(403).json({ error: 'You are not authorized to submit readings for this unit' });
+    }
+
+    const validation = await validateReading({
+      userId,
+      clusterId: cluster_id,
+      newKwh: reading_kwh,
+      confidence: confidence ?? 1.0,
+      meterType: meter_type,
+      requestId: req.id,
+      logger,
+    });
+
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.reason });
+    }
+
+    const { data: existing, error: existingError } = await supabase
+      .from('meter_readings')
+      .select('id, meter_type')
+      .eq('reading_key', reading_key)
+      .maybeSingle();
+
+    if (existingError) throw existingError;
+    if (existing) {
+      return res.status(200).json({ success: true, duplicate: true, reading_id: existing.id, meter_type: existing.meter_type });
+    }
+
+    const { data: reading, error: insertError } = await supabase
+      .from('meter_readings')
+      .insert({
+        reading_key,
+        user_id: userId,
+        cluster_id,
+        unit_id,
+        reading_kwh,
+        meter_type,
+        photo_url: photo_url || null,
+        ocr_confidence: confidence ?? null,
+        validated: true,
+        captured_at: new Date().toISOString(),
+        reporting_period: getCurrentPeriod(),
+        source,
+      })
+      .select('*')
+      .single();
+
+    if (insertError) throw insertError;
+
+    if (reading.meter_type === 'solar_export' || reading.meter_type === 'solar_generation') {
+      await mintPCUForExportReading(reading);
+    }
+
+    return res.status(201).json({
+      success: true,
+      reading_id: reading.id,
+      delta_kwh: validation.delta,
+      meter_type: reading.meter_type,
+    });
+  } catch (error: any) {
+    logger.error({ err: error }, 'Ingest reading failed');
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+router.post('/clusters/:clusterId/reconcile', authenticate, async (req: any, res) => {
+  const { clusterId } = req.params;
+  const { period } = req.body;
+  const targetPeriod = period || getCurrentPeriod();
+  const userId = req.user.id;
+
+  try {
+    const { data: admin, error: adminError } = await supabase
+      .from('cluster_members')
+      .select('role')
+      .eq('user_id', userId)
+      .eq('cluster_id', clusterId)
+      .maybeSingle();
+
+    if (adminError) throw adminError;
+    if (!admin || !['admin', 'owner'].includes(admin.role)) {
+      return res.status(403).json({ error: 'Not authorized to reconcile this cluster' });
+    }
 
     const { data: readings, error: readingsError } = await supabase
-      .from("meter_readings")
-      .select("*")
-      .eq("cluster_id", clusterId)
-      .eq("reporting_period", targetPeriod);
+      .from('meter_readings')
+      .select('*')
+      .eq('cluster_id', clusterId)
+      .eq('reporting_period', targetPeriod)
+      .eq('validated', true);
 
-    if (readingsError) {
-      console.error("[RECONCILE READINGS ERROR]", readingsError);
-      throw readingsError;
+    if (readingsError) throw readingsError;
+    if (!readings?.length) {
+      return res.status(400).json({ error: 'No validated readings found for this period' });
     }
 
-    
     const { data: ownership, error: ownershipError } = await supabase
-      .from("ownership_snapshots")
-      .select("user_id, pct")  
-      .eq("cluster_id", clusterId)
-      .eq("period", targetPeriod);
+      .from('ownership_snapshots')
+      .select('user_id, ownership_pct')
+      .eq('cluster_id', clusterId)
+      .eq('period', targetPeriod);
 
-    if (ownershipError) {
-      console.error("[RECONCILE OWNERSHIP ERROR]", ownershipError);
-      throw ownershipError;
+    if (ownershipError) throw ownershipError;
+    if (!ownership?.length) {
+      return res.status(400).json({ error: 'No ownership snapshot found for this period' });
     }
 
-    if (!readings || !ownership || readings.length === 0) {
-      return res.status(400).json({
-        error:
-          "Insufficient physical data or ownership snapshots for reconciliation",
-      });
-    }
-
-    const formattedReadings = readings.map((r: any) => ({
-      clusterId: r.cluster_id,
-      unitId: r.unit_id,
-      userId: r.user_id,
-      readingKwh: r.reading_kwh,
-      meterType: r.meter_type,
-      reportingPeriod: r.reporting_period,
-      source: r.source ?? "telegram",
-    }));
-
-    // ✅ FIXED: Changed ownership_pct → pct
-    const formattedOwnership = ownership.map((o: any) => ({
-      userId: o.user_id,
-      ownershipPct: o.pct,  // ← FIXED HERE
-    }));
-
-    const result = reconcileEnergyAllocation({
-      readings: formattedReadings,
-      ownership: formattedOwnership,
+    const reconciliationResult = reconcileEnergyAllocation({
+      readings: readings.map((r: any) => ({
+        clusterId: r.cluster_id,
+        unitId: r.unit_id,
+        userId: r.user_id,
+        readingKwh: r.reading_kwh,
+        meterType: r.meter_type,
+        reportingPeriod: r.reporting_period,
+      })),
+      ownership: ownership.map((o: any) => ({
+        userId: o.user_id,
+        ownershipPct: o.ownership_pct,
+      })),
       clusterId,
       period: targetPeriod,
     });
 
-    res.json(result);
+    const allocations = (reconciliationResult as any).allocations || [];
+    if (allocations.length > 0) {
+      const rows = allocations.map((alloc: any) => ({
+        id: `stl_${clusterId}_${alloc.userId}_${targetPeriod}`,
+        user_id: alloc.userId,
+        cluster_id: clusterId,
+        period: targetPeriod,
+        delta_kwh: alloc.netKwh ?? 0,
+        rate_per_kwh: 1.35,
+        amount_zmw: Math.abs(alloc.netKwh ?? 0) * 1.35,
+        status: 'PENDING',
+        created_at: new Date().toISOString(),
+      }));
+
+      const { error: upsertError } = await supabase
+        .from('settlement_ledger')
+        .upsert(rows, { onConflict: 'id' });
+
+      if (upsertError) throw upsertError;
+    }
+
+    return res.json({
+      success: true,
+      clusterId,
+      period: targetPeriod,
+      allocations,
+    });
   } catch (error: any) {
-    console.error("[RECONCILE ERROR]", error);
-    res.status(500).json({ error: error.message });
+    logger.error({ err: error, clusterId, period }, 'Reconciliation failed');
+    return res.status(500).json({ error: error.message });
   }
 });
 
