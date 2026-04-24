@@ -137,7 +137,7 @@ async function promptForCluster(ctx: BotContext) {
   const { data: clusters } = await supabase
     .from('clusters')
     .select('id, name, location')
-    .in('status', ['active', 'funding', 'ACTIVE', 'FUNDING'])
+    .in('lifecycle_state', ['FUNDING', 'OPERATIONAL', 'FUNDED']) // ✅ FIXED: use lifecycle_state
     .limit(10);
 
   if (!clusters?.length) {
@@ -397,11 +397,12 @@ bot.command('register', async (ctx) => {
   await ctx.reply('Reply with your mobile number:\n`+260XXXXXXXXX` or `097XXXXXXX`', { parse_mode: 'Markdown' });
 });
 
+// ✅ FIXED: use lifecycle_state
 bot.command('clusters', async (ctx) => {
   const { data: clusters } = await supabase
     .from('clusters')
     .select('id, name, location')
-    .in('status', ['active', 'funding', 'ACTIVE', 'FUNDING'])
+    .in('lifecycle_state', ['FUNDING', 'OPERATIONAL', 'FUNDED'])
     .limit(10);
 
   if (!clusters?.length) return ctx.reply('No communities available. Contact your administrator.');
