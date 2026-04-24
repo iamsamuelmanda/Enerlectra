@@ -756,6 +756,9 @@ process.once('SIGTERM', () => {
   bot.stop('SIGTERM');
 });
 
-bot.launch()
-  .then(() => logger.info('Ellie is online!'))
-  .catch(err => logger.error({ err }, 'Bot launch failed'));
+// Let previous instance fully exit before polling
+setTimeout(() => {
+  bot.launch()
+    .then(() => logger.info('Ellie is online!'))
+    .catch(err => logger.error({ err }, 'Bot launch failed'));
+}, 3000); // 3 seconds
