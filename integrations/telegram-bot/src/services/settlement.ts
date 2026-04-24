@@ -1,12 +1,7 @@
 // integrations/telegram-bot/src/services/settlement.ts
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import type { Logger } from 'pino';
 import crypto from 'node:crypto';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 // ====================== CONFIGURATION ======================
 const LENCO_API_URL = process.env.LENCO_BASE_URL || 'https://api.lenco.co/access/v2';
