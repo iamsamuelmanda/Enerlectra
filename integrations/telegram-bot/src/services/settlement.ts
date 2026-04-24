@@ -1,5 +1,5 @@
 // integrations/telegram-bot/src/services/settlement.ts
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabase';
 import type { Logger } from 'pino';
 import crypto from 'node:crypto';
 
