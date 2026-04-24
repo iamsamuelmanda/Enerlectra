@@ -28,7 +28,6 @@ const supabase: SupabaseClient = createClient(
 );
 
 const rateLimiter = new OCRRateLimiter(logger);
-const DEFAULT_CLUSTER_ID = process.env.DEFAULT_CLUSTER_ID || 'clu_73x96b83';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -112,10 +111,11 @@ async function getPhoneNumber(userId: string): Promise<string | null> {
   return data?.phone_number ?? null;
 }
 
+// ====================== CLUSTER RESOLUTION (NO AUTO-ENROLL) ======================
 async function resolveCluster(
   ctx: BotContext,
   userId: string
-): Promise<{ clusterId: string; unitId: string }> {
+): Promise<{ clusterId: string | null; unitId: string }> {
   if (ctx.session.clusterId) return { clusterId: ctx.session.clusterId, unitId: 'A1' };
 
   const { data: member } = await supabase
@@ -131,22 +131,35 @@ async function resolveCluster(
     return { clusterId: member.cluster_id, unitId: 'A1' };
   }
 
-  logger.info({ userId }, 'No cluster membership — auto-enrolling into default cluster');
-
-  // FIX: Use try/catch instead of .catch() on PostgrestBuilder
-  try {
-    await supabase.from('cluster_members').insert({
-      cluster_id: DEFAULT_CLUSTER_ID,
-      user_id: userId,
-    }).select().single();
-  } catch {
-    // ignore duplicate
-  }
-
-  ctx.session.clusterId = DEFAULT_CLUSTER_ID;
-  return { clusterId: DEFAULT_CLUSTER_ID, unitId: 'A1' };
+  // No membership – return null so callers can prompt the user
+  return { clusterId: null, unitId: 'A1' };
 }
 
+// ====================== PROMPT USER TO PICK A CLUSTER ======================
+async function promptForCluster(ctx: BotContext) {
+  const { data: clusters } = await supabase
+    .from('clusters')
+    .select('id, name, location')
+    .in('status', ['active', 'funding', 'ACTIVE', 'FUNDING'])
+    .limit(10);
+
+  if (!clusters?.length) {
+    await ctx.reply('No communities available yet. Please check back later or contact support.');
+    return;
+  }
+
+  const keyboard = clusters.map(c => [{
+    text: `${c.name}${c.location ? ` – ${c.location}` : ''}`,
+    callback_data: `join:${c.id}`,
+  }]);
+
+  await ctx.reply(
+    'You haven\'t joined a community yet. Select one below:',
+    { reply_markup: { inline_keyboard: keyboard } }
+  );
+}
+
+// ====================== CORE PROCESSING ======================
 async function processAndSaveReading(
   ctx: BotContext,
   userId: string,
@@ -163,9 +176,15 @@ async function processAndSaveReading(
     return ctx.reply(text, extra);
   };
 
-  try {
-    const { clusterId, unitId } = await resolveCluster(ctx, userId);
+  // ---- resolve cluster – prompt if missing ----
+  const { clusterId, unitId } = await resolveCluster(ctx, userId);
+  if (!clusterId) {
+    await editOrReply('Please join a community first. Use /clusters to browse.');
+    await promptForCluster(ctx);
+    return;
+  }
 
+  try {
     const validation = await validateReading({
       userId,
       clusterId,
@@ -283,6 +302,7 @@ async function processAndSaveReading(
   }
 }
 
+// ====================== COMMANDS ======================
 bot.start(async (ctx) => {
   const startPayload = (ctx as any).startPayload as string | undefined;
   const telegramId = ctx.from.id.toString();
@@ -310,7 +330,7 @@ bot.start(async (ctx) => {
     } catch {}
   }
 
-  await resolveCluster(ctx, userId);
+  // Do NOT auto-enroll; the user can pick later
   const phone = await getPhoneNumber(userId);
 
   await ctx.reply(
@@ -365,6 +385,10 @@ bot.command('status', async (ctx) => {
   const userId = await resolveUserId(ctx.from.id.toString());
   const phone = await getPhoneNumber(userId);
   const { clusterId } = await resolveCluster(ctx, userId);
+  if (!clusterId) {
+    await ctx.reply('You are not part of a community yet. Use /clusters to join one.');
+    return;
+  }
   await ctx.reply(
     `*Your Status*\n\nCommunity: \`${clusterId}\`\nMobile: ${phone ?? 'Not registered – /register'}`,
     { parse_mode: 'Markdown' }
@@ -416,6 +440,7 @@ bot.action(/^join:(.+)/, async (ctx) => {
   );
 });
 
+// ---- FIXED: plain text, no Markdown parsing ----
 bot.command('history', async (ctx) => {
   const userId = await resolveUserId(ctx.from.id.toString());
   const { data: readings } = await supabase
@@ -426,12 +451,12 @@ bot.command('history', async (ctx) => {
     .limit(5);
 
   if (!readings?.length) return ctx.reply('No readings yet.');
-  let msg = `*Recent Submissions*\n\n`;
+  let msg = `Recent Submissions\n\n`;
   for (const r of readings) {
     const date = new Date(r.captured_at).toLocaleDateString('en-GB');
     msg += `• ${r.reading_kwh} kWh (${r.meter_type}) – ${date}\n`;
   }
-  await ctx.reply(msg, { parse_mode: 'Markdown' });
+  await ctx.reply(msg);
 });
 
 bot.command('redeem', async (ctx) => {
@@ -444,6 +469,12 @@ bot.command('redeem', async (ctx) => {
   if (!phone) return ctx.reply('Register your mobile number first: /register');
 
   const { clusterId } = await resolveCluster(ctx, userId);
+  if (!clusterId) {
+    await ctx.reply('Please join a community first. Use /clusters to browse.');
+    await promptForCluster(ctx);
+    return;
+  }
+
   const reference = crypto.randomUUID();
 
   ctx.session.pendingRedemption = {
@@ -498,6 +529,12 @@ bot.command('read', async (ctx) => {
 
   const userId = await resolveUserId(ctx.from.id.toString());
   const { clusterId, unitId } = await resolveCluster(ctx, userId);
+  if (!clusterId) {
+    await ctx.reply('Please join a community first. Use /clusters to browse.');
+    await promptForCluster(ctx);
+    return;
+  }
+
   const requestId = crypto.randomUUID();
 
   const validation = await validateReading({
@@ -537,6 +574,8 @@ bot.command('read', async (ctx) => {
     await ctx.reply(`Reading recorded: ${kwh} kWh.`);
   }
 });
+
+// Photo handler unchanged (already had cluster resolution)
 
 bot.on(message('photo'), async (ctx) => {
   const photo = ctx.message.photo.slice(-1)[0];

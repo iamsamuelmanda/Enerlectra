@@ -1,3 +1,4 @@
+// integrations/telegram-bot/src/services/settlement.ts
 import { createClient } from '@supabase/supabase-js';
 import type { Logger } from 'pino';
 import crypto from 'node:crypto';
@@ -67,6 +68,7 @@ export async function createPendingRedemption(
 ): Promise<void> {
   const log = logger.child({ userId: params.userId, reference: params.reference });
 
+  // --- FIX: removed `metadata` and `reference` columns; use `tx_reference` ---
   const { error } = await supabase
     .from('pending_settlement_payouts')
     .insert({
@@ -76,11 +78,7 @@ export async function createPendingRedemption(
       amount_zmw: 0,                // calculated later when payout triggers
       phone_number: params.phone,
       status: 'PENDING',
-      reference: params.reference,
-      metadata: {
-        amount_pcu: params.amountPcu,
-        idempotency_key: params.idempotencyKey,
-      },
+      tx_reference: params.reference,
     });
 
   if (error) {
@@ -129,7 +127,7 @@ export async function requestLencoPayout(
     };
   }
 
-  // 4. Insert pending record
+  // 4. Insert pending record into settlement_payouts
   const { error: dbError } = await supabase
     .from('settlement_payouts')
     .insert({
@@ -163,7 +161,7 @@ export async function requestLencoPayout(
     throw new Error('Database error');
   }
 
-  // 5. Call Lenco **payout** endpoint (not collection)
+  // 5. Call Lenco **payout** endpoint
   try {
     const formattedPhone = formatPhoneForLenco(params.phoneNumber);
     const operator = detectOperator(params.phoneNumber);
@@ -181,8 +179,8 @@ export async function requestLencoPayout(
         accountId: LENCO_ACCOUNT_ID,
         amount: params.amount.toFixed(2),
         currency: 'ZMW',
-        phone: formattedPhone,               // full international: 260966860393
-        operator: operator,                  // mtn / airtel / zamtel
+        phone: formattedPhone,
+        operator: operator,
         country: 'zm',
         narration: params.narration || 'Enerlectra energy credit settlement',
         reference,
