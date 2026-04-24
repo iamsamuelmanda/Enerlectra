@@ -1,10 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
+// integrations/telegram-bot/src/services/pcuMinting.ts
+import { supabase } from '../lib/supabase';
 import pino from 'pino';
-
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 

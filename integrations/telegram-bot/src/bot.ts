@@ -7,7 +7,7 @@ dotenv.config();
 import { Telegraf, Context, session } from 'telegraf';
 import { message } from 'telegraf/filters';
 import express from 'express';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { supabase } from './lib/supabase'; // ✅ use shared client
 import pino from 'pino';
 import crypto from 'node:crypto';
 
@@ -22,10 +22,7 @@ import { transferPCU } from './services/pcuTransfer';
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 setOcrLogger(logger);
 
-const supabase: SupabaseClient = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+// --- removed: const supabase: SupabaseClient = createClient(...) ---
 
 const rateLimiter = new OCRRateLimiter(logger);
 
