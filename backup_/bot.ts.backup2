@@ -1,5 +1,5 @@
 // integrations/telegram-bot/src/bot.ts
-// Production Ellie bot — Redis-backed sessions, statement-style UX, visual fingerprinting.
+// Production Ellie bot — Redis-backed sessions, no in-memory state.
 
 import dotenv from 'dotenv';
 dotenv.config();
@@ -15,7 +15,7 @@ import crypto from 'node:crypto';
 
 import { readMeterOCR, MeterOcrResult, MeterType, setLogger as setOcrLogger } from './services/ocr';
 import { validateReading } from './services/validation';
-import { calculateValue, type ValueEstimate } from './services/tariff-calculator';
+import { calculateValue } from './services/tariff-calculator';
 import { OCRRateLimiter } from './services/rate-limiter';
 import { requestLencoPayout, createPendingRedemption } from './services/settlement';
 import { mintPCUForExportReading } from './services/pcuMinting';
@@ -36,6 +36,7 @@ const PORT = process.env.PORT || 3000;
 app.get('/', (_, res) => res.send('Ellie is awake and monitoring the grid.'));
 app.listen(PORT, () => logger.info(`Health check listening on port ${PORT}`));
 
+// ====================== REDIS SESSION KEYS ======================
 const PENDING_READING_PREFIX = `${REDIS_KEY_PREFIX}:pending_reading`;
 const PENDING_REDEMPTION_PREFIX = `${REDIS_KEY_PREFIX}:pending_redemption`;
 
@@ -50,11 +51,13 @@ interface BotContext extends Context {
 
 const bot = new Telegraf<BotContext>(process.env.TELEGRAM_BOT_TOKEN!);
 
+// Production: Redis-backed sessions (survives restarts, works across instances)
 bot.use(session({
   store: createRedisSessionStore<BotSession>(),
   defaultSession: (): BotSession => ({}),
 }));
 
+// ====================== REDIS HELPERS FOR PENDING STATES ======================
 async function getPendingReading(userId: string): Promise<{ imageUrl: string; ocrResult: MeterOcrResult; expiresAt: number } | null> {
   const data = await redis.get<string>(`${PENDING_READING_PREFIX}:${userId}`);
   if (!data) return null;
@@ -102,15 +105,10 @@ async function clearPendingRedemption(userId: string): Promise<void> {
   await redis.del(`${PENDING_REDEMPTION_PREFIX}:${userId}`);
 }
 
+// ====================== UTILITIES ======================
 function getCurrentPeriod(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-}
-
-function formatPeriod(period: string): string {
-  const [year, month] = period.split('-');
-  const date = new Date(parseInt(year), parseInt(month) - 1);
-  return date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 function normalizePhoneNumber(input: string): string | null {
@@ -119,11 +117,6 @@ function normalizePhoneNumber(input: string): string | null {
   if (n.startsWith('0')) n = '+260' + n.slice(1);
   if (n.startsWith('260')) n = '+' + n;
   return /^\+260\d{9}$/.test(n) ? n : null;
-}
-
-function maskPhone(phone: string): string {
-  if (phone.length < 8) return phone;
-  return phone.slice(0, 4) + '****' + phone.slice(-3);
 }
 
 function generateReadingKey(
@@ -205,7 +198,7 @@ async function promptForCluster(ctx: BotContext) {
     .limit(10);
 
   if (!clusters?.length) {
-    await ctx.reply('No communities available. Contact support or try again later.');
+    await ctx.reply('No communities available yet. Please check back later or contact support.');
     return;
   }
 
@@ -215,17 +208,9 @@ async function promptForCluster(ctx: BotContext) {
   }]);
 
   await ctx.reply(
-    'Select a community to join:',
+    'You haven\'t joined a community yet. Select one below:',
     { reply_markup: { inline_keyboard: keyboard } }
   );
-}
-
-interface ValueResult {
-  message: string;
-  valueEstimate?: ValueEstimate;
-  payoutRef?: string;
-  payoutStatus?: string;
-  payoutAmount?: number;
 }
 
 async function handleReadingValueAndPayout(
@@ -235,130 +220,68 @@ async function handleReadingValueAndPayout(
   reading: any,
   validation: { valid: true; delta: number | null; flag?: string },
   requestId: string
-): Promise<ValueResult> {
+): Promise<string> {
   const isExport = reading.meter_type === 'solar_export' || reading.meter_type === 'solar_generation';
+  let valueMessage = '';
+
+  if (isExport) {
+    await mintPCUForExportReading(reading).catch(err =>
+      logger.error({ err }, 'PCU minting failed - reading saved')
+    );
+  }
+
   const phone = await getPhoneNumber(userId);
 
-  let result: ValueResult = {
-    message: isExport
-      ? '\nPCUs minted for export. Check /balance.'
-      : '\nImport reading logged. No payout for consumption.',
-  };
-
-  if (!validation.delta || validation.delta <= 0) {
-    return result;
-  }
-
-  try {
-    const value = await calculateValue(
-      validation.delta,
-      reading.meter_type,
-      userId,
-      clusterId,
-      requestId,
-      logger,
-      { consentGiven: true }
-    );
-
-    result.valueEstimate = value;
-
-    if (!phone) {
-      result.message = `\nValue: K${value.netValue.toFixed(2)}\nRegister your number to receive payouts:\n/register`;
-      return result;
-    }
-
-    if (value.netValue < 1) {
-      result.message = `\nValue: K${value.netValue.toFixed(2)}\nPayout below K1 threshold. Accumulated for next settlement.`;
-      return result;
-    }
-
+  if (phone && validation.delta && validation.delta > 0) {
     try {
-      const payout = await requestLencoPayout({
+      const value = await calculateValue(
+        validation.delta,
+        reading.meter_type,
         userId,
         clusterId,
-        readingId: reading.id,
-        amount: value.netValue,
-        phoneNumber: phone,
-        narration: `Enerlectra credit - ${validation.delta.toFixed(2)} kWh`,
-      }, logger);
+        requestId,
+        logger,
+        { consentGiven: true }
+      );
 
-      result.payoutRef = payout.reference;
-      result.payoutStatus = payout.status;
-      result.payoutAmount = value.netValue;
-      result.message = `\nValue: K${value.netValue.toFixed(2)}\nPayout: K${value.netValue.toFixed(2)}\nTo: ${maskPhone(phone)}\nRef: ${payout.reference}`;
+      valueMessage =
+        `\n*Estimated Value*\n` +
+        `Gross: K${value.grossValue.toFixed(2)}\n` +
+        `Rate: K${value.effectiveRate}/kWh\n` +
+        `Net: K${value.netValue.toFixed(2)}\n`;
+
+      if (value.netValue >= 1) {
+        try {
+          const payout = await requestLencoPayout({
+            userId,
+            clusterId,
+            readingId: reading.id,
+            amount: value.netValue,
+            phoneNumber: phone,
+            narration: `Enerlectra credit - ${validation.delta.toFixed(2)} kWh`,
+          }, logger);
+
+          valueMessage +=
+            `\n*Payout initiated*\n` +
+            `Ref: ${payout.reference}\n` +
+            `Status: ${payout.status}\n` +
+            `To: ${phone}\n`;
+        } catch (err) {
+          logger.error({ err }, 'Auto-payout failed');
+          valueMessage += `\nPayout failed - reading saved. Support will follow up.`;
+        }
+      } else {
+        valueMessage += `\nPayout below K1 deferred.`;
+      }
     } catch (err) {
-      logger.error({ err }, 'Auto-payout failed');
-      result.message = `\nValue: K${value.netValue.toFixed(2)}\nPayout failed. Support will follow up within 24h.`;
+      logger.error({ err }, 'Value calculation failed');
+      valueMessage = `\nValue estimation unavailable.`;
     }
-
-    return result;
-  } catch (err) {
-    logger.error({ err }, 'Value calculation failed');
-    result.message = '\nValue calculation unavailable.';
-    return result;
-  }
-}
-
-function formatReadingMessage(
-  currentKwh: number,
-  prevKwh: number | null,
-  delta: number | null,
-  meterType: MeterType,
-  period: string,
-  clusterId: string,
-  valueResult: ValueResult,
-  isFirstReading: boolean,
-  isAfterReset: boolean,
-  visualMismatch?: boolean
-): string {
-  const periodLabel = formatPeriod(period);
-  const meterLabel = meterType.replace(/_/g, ' ');
-
-  if (isFirstReading || isAfterReset || delta === null) {
-    const title = isAfterReset ? 'Baseline reset' : 'Baseline recorded';
-    const subtitle = isAfterReset
-      ? 'New baseline after meter reset.'
-      : 'First reading for this meter.';
-
-    return (
-      `*${title}*\n\n` +
-      `Meter\n${currentKwh.toFixed(2)} kWh\n\n` +
-      `Previous\n—\n\n` +
-      `${subtitle}\n` +
-      `Earnings calculated on next submission.\n\n` +
-      `Community\n${clusterId}\n` +
-      `Period\n${periodLabel}`
-    );
+  } else if (!phone && validation.delta && validation.delta > 0) {
+    valueMessage = `\nRegister your mobile number to receive payments:\n/register`;
   }
 
-  const deltaSign = delta > 0 ? '+' : '';
-  const isExport = meterType === 'solar_export' || meterType === 'solar_generation';
-  const usageLabel = isExport ? 'Export' : 'Usage';
-
-  let msg = (
-    `*Reading accepted*\n\n` +
-    `Meter\n${currentKwh.toFixed(2)} kWh\n\n` +
-    `Previous\n${prevKwh!.toFixed(2)} kWh\n\n` +
-    `${usageLabel}\n${deltaSign}${delta.toFixed(2)} kWh\n`
-  );
-
-  msg += valueResult.message;
-
-  msg += `\n\nCommunity\n${clusterId}\nPeriod\n${periodLabel}`;
-
-  if (valueResult.payoutRef) {
-    msg += `\n\nStatus: Settled`;
-  } else if (isExport && delta > 0) {
-    msg += `\n\nNext\n/redeem to cash out`;
-  } else if (!isExport) {
-    msg += `\n\nNext\n/history to track consumption`;
-  }
-
-  if (visualMismatch) {
-    msg += `\n\nNote: Meter image differs from previous submission. Contact support if you changed meters.`;
-  }
-
-  return msg;
+  return valueMessage;
 }
 
 async function processAndSaveReading(
@@ -379,7 +302,7 @@ async function processAndSaveReading(
 
   const { clusterId, unitId } = await resolveCluster(ctx, userId);
   if (!clusterId) {
-    await editOrReply('Join a community first. Use /clusters.');
+    await editOrReply('Please join a community first. Use /clusters to browse.');
     await promptForCluster(ctx);
     return;
   }
@@ -391,23 +314,17 @@ async function processAndSaveReading(
       newKwh: ocrResult.kwh!,
       confidence: ocrResult.confidence,
       meterType: ocrResult.meterType,
-      imageUrl,
       requestId,
       logger,
     });
 
     if (!validation.valid) {
-      await editOrReply(`Rejected\n\n${validation.reason}`);
+      await editOrReply(`Reading rejected: ${validation.reason}`);
       return;
     }
 
     const period = getCurrentPeriod();
     const readingKey = generateReadingKey(userId, clusterId, ocrResult.meterType, period, ocrResult.kwh!);
-
-    const metadata: Record<string, any> = {};
-    if (validation.imageHash) metadata.image_hash = validation.imageHash;
-    if (validation.hammingDistance !== undefined) metadata.hamming_distance = validation.hammingDistance;
-    if (validation.visualMismatch) metadata.visual_mismatch = true;
 
     const { data: reading, error: insertError } = await supabase
       .from('meter_readings')
@@ -426,34 +343,32 @@ async function processAndSaveReading(
         delta_kwh: validation.delta,
         reading_key: readingKey,
         status: 'active',
-        metadata,
       })
       .select('*')
       .single();
 
     if (insertError) throw insertError;
 
-    const valueResult = await handleReadingValueAndPayout(
+    const valueMessage = await handleReadingValueAndPayout(
       ctx, userId, clusterId, reading, validation, requestId
     );
 
-    const isFirstReading = validation.flag === 'first_reading';
-    const isAfterReset = validation.flag === 'after_reset';
+    const deltaText = validation.delta !== null
+      ? `${validation.delta > 0 ? '+' : ''}${validation.delta.toFixed(2)} kWh`
+      : 'First reading';
 
-    const messageText = formatReadingMessage(
-      ocrResult.kwh!,
-      validation.prevKwh,
-      validation.delta,
-      ocrResult.meterType,
-      period,
-      clusterId,
-      valueResult,
-      isFirstReading,
-      isAfterReset,
-      validation.visualMismatch
+    await editOrReply(
+      `*Reading accepted!*\n` +
+      `Value: ${ocrResult.kwh} kWh\n` +
+      `Change: ${deltaText}\n` +
+      `Type: ${ocrResult.meterType.replace(/_/g, ' ')}\n` +
+      `Period: ${period}\n` +
+      `Community: ${clusterId}\n` +
+      valueMessage +
+      `\n_Estimates only. Official credits handled separately._`,
+      { parse_mode: 'Markdown' }
     );
 
-    await editOrReply(messageText, { parse_mode: 'Markdown' });
     await clearPendingReading(userId);
   } catch (error: any) {
     logger.error({ error }, 'Processing error');
@@ -461,6 +376,7 @@ async function processAndSaveReading(
   }
 }
 
+// ====================== COMMANDS ======================
 bot.start(async (ctx) => {
   const startPayload = (ctx as any).startPayload as string | undefined;
   const telegramId = ctx.from.id.toString();
@@ -481,7 +397,7 @@ bot.start(async (ctx) => {
           { onConflict: 'cluster_id,user_id' }
         );
         return ctx.reply(
-          `*Welcome to Enerlectra*\n\nCommunity: ${clusterId}\n\nSend a meter photo to log a reading.`,
+          `*Welcome to Enerlectra!*\n\nCommunity: ${clusterId}\n\nSend a meter photo to log a reading.`,
           { parse_mode: 'Markdown' }
         );
       }
@@ -491,37 +407,36 @@ bot.start(async (ctx) => {
   const phone = await getPhoneNumber(userId);
 
   await ctx.reply(
-    `*Enerlectra*\n\n` +
-    `Your energy, your earnings.\n\n` +
+    `Hello! I'm *Ellie*, your Enerlectra assistant.\n\n` +
     (phone ? '' : `Register your mobile number: /register\n\n`) +
     `Commands:\n` +
-    `Send a meter photo — Submit a reading\n` +
-    `/read <kWh> [type] — Manual entry\n` +
-    `/balance — Check PCU balance\n` +
-    `/status — View linked cluster\n` +
-    `/register — Add mobile money number\n` +
-    `/history — View past submissions\n` +
-    `/redeem <amount> — Cash out PCU\n` +
-    `/transfer <amount> <@user> — Send PCU\n` +
-    `/clusters — Browse communities\n` +
-    `/resetmeter — Reset meter baseline`,
+    `Send a meter photo - Submit a reading\n` +
+    `/read <kWh> [type] - Manual entry\n` +
+    `/balance - Check your PCU balance\n` +
+    `/status - View your linked cluster\n` +
+    `/register - Add mobile money number\n` +
+    `/history - View past submissions\n` +
+    `/redeem <amount> - Cash out PCU\n` +
+    `/transfer <amount> <@user> - Send PCU\n` +
+    `/clusters - Browse communities\n` +
+    `/resetmeter - Reset meter baseline`,
     { parse_mode: 'Markdown' }
   );
 });
 
 bot.command('help', async (ctx) => {
   await ctx.reply(
-    `*Commands*\n\n` +
-    `Send a meter photo — Submit a reading\n` +
-    `/read <kWh> [type] — e.g. /read 150 solar_export\n` +
-    `/balance — Check PCU balance\n` +
-    `/status — View linked cluster\n` +
-    `/register — Add mobile number\n` +
-    `/history — View past submissions\n` +
-    `/redeem <amount> — Cash out PCU\n` +
-    `/transfer <amount> <@user> — Send PCU\n` +
-    `/clusters — Browse communities\n` +
-    `/resetmeter — Reset meter after replacement`,
+    `*Ellie Commands*\n\n` +
+    `Send a meter photo - Submit a reading\n` +
+    `/read <kWh> [type] - e.g. /read 150 solar_export\n` +
+    `/balance - Check your PCU balance\n` +
+    `/status - View your linked cluster\n` +
+    `/register - Add mobile number\n` +
+    `/history - View past submissions\n` +
+    `/redeem <amount> - Cash out PCU\n` +
+    `/transfer <amount> <@user> - Send PCU\n` +
+    `/clusters - Browse communities\n` +
+    `/resetmeter - Reset meter after replacement`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -536,10 +451,7 @@ bot.command('balance', async (ctx) => {
 
   if (!data) return ctx.reply('No PCU wallet found. Submit an export reading first.');
   await ctx.reply(
-    `*PCU Balance*\n\n` +
-    `Available\n${data.balance_pcu} PCU\n\n` +
-    `Lifetime earned\n${data.total_minted_pcu} PCU\n\n` +
-    `/redeem <amount> to cash out.`,
+    `*Your PCU Balance*\n\nAvailable: ${data.balance_pcu} PCU\nLifetime earned: ${data.total_minted_pcu} PCU`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -549,14 +461,11 @@ bot.command('status', async (ctx) => {
   const phone = await getPhoneNumber(userId);
   const { clusterId } = await resolveCluster(ctx, userId);
   if (!clusterId) {
-    await ctx.reply('Not part of a community. Use /clusters to join one.');
+    await ctx.reply('You are not part of a community yet. Use /clusters to join one.');
     return;
   }
   await ctx.reply(
-    `*Status*\n\n` +
-    `Community\n${clusterId}\n\n` +
-    `Mobile\n${phone ?? 'Not registered — /register'}\n\n` +
-    `Send a meter photo to log your next reading.`,
+    `*Your Status*\n\nCommunity: ${clusterId}\nMobile: ${phone ?? 'Not registered - /register'}`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -581,7 +490,7 @@ bot.command('clusters', async (ctx) => {
   }]);
 
   await ctx.reply(
-    `*Energy Communities*\n\nSelect one to join:`,
+    `*Available Energy Communities*\n\nSelect one to join:`,
     { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }
   );
 });
@@ -610,30 +519,18 @@ bot.command('history', async (ctx) => {
   const userId = await resolveUserId(ctx.from.id.toString());
   const { data: readings } = await supabase
     .from('meter_readings')
-    .select('reading_kwh, meter_type, captured_at, delta_kwh')
+    .select('reading_kwh, meter_type, captured_at')
     .eq('user_id', userId)
     .order('captured_at', { ascending: false })
     .limit(5);
 
   if (!readings?.length) return ctx.reply('No readings yet.');
-
-  let totalExport = 0;
-  let msg = `*Recent Submissions*\n\n`;
-
+  let msg = `Recent Submissions\n\n`;
   for (const r of readings) {
     const date = new Date(r.captured_at).toLocaleDateString('en-GB');
-    const delta = r.delta_kwh ? `${r.delta_kwh > 0 ? '+' : ''}${r.delta_kwh} kWh` : 'baseline';
-    msg += `${r.reading_kwh} kWh (${r.meter_type}) — ${delta} — ${date}\n`;
-    if (r.delta_kwh && r.delta_kwh > 0 && (r.meter_type === 'solar_export' || r.meter_type === 'solar_generation')) {
-      totalExport += r.delta_kwh;
-    }
+    msg += `• ${r.reading_kwh} kWh (${r.meter_type}) - ${date}\n`;
   }
-
-  if (totalExport > 0) {
-    msg += `\nTotal export: ${totalExport.toFixed(2)} kWh\nSubmit regularly to maximize earnings.`;
-  }
-
-  await ctx.reply(msg, { parse_mode: 'Markdown' });
+  await ctx.reply(msg);
 });
 
 bot.command('redeem', async (ctx) => {
@@ -647,7 +544,7 @@ bot.command('redeem', async (ctx) => {
 
   const { clusterId } = await resolveCluster(ctx, userId);
   if (!clusterId) {
-    await ctx.reply('Join a community first. Use /clusters.');
+    await ctx.reply('Please join a community first. Use /clusters to browse.');
     await promptForCluster(ctx);
     return;
   }
@@ -672,14 +569,7 @@ bot.command('redeem', async (ctx) => {
     idempotencyKey: reference,
   }, logger);
 
-  await ctx.reply(
-    `*Confirm Redemption*\n\n` +
-    `Amount\n${amount} PCU\n\n` +
-    `Recipient\n${maskPhone(phone)}\n\n` +
-    `Community\n${clusterId}\n\n` +
-    `Reply YES to confirm.`,
-    { parse_mode: 'Markdown' }
-  );
+  await ctx.reply(`Confirm redemption of ${amount} PCU to ${phone}.\n\nReply YES to confirm.`);
 });
 
 bot.command('transfer', async (ctx) => {
@@ -705,6 +595,7 @@ bot.command('transfer', async (ctx) => {
   await ctx.reply(`Transferred ${amount} PCU to @${targetUsername}`);
 });
 
+// ====================== /resetmeter COMMAND ======================
 bot.command('resetmeter', (ctx) => resetmeterCommand(ctx, logger));
 
 bot.action(/^resetmeter_type_(.+)$/, async (ctx) => {
@@ -720,6 +611,7 @@ bot.action('resetmeter_confirm_no', async (ctx) => {
   await resetmeterConfirmCallback(ctx, false, logger);
 });
 
+// ====================== /read COMMAND ======================
 bot.command('read', async (ctx) => {
   const parts = ctx.message.text.split(' ');
   const kwh = parseFloat(parts[1]);
@@ -729,7 +621,7 @@ bot.command('read', async (ctx) => {
   const userId = await resolveUserId(ctx.from.id.toString());
   const { clusterId, unitId } = await resolveCluster(ctx, userId);
   if (!clusterId) {
-    await ctx.reply('Join a community first. Use /clusters.');
+    await ctx.reply('Please join a community first. Use /clusters to browse.');
     await promptForCluster(ctx);
     return;
   }
@@ -746,7 +638,7 @@ bot.command('read', async (ctx) => {
     logger,
   });
 
-  if (!validation.valid) return ctx.reply(`Rejected\n\n${validation.reason}`);
+  if (!validation.valid) return ctx.reply(`Rejected: ${validation.reason}`);
 
   const period = getCurrentPeriod();
   const readingKey = generateReadingKey(userId, clusterId, meterType, period, kwh);
@@ -772,28 +664,30 @@ bot.command('read', async (ctx) => {
 
   if (error) return ctx.reply('Failed to save reading.');
 
-  const valueResult = await handleReadingValueAndPayout(
+  const valueMessage = await handleReadingValueAndPayout(
     ctx, userId, clusterId, reading, validation, requestId
   );
 
-  const isFirstReading = validation.flag === 'first_reading';
-  const isAfterReset = validation.flag === 'after_reset';
+  const deltaText = validation.delta !== null
+    ? `${validation.delta > 0 ? '+' : ''}${validation.delta.toFixed(2)} kWh`
+    : 'First reading';
 
-  const messageText = formatReadingMessage(
-    kwh,
-    validation.prevKwh,
-    validation.delta,
-    meterType,
-    period,
-    clusterId,
-    valueResult,
-    isFirstReading,
-    isAfterReset
+  const isExport = reading.meter_type === 'solar_export' || reading.meter_type === 'solar_generation';
+
+  await ctx.reply(
+    `*Reading recorded!*\n` +
+    `Value: ${kwh} kWh\n` +
+    `Change: ${deltaText}\n` +
+    `Type: ${meterType.replace(/_/g, ' ')}\n` +
+    `Period: ${period}\n` +
+    `Community: ${clusterId}\n` +
+    valueMessage +
+    (isExport ? `\n_PCUs minted for export._` : ''),
+    { parse_mode: 'Markdown' }
   );
-
-  await ctx.reply(messageText, { parse_mode: 'Markdown' });
 });
 
+// ====================== PHOTO HANDLER ======================
 bot.on(message('photo'), async (ctx) => {
   const photo = ctx.message.photo.slice(-1)[0];
   const telegramId = ctx.from.id.toString();
@@ -821,7 +715,7 @@ bot.on(message('photo'), async (ctx) => {
         ctx.chat.id,
         statusMsg.message_id,
         undefined,
-        `Automatic reading unavailable.\n\nEnter manually:\n/read <value>  e.g. /read 152.61`,
+        `Photo received, but automatic reading is temporarily unavailable.\n\nPlease enter manually:\n/read <value>  e.g. /read 152.61`,
         { parse_mode: 'Markdown' }
       );
     }
@@ -845,17 +739,16 @@ bot.on(message('photo'), async (ctx) => {
       });
 
       const sourceNote = ocrResult.source === 'claude_vision'
-        ? '\n_AI vision reading — please verify carefully._'
+        ? '\n_AI vision reading - please verify carefully._'
         : '';
 
       return await ctx.telegram.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
         undefined,
-        `*Reading detected*\n\n` +
-          `Meter\n${ocrResult.kwh} kWh\n\n` +
-          `Type\n${ocrResult.meterType.replace(/_/g, ' ')}\n` +
-          `Confidence\n${(ocrResult.confidence * 100).toFixed(0)}%${sourceNote}\n\n` +
+        `*Reading detected:* ${ocrResult.kwh} kWh\n` +
+          `Type: ${ocrResult.meterType.replace(/_/g, ' ')}\n` +
+          `Confidence: ${(ocrResult.confidence * 100).toFixed(0)}%${sourceNote}\n\n` +
           `Is this correct?`,
         {
           parse_mode: 'Markdown',
@@ -882,6 +775,7 @@ bot.on(message('photo'), async (ctx) => {
   }
 });
 
+// ====================== CALLBACK QUERIES ======================
 bot.on('callback_query', async (ctx) => {
   const data = (ctx.callbackQuery as any).data as string | undefined;
   if (!data) return;
@@ -895,7 +789,7 @@ bot.on('callback_query', async (ctx) => {
   const pending = await getPendingReading(userId);
 
   if (!pending) {
-    return ctx.editMessageText('Session expired. Send the photo again.');
+    return ctx.editMessageText('Session expired. Please send the photo again.');
   }
 
   if (action === 'yes') {
@@ -916,6 +810,7 @@ bot.on('callback_query', async (ctx) => {
   }
 });
 
+// ====================== TEXT MESSAGES ======================
 bot.on(message('text'), async (ctx, next) => {
   const userId = ctx.from.id.toString();
 
@@ -931,10 +826,7 @@ bot.on(message('text'), async (ctx, next) => {
 
     if (error) return ctx.reply('Failed to save number. Please try again.');
     ctx.session.awaitingPhone = false;
-    return ctx.reply(
-      `Number registered: ${normalized}\n\nSend a meter photo to log a reading and start earning.`,
-      { parse_mode: 'Markdown' }
-    );
+    return ctx.reply(`Mobile number registered: ${normalized}\n\nSend a meter photo to log a reading.`);
   }
 
   const pending = await getPendingRedemption(userId);
@@ -956,12 +848,7 @@ bot.on(message('text'), async (ctx, next) => {
       }, logger);
 
       await ctx.reply(
-        `*Settlement Complete*\n\n` +
-        `Amount\nK${amountZmw.toFixed(2)}\n\n` +
-        `Recipient\n${maskPhone(pending.phone)}\n\n` +
-        `Reference\n${payout.reference}\n\n` +
-        `Status\nSUCCESS\n\n` +
-        `SMS confirmation arriving shortly.`,
+        `*Payout initiated!*\n\nRef: ${payout.reference}\nAmount: K${amountZmw.toFixed(2)}\nTo: ${pending.phone}`,
         { parse_mode: 'Markdown' }
       );
     } catch (err: any) {
@@ -973,6 +860,7 @@ bot.on(message('text'), async (ctx, next) => {
   return next();
 });
 
+// ====================== ERROR HANDLING ======================
 bot.catch((err, ctx) => {
   logger.error({ err, update: ctx.update }, 'Bot error');
   ctx.reply('An unexpected error occurred. Our team has been notified.');

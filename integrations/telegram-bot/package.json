@@ -14,7 +14,7 @@
     "@supabase/supabase-js": "^2.102.1",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
-    "axios": "^1.15.0",
+    "axios": "^1.15.2",
     "dotenv": "^16.6.1",
     "enerlectra-core": "file:../../enerlectra-core",
     "express": "^4.22.1",
