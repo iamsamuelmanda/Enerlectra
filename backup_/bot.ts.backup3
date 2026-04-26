@@ -312,6 +312,7 @@ function formatReadingMessage(
   visualMismatch?: boolean
 ): string {
   const periodLabel = formatPeriod(period);
+  const meterLabel = meterType.replace(/_/g, ' ');
 
   if (isFirstReading || isAfterReset || delta === null) {
     const title = isAfterReset ? 'Baseline reset' : 'Baseline recorded';
@@ -342,6 +343,7 @@ function formatReadingMessage(
   );
 
   msg += valueResult.message;
+
   msg += `\n\nCommunity\n${clusterId}\nPeriod\n${periodLabel}`;
 
   if (valueResult.payoutRef) {
@@ -835,25 +837,37 @@ bot.on(message('photo'), async (ctx) => {
       );
     }
 
-    // Auto-save on review or high confidence — no confirmation step
     if (ocrResult.status === 'review' || ocrResult.confidence < 0.80) {
+      await setPendingReading(userId, {
+        imageUrl,
+        ocrResult,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+      });
+
       const sourceNote = ocrResult.source === 'claude_vision'
         ? '\n_AI vision reading — please verify carefully._'
         : '';
 
-      await ctx.telegram.editMessageText(
+      return await ctx.telegram.editMessageText(
         ctx.chat.id,
         statusMsg.message_id,
         undefined,
-        `Reading detected: ${ocrResult.kwh} kWh\n` +
-        `Type: ${ocrResult.meterType.replace(/_/g, ' ')}\n` +
-        `Confidence: ${(ocrResult.confidence * 100).toFixed(0)}%${sourceNote}\n\n` +
-        `Saving...`,
-        { parse_mode: 'Markdown' }
+        `*Reading detected*\n\n` +
+          `Meter\n${ocrResult.kwh} kWh\n\n` +
+          `Type\n${ocrResult.meterType.replace(/_/g, ' ')}\n` +
+          `Confidence\n${(ocrResult.confidence * 100).toFixed(0)}%${sourceNote}\n\n` +
+          `Is this correct?`,
+        {
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [{ text: 'Yes, save it', callback_data: 'confirm:yes' }],
+              [{ text: 'No, cancel', callback_data: 'confirm:no' }],
+              [{ text: 'Enter manually', callback_data: 'confirm:manual' }],
+            ],
+          },
+        }
       );
-
-      await processAndSaveReading(ctx, userId, ocrResult, imageUrl, requestId, statusMsg.message_id);
-      return;
     }
 
     await processAndSaveReading(ctx, userId, ocrResult, imageUrl, requestId, statusMsg.message_id);

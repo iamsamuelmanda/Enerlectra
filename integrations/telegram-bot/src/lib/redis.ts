@@ -12,4 +12,4 @@ export const redis = new Redis({
 
 export const REDIS_KEY_PREFIX = 'enerlectra:bot';
 export const SESSION_TTL_SECONDS = 60 * 60 * 24; // 24 hours
-export const PENDING_TTL_SECONDS = 60 * 10;      // 10 minutes
+export const PENDING_TTL_SECONDS = 1800; // 30 minutes
