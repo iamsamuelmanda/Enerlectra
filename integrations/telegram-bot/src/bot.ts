@@ -219,23 +219,42 @@ async function resolveUserId(
   telegramId: string,
   profile?: { username?: string; first_name?: string; last_name?: string }
 ): Promise<string> {
-  const { data, error } = await supabase
+  // 1. First, upsert the telegram identity and get the linked user_id
+  const { data: telegramUser, error: upsertError } = await supabase
     .from('telegram_users')
-    .upsert(
-      {
-        telegram_id: telegramId,
-        username: profile?.username ?? null,
-        first_name: profile?.first_name ?? null,
-        last_name: profile?.last_name ?? null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'telegram_id' }
-    )
+    .upsert({
+      telegram_id: telegramId,
+      username: profile?.username ?? null,
+      first_name: profile?.first_name ?? null,
+      last_name: profile?.last_name ?? null,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'telegram_id' })
     .select('user_id')
     .single();
 
-  if (error) throw new Error('Unable to set up your account');
-  return data.user_id;
+  if (upsertError || !telegramUser) {
+    logger.error({ upsertError, telegramId }, 'Failed to upsert telegram identity');
+    throw new Error('Identity resolution failed');
+  }
+
+  const userId = telegramUser.user_id;
+
+  // 2. Ensure the user exists in public.users (Idempotent backfill)
+  // We use .upsert() here as well to ensure it never throws a constraint error
+  const { error: userError } = await supabase
+    .from('users')
+    .upsert({
+      id: userId,
+      name: [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || 'Telegram User',
+      email: `telegram-${telegramId}@enerlectra.local`,
+    }, { onConflict: 'id' });
+
+  if (userError) {
+    logger.error({ userError, userId }, 'Failed to backfill user identity');
+    throw new Error('Account initialization failed');
+  }
+
+  return userId;
 }
 
 async function getPhoneNumber(userId: string): Promise<string | null> {
