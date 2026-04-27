@@ -71,12 +71,21 @@ bot.use(
 );
 
 async function getPendingReading(telegramId: string): Promise<PendingReading | null> {
-  const data = await redis.get<string>(`${PENDING_READING_PREFIX}:${telegramId}`);
+  const key = `${PENDING_READING_PREFIX}:${telegramId}`;
+  const data = await redis.get<PendingReading | string>(key);
   if (!data) return null;
 
-  const parsed = JSON.parse(data) as PendingReading;
+  let parsed: PendingReading;
+  try {
+    parsed = typeof data === 'string' ? (JSON.parse(data) as PendingReading) : data;
+  } catch (error) {
+    logger.warn({ error, telegramId, key, dataType: typeof data }, 'Invalid pending reading payload');
+    await redis.del(key);
+    return null;
+  }
+
   if (Date.now() > parsed.expiresAt) {
-    await redis.del(`${PENDING_READING_PREFIX}:${telegramId}`);
+    await redis.del(key);
     return null;
   }
 
@@ -103,12 +112,21 @@ interface PendingRedemption {
 }
 
 async function getPendingRedemption(userId: string): Promise<PendingRedemption | null> {
-  const data = await redis.get<string>(`${PENDING_REDEMPTION_PREFIX}:${userId}`);
+  const key = `${PENDING_REDEMPTION_PREFIX}:${userId}`;
+  const data = await redis.get<PendingRedemption | string>(key);
   if (!data) return null;
 
-  const parsed = JSON.parse(data) as PendingRedemption;
+  let parsed: PendingRedemption;
+  try {
+    parsed = typeof data === 'string' ? (JSON.parse(data) as PendingRedemption) : data;
+  } catch (error) {
+    logger.warn({ error, userId, key, dataType: typeof data }, 'Invalid pending redemption payload');
+    await redis.del(key);
+    return null;
+  }
+
   if (Date.now() > parsed.expiresAt) {
-    await redis.del(`${PENDING_REDEMPTION_PREFIX}:${userId}`);
+    await redis.del(key);
     return null;
   }
 
