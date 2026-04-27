@@ -85,16 +85,6 @@ export const VALIDATION_CONFIG = {
   RESET_MARKER_TOLERANCE_HOURS: 48,
 } as const;
 
-const FIRST_READING_MAX: Record<MeterType, number> = {
-  grid_import: 500,
-  solar_import: 200,
-  solar_export: 200,
-  solar_generation: 300,
-  generator: 500,
-  unit_submeter: 100,
-  unknown: 500,
-};
-
 export type ValidationResult =
   | { valid: true; delta: number | null; prevKwh: number | null; deltaKwh?: number; imageHash?: string; hammingDistance?: number; visualMismatch?: boolean; reason?: never; flag?: 'meter_rollover' | 'first_reading' | 'after_reset' }
   | { valid: false; reason: string; delta?: never; prevKwh?: never; flag?: 'possible_meter_reset' | 'low_confidence' };
@@ -265,15 +255,6 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
     }
   }
 
-  // First-reading sanity cap (prevents fake baselines)
-  if (lastActualReading === null && sanitizedKwh > FIRST_READING_MAX[meterType]) {
-    log.warn({ newKwh: sanitizedKwh, max: FIRST_READING_MAX[meterType] }, 'First reading exceeds sanity cap');
-    return {
-      valid: false,
-      reason: `First reading of ${sanitizedKwh.toFixed(2)} kWh exceeds expected maximum (${FIRST_READING_MAX[meterType]} kWh) for ${meterType.replace(/_/g, ' ')}. Contact support if this is correct.`,
-    };
-  }
-
   if (VALIDATION_CONFIG.REJECT_DUPLICATE_READING && recentReadings && recentReadings.length > 0) {
     const isDuplicate = recentReadings.some((r) => {
       const rTime = r.captured_at ? new Date(r.captured_at) : null;
@@ -297,8 +278,8 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
   }
 
   if (lastActualReading === null) {
-    log.info('First reading for this meter accepted');
-    return { valid: true, delta: null, prevKwh: null, deltaKwh: sanitizedKwh, flag: 'first_reading' };
+    log.info({ newKwh: sanitizedKwh }, 'First reading for this meter accepted as baseline');
+    return { valid: true, delta: null, prevKwh: null, flag: 'first_reading' };
   }
 
   const prevKwh = lastActualReading.reading_kwh;

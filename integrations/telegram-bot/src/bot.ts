@@ -15,6 +15,7 @@ import { validateReading } from './services/validation';
 import { calculateValue, type ValueEstimate } from './services/tariff-calculator';
 import { OCRRateLimiter } from './services/rate-limiter';
 import { createPendingRedemption, requestLencoPayout } from './services/settlement';
+import { backfillPCUWalletForUser, mintPCUForExportReading } from './services/pcuMinting';
 import { transferPCU } from './services/pcuTransfer';
 import {
   resetmeterCommand,
@@ -34,6 +35,7 @@ app.listen(PORT, () => logger.info(`Health check listening on port ${PORT}`));
 
 const PENDING_READING_PREFIX = `${REDIS_KEY_PREFIX}:pending_reading`;
 const PENDING_REDEMPTION_PREFIX = `${REDIS_KEY_PREFIX}:pending_redemption`;
+const SELECTED_CLUSTER_PREFIX = `${REDIS_KEY_PREFIX}:selected_cluster`;
 
 interface BotSession {
   clusterId?: string;
@@ -100,6 +102,28 @@ async function setPendingReading(telegramId: string, value: PendingReading): Pro
 
 async function clearPendingReading(telegramId: string): Promise<void> {
   await redis.del(`${PENDING_READING_PREFIX}:${telegramId}`);
+}
+
+async function getSelectedCluster(userId: string): Promise<string | null> {
+  const key = `${SELECTED_CLUSTER_PREFIX}:${userId}`;
+  const data = await redis.get<string | { clusterId?: string }>(key);
+  if (!data) return null;
+
+  if (typeof data === 'string') {
+    return data;
+  }
+
+  if (typeof data === 'object' && typeof data.clusterId === 'string') {
+    return data.clusterId;
+  }
+
+  logger.warn({ userId, key, dataType: typeof data }, 'Invalid selected cluster payload');
+  await redis.del(key);
+  return null;
+}
+
+async function setSelectedCluster(userId: string, clusterId: string): Promise<void> {
+  await redis.set(`${SELECTED_CLUSTER_PREFIX}:${userId}`, clusterId);
 }
 
 interface PendingRedemption {
@@ -230,7 +254,13 @@ async function resolveCluster(
 ): Promise<{ clusterId: string | null; unitId: string }> {
   if (ctx.session.clusterId) return { clusterId: ctx.session.clusterId, unitId: 'A1' };
 
-  const { data: member } = await supabase
+  const cachedClusterId = await getSelectedCluster(userId);
+  if (cachedClusterId) {
+    ctx.session.clusterId = cachedClusterId;
+    return { clusterId: cachedClusterId, unitId: 'A1' };
+  }
+
+  const { data: member, error } = await supabase
     .from('cluster_members')
     .select('cluster_id')
     .eq('user_id', userId)
@@ -238,8 +268,13 @@ async function resolveCluster(
     .limit(1)
     .single();
 
+  if (error) {
+    logger.warn({ error, userId }, 'Failed to resolve cluster membership');
+  }
+
   if (member?.cluster_id) {
     ctx.session.clusterId = member.cluster_id;
+    await setSelectedCluster(userId, member.cluster_id);
     return { clusterId: member.cluster_id, unitId: 'A1' };
   }
 
@@ -307,9 +342,24 @@ async function handleReadingValueAndPayout(
 
   let result: ValueResult = {
     message: isExport
-      ? '\nPCUs minted for export. Check /balance.'
+      ? '\nExport baseline recorded. PCU earnings start on your next submission. Check /balance.'
       : '\nImport reading logged. No payout for consumption.',
   };
+
+  if (isExport) {
+    try {
+      await mintPCUForExportReading(reading);
+      if (validation.delta && validation.delta > 0) {
+        result.message = '\nPCUs minted for export. Check /balance.';
+      }
+    } catch (err) {
+      logger.error({ err, readingId: reading.id, userId }, 'PCU minting failed');
+      result.message =
+        validation.delta && validation.delta > 0
+          ? '\nExport reading saved, but PCU wallet update is pending.'
+          : '\nExport baseline recorded, but wallet setup is pending.';
+    }
+  }
 
   if (!validation.delta || validation.delta <= 0) {
     return result;
@@ -733,11 +783,31 @@ bot.command('help', async (ctx) => {
 
 bot.command('balance', async (ctx) => {
   const userId = await resolveUserId(ctx.from.id.toString());
-  const { data } = await supabase
+  let { data, error } = await supabase
     .from('pcu_balances')
     .select('balance_pcu, total_minted_pcu')
     .eq('user_id', userId)
-    .single();
+    .maybeSingle();
+
+  if (!data) {
+    try {
+      await backfillPCUWalletForUser(userId);
+      const retry = await supabase
+        .from('pcu_balances')
+        .select('balance_pcu, total_minted_pcu')
+        .eq('user_id', userId)
+        .maybeSingle();
+      data = retry.data;
+      error = retry.error;
+    } catch (err) {
+      logger.error({ err, userId }, 'PCU wallet backfill failed');
+    }
+  }
+
+  if (error) {
+    logger.error({ error, userId }, 'Failed to fetch PCU balance');
+    return ctx.reply('Unable to load your PCU wallet right now. Please try again.');
+  }
 
   if (!data) {
     return ctx.reply('No PCU wallet found. Submit an export reading first.');
@@ -809,9 +879,16 @@ bot.action(/^join:(.+)/, async (ctx) => {
   const telegramId = ctx.from.id.toString();
   const userId = await resolveUserId(telegramId);
 
-  await supabase
+  const { error: joinError } = await supabase
     .from('cluster_members')
     .upsert({ cluster_id: clusterId, user_id: userId }, { onConflict: 'cluster_id,user_id' });
+  if (joinError) {
+    logger.error({ joinError, userId, clusterId }, 'Failed to join cluster');
+    await ctx.reply('Could not save your community selection. Please try again.');
+    return;
+  }
+
+  await setSelectedCluster(userId, clusterId);
   ctx.session.clusterId = clusterId;
 
   const { data: cluster } = await supabase

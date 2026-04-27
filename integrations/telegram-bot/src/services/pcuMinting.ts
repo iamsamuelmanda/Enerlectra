@@ -17,6 +17,48 @@ export interface MeterReading {
   captured_at: string;
 }
 
+interface PcuBalanceSnapshot {
+  balancePcu: number;
+  totalMintedPcu: number;
+}
+
+async function ensurePcuBalanceRow(userId: string, now: string): Promise<PcuBalanceSnapshot> {
+  const { data: currentBalance, error: balanceLookupError } = await supabase
+    .from('pcu_balances')
+    .select('balance_pcu, total_minted_pcu')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (balanceLookupError) {
+    logger.error({ error: balanceLookupError, userId }, 'Failed to fetch PCU balance');
+    throw balanceLookupError;
+  }
+
+  const balancePcu = parseFloat(((currentBalance?.balance_pcu ?? 0) as number).toFixed(4));
+  const totalMintedPcu = parseFloat(((currentBalance?.total_minted_pcu ?? 0) as number).toFixed(4));
+
+  if (!currentBalance) {
+    const { error: createBalanceError } = await supabase
+      .from('pcu_balances')
+      .upsert(
+        {
+          user_id: userId,
+          balance_pcu: balancePcu,
+          total_minted_pcu: totalMintedPcu,
+          updated_at: now,
+        },
+        { onConflict: 'user_id' }
+      );
+
+    if (createBalanceError) {
+      logger.error({ error: createBalanceError, userId }, 'Failed to create PCU balance row');
+      throw createBalanceError;
+    }
+  }
+
+  return { balancePcu, totalMintedPcu };
+}
+
 export async function mintPCUForExportReading(reading: MeterReading): Promise<void> {
   const eligibleTypes = ['solar_export', 'solar_generation'];
   if (!eligibleTypes.includes(reading.meter_type)) return;
@@ -53,8 +95,19 @@ export async function mintPCUForExportReading(reading: MeterReading): Promise<vo
     throw prevError;
   }
 
+  const now = new Date().toISOString();
+  const balanceSnapshot = await ensurePcuBalanceRow(reading.user_id, now);
+
   const prevKwh = prevReading?.reading_kwh ?? null;
-  const deltaKwh = prevKwh !== null ? reading.reading_kwh - prevKwh : reading.reading_kwh;
+  if (prevKwh === null) {
+    logger.info(
+      { readingId: reading.id, userId: reading.user_id, readingKwh: reading.reading_kwh },
+      'Export baseline recorded; wallet ensured without mint'
+    );
+    return;
+  }
+
+  const deltaKwh = reading.reading_kwh - prevKwh;
 
   if (deltaKwh < MIN_DELTA_KWH) {
     logger.info({ readingId: reading.id, deltaKwh }, 'Delta below minimum — skipping mint');
@@ -62,7 +115,6 @@ export async function mintPCUForExportReading(reading: MeterReading): Promise<vo
   }
 
   const amountPcu = parseFloat((deltaKwh * PCU_PER_KWH).toFixed(4));
-  const now = new Date().toISOString();
 
   const { error: insertError } = await supabase.from('pcu_mints').insert({
     reading_id: reading.id,
@@ -81,19 +133,8 @@ export async function mintPCUForExportReading(reading: MeterReading): Promise<vo
     throw insertError;
   }
 
-  const { data: currentBalance, error: balanceLookupError } = await supabase
-    .from('pcu_balances')
-    .select('balance_pcu, total_minted_pcu')
-    .eq('user_id', reading.user_id)
-    .maybeSingle();
-
-  if (balanceLookupError) {
-    logger.error({ error: balanceLookupError, readingId: reading.id }, 'Failed to fetch PCU balance');
-    throw balanceLookupError;
-  }
-
-  const newBalance = parseFloat(((currentBalance?.balance_pcu ?? 0) + amountPcu).toFixed(4));
-  const newTotalMinted = parseFloat(((currentBalance?.total_minted_pcu ?? 0) + amountPcu).toFixed(4));
+  const newBalance = parseFloat((balanceSnapshot.balancePcu + amountPcu).toFixed(4));
+  const newTotalMinted = parseFloat((balanceSnapshot.totalMintedPcu + amountPcu).toFixed(4));
 
   const { error: balanceError } = await supabase
     .from('pcu_balances')
@@ -116,4 +157,27 @@ export async function mintPCUForExportReading(reading: MeterReading): Promise<vo
     amountPcu,
     newBalance,
   }, 'PCU minted successfully');
+}
+
+export async function backfillPCUWalletForUser(userId: string): Promise<void> {
+  const { data: readings, error } = await supabase
+    .from('meter_readings')
+    .select('id, user_id, cluster_id, reading_kwh, meter_type, reporting_period, captured_at')
+    .eq('user_id', userId)
+    .in('meter_type', ['solar_export', 'solar_generation'])
+    .eq('status', 'active')
+    .order('captured_at', { ascending: true });
+
+  if (error) {
+    logger.error({ error, userId }, 'Failed to fetch readings for PCU wallet backfill');
+    throw error;
+  }
+
+  if (!readings?.length) {
+    return;
+  }
+
+  for (const reading of readings as MeterReading[]) {
+    await mintPCUForExportReading(reading);
+  }
 }
