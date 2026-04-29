@@ -41,7 +41,7 @@ const rateLimiter = new OCRRateLimiter(logger);
 const app = express();
 const PORT = process.env.PORT || 3000;
 app.get('/', (_, res) => res.send('Ellie is awake and monitoring the grid.'));
-app.listen(PORT, () => logger.info(`Health check listening on port ${PORT}`));
+// NOTE: app.listen() moved to bot launch section — both share the same server
 
 // ─── Redis Key Prefixes ──────────────────────────────────────────────
 const PENDING_READING_PREFIX = `${REDIS_KEY_PREFIX}:pending_reading`;
@@ -1456,19 +1456,12 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
 setTimeout(() => {
   if (WEBHOOK_URL) {
-    // Production: webhook (no polling conflicts, works behind Render)
-    bot.launch({
-      webhook: {
-        domain: WEBHOOK_URL,
-        port: Number(PORT),  // ✅ explicitly cast to number
-      },
-    })
-      .then(() => logger.info('Ellie is online via webhook!'))
-      .catch((err: unknown) => {
-        const error = err instanceof Error ? err : new Error(String(err));
-        logger.fatal({ err: error.message }, 'Bot webhook launch failed');
-        process.exit(1);
-      });
+    // Production: webhook via Express (shares port with health check)
+    bot.telegram.setWebhook(`${WEBHOOK_URL}/webhook`);
+    app.use(bot.webhookCallback('/webhook'));
+    app.listen(Number(PORT), () => {
+      logger.info(`Ellie is online via webhook on port ${PORT}`);
+    });
   } else {
     // Development: polling
     bot
