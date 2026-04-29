@@ -649,7 +649,7 @@ async function processAndSaveReading(
         captured_at: new Date().toISOString(),
         reporting_period: period,
         source: 'telegram',
-        delta_kwh: validation.delta,
+        delta_kwh: validation.delta ?? 0,
         reading_key: readingKey,
         status: 'active',
         metadata,
@@ -1292,7 +1292,7 @@ bot.command('read', async (ctx) => {
       captured_at: new Date().toISOString(),
       reporting_period: period,
       source: 'telegram_manual',
-      delta_kwh: validation.delta,
+      delta_kwh: validation.delta ?? 0,
       reading_key: readingKey,
       status: 'active',
     })
