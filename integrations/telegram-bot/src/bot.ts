@@ -1457,13 +1457,12 @@ const WEBHOOK_URL = process.env.WEBHOOK_URL;
 setTimeout(() => {
   if (WEBHOOK_URL) {
     // Production: webhook (no polling conflicts, works behind Render)
-    bot
-      .launch({
-        webhook: {
-          domain: WEBHOOK_URL,
-          port: PORT,
-        },
-      })
+    bot.launch({
+      webhook: {
+        domain: WEBHOOK_URL,
+        port: Number(PORT),  // ✅ explicitly cast to number
+      },
+    })
       .then(() => logger.info('Ellie is online via webhook!'))
       .catch((err: unknown) => {
         const error = err instanceof Error ? err : new Error(String(err));
