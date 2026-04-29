@@ -10,4 +10,9 @@ if (!supabaseServiceKey) {
   throw new Error('❌ SUPABASE_SERVICE_KEY is missing. Check your .env file.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+export const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+  },
+});
