@@ -117,11 +117,13 @@ export async function mintPCUForExportReading(reading: MeterReading): Promise<vo
   const amountPcu = parseFloat((deltaKwh * PCU_PER_KWH).toFixed(4));
 
   const { error: insertError } = await supabase.from('pcu_mints').insert({
-    reading_id: reading.id,
-    user_id: reading.user_id,
-    amount_pcu: amountPcu,
-    status: 'completed',
+    reading_id:   reading.id,
+    user_id:      reading.user_id,
+    amount_pcu:   amountPcu,
+    status:       'completed',
     processed_at: now,
+    metadata:     {},
+    updated_at:   now, 
   });
 
   if (insertError) {
