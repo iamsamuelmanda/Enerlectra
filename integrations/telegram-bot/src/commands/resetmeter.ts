@@ -1,6 +1,7 @@
 // integrations/telegram-bot/src/commands/resetmeter.ts
 import { Markup } from 'telegraf';
 import type { Context } from 'telegraf';
+import crypto from 'node:crypto';
 import { redis, REDIS_KEY_PREFIX, PENDING_TTL_SECONDS } from '../lib/redis';
 import { supabase } from '../lib/supabase';
 import type { MeterType } from '../services/ocr';
@@ -8,13 +9,13 @@ import type { Logger } from 'pino';
 
 const RESET_SESSION_PREFIX = `${REDIS_KEY_PREFIX}:reset`;
 const METER_TYPE_LABELS: Record<MeterType, string> = {
-  grid_import: '🔌 Grid Import',
-  solar_import: '☀️ Solar Import',
-  solar_export: '⚡ Solar Export',
-  solar_generation: '🔋 Solar Generation',
-  generator: '⛽ Generator',
-  unit_submeter: '🏠 Unit Submeter',
-  unknown: '❓ Unknown',
+  grid_import: 'Grid Import',
+  solar_import: 'Solar Import',
+  solar_export: 'Solar Export',
+  solar_generation: 'Solar Generation',
+  generator: 'Generator',
+  unit_submeter: 'Unit Submeter',
+  unknown: 'Unknown',
 };
 
 const ALLOWED_METER_TYPES: MeterType[] = [
@@ -132,8 +133,8 @@ export async function resetmeterTypeCallback(ctx: Context, meterType: MeterType,
     {
       parse_mode: 'Markdown',
       ...Markup.inlineKeyboard([
-        [Markup.button.callback('✅ Yes, reset baseline', 'resetmeter_confirm_yes')],
-        [Markup.button.callback('❌ Cancel', 'resetmeter_confirm_no')],
+        [Markup.button.callback('Yes, reset baseline', 'resetmeter_confirm_yes')],
+        [Markup.button.callback('Cancel', 'resetmeter_confirm_no')],
       ]),
     }
   );
@@ -154,28 +155,36 @@ export async function resetmeterConfirmCallback(ctx: Context, confirmed: boolean
   if (!confirmed) {
     await clearResetSession(userId);
     await ctx.answerCbQuery('Cancelled');
-    await ctx.editMessageText('❌ Reset cancelled. No changes were made.');
+    await ctx.editMessageText('Reset cancelled. No changes were made.');
     return;
   }
 
   const clusterId = session.clusterId!;
   const meterType = session.selectedMeterType!;
+  const now = new Date();
+  const period = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 
   const { error: insertError } = await supabase.from('meter_readings').insert({
     user_id: userId,
     cluster_id: clusterId,
     meter_type: meterType,
     reading_kwh: -1,
-    captured_at: new Date().toISOString(),
+    photo_url: null,
+    ocr_confidence: 1.0,
+    validated: true,
+    captured_at: now.toISOString(),
+    reporting_period: period,
     source: 'user_reset',
+    delta_kwh: 0,
+    reading_key: crypto.randomUUID(),
     status: 'reset_marker',
-    confidence: 1.0,
+    metadata: {},
   });
 
   if (insertError) {
     log.error({ error: insertError }, 'Reset marker insert failed');
     await ctx.answerCbQuery('Error');
-    await ctx.editMessageText('❌ Failed to record reset marker. Please try again or contact support.');
+    await ctx.editMessageText('Failed to record reset marker. Please try again or contact support.');
     return;
   }
 
