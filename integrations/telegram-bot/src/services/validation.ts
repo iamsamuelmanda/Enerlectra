@@ -3,6 +3,60 @@ import { supabase } from '../lib/supabase';
 import type { MeterType } from './ocr';
 import type { Logger } from 'pino';
 
+// ─── Fraud Scoring (inline) ──────────────────────────────────────────
+const FRAUD_SIGNALS_TABLE = 'fraud_signals';
+const FRAUD_ALERTS_TABLE = 'fraud_alerts';
+const FRAUD_WINDOW_HOURS = 24;
+const FRAUD_ALERT_THRESHOLD = 1.0;
+
+async function recordFraudSignal(
+  userId: string,
+  clusterId: string,
+  signalType: 'delta_spike' | 'rapid_submission' | 'visual_mismatch',
+  severity: number,
+  metadata: Record<string, unknown>,
+  log: ReturnType<typeof createSafeLogger>
+): Promise<void> {
+  try {
+    const { error } = await supabase.from(FRAUD_SIGNALS_TABLE).insert({
+      user_id: userId,
+      cluster_id: clusterId,
+      signal_type: signalType,
+      severity: Math.min(1, Math.max(0, severity)),
+      metadata,
+      created_at: new Date().toISOString(),
+    });
+
+    if (error) {
+      log.warn({ error }, 'Failed to write fraud signal');
+      return;
+    }
+
+    const windowStart = new Date(Date.now() - FRAUD_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+    const { data: recent } = await supabase
+      .from(FRAUD_SIGNALS_TABLE)
+      .select('severity')
+      .eq('user_id', userId)
+      .gte('created_at', windowStart);
+
+    const score = (recent || []).reduce((s, r) => s + (r.severity ?? 0), 0);
+
+    if (score >= FRAUD_ALERT_THRESHOLD) {
+      await supabase.from(FRAUD_ALERTS_TABLE).insert({
+        user_id: userId,
+        cluster_id: clusterId,
+        cumulative_score: score,
+        status: 'open',
+        created_at: new Date().toISOString(),
+      });
+      log.warn({ score, userId }, 'Fraud alert threshold breached');
+    }
+  } catch (err) {
+    log.warn({ err }, 'Fraud scoring failed silently');
+  }
+}
+
+
 interface MeterTypeRules {
   allowedDecreaseKwh: number;
   maxIncreaseKwhPerHour: number;
@@ -32,16 +86,16 @@ const METER_TYPE_RULES: Record<MeterType, MeterTypeRules> = {
   },
   solar_export: {
     allowedDecreaseKwh: 5,
-    maxIncreaseKwhPerHour: 1.5,
-    absoluteMaxIncreaseKwh: 500,
+    maxIncreaseKwhPerHour: 20,
+    absoluteMaxIncreaseKwh: 2_000,
     strictMonotonic: true,
     allowsRollover: true,
     rolloverThreshold: 100_000,
   },
   solar_generation: {
     allowedDecreaseKwh: 0,
-    maxIncreaseKwhPerHour: 3.0,
-    absoluteMaxIncreaseKwh: 1_000,
+    maxIncreaseKwhPerHour: 20,
+    absoluteMaxIncreaseKwh: 2_000,
     strictMonotonic: true,
     allowsRollover: true,
     rolloverThreshold: 10_000,
@@ -270,6 +324,14 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
 
     if (isDuplicate) {
       log.info({ newKwh: sanitizedKwh }, 'Duplicate reading rejected');
+      await recordFraudSignal(
+        userId,
+        clusterId,
+        'rapid_submission',
+        0.3,
+        { duplicateKwh: sanitizedKwh, windowMinutes: VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES },
+        log
+      );
       return {
         valid: false,
         reason: `This reading (${sanitizedKwh.toFixed(2)} kWh) was already submitted within the last ${VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES} minutes.`,
@@ -331,12 +393,19 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
   const maxIncreaseKwh = computeMaxIncreaseKwh(rules, hoursSinceLastReading);
   if (delta > maxIncreaseKwh) {
     log.warn({ prevKwh, newKwh: sanitizedKwh, delta, maxAllowed: maxIncreaseKwh, hoursSinceLastReading }, 'Delta exceeds maximum');
+    await recordFraudSignal(
+      userId,
+      clusterId,
+      'delta_spike',
+      Math.min(0.9, (delta / maxIncreaseKwh) * 0.3),
+      { delta, maxAllowed: maxIncreaseKwh, hoursSinceLastReading, meterType },
+      log
+    );
     return {
       valid: false,
       reason: `Unusually large increase (${delta.toFixed(1)} kWh in ${(hoursSinceLastReading ?? 0).toFixed(1)} hrs). The maximum allowed for ${meterType} is ${maxIncreaseKwh.toFixed(1)} kWh. Please verify the reading.`,
     };
   }
-
   // Visual fingerprint check
   let imageHash: string | undefined;
   let visualMismatch = false;
@@ -354,6 +423,14 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
         visualMismatch = !isVisuallySame(current.hash, prevHash);
         if (visualMismatch) {
           log.warn({ hammingDistance, prevHashPrefix: prevHash.slice(0, 16) }, 'Visual mismatch detected');
+          await recordFraudSignal(
+            userId,
+            clusterId,
+            'visual_mismatch',
+            0.5,
+            { hammingDistance, prevHashPrefix: prevHash.slice(0, 16) },
+            log
+          );
         }
       }
     } catch (err) {
