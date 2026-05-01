@@ -1202,19 +1202,25 @@ bot.command('transfer', async (ctx) => {
   await ctx.reply(`Transferred ${amount} PCU to @${targetUsername}`);
 });
 
-bot.command('resetmeter', (ctx) => resetmeterCommand(ctx, logger));
+bot.command('resetmeter', async (ctx) => {
+  const userId = await resolveUserId(ctx.from.id.toString());
+  await resetmeterCommand(ctx, userId, logger);
+});
 
 bot.action(/^resetmeter_type_(.+)$/, async (ctx) => {
+  const userId = await resolveUserId(ctx.from.id.toString());
   const meterType = ctx.match[1] as MeterType;
-  await resetmeterTypeCallback(ctx, meterType, logger);
+  await resetmeterTypeCallback(ctx, userId, meterType, logger);
 });
 
 bot.action('resetmeter_confirm_yes', async (ctx) => {
-  await resetmeterConfirmCallback(ctx, true, logger);
+  const userId = await resolveUserId(ctx.from.id.toString());
+  await resetmeterConfirmCallback(ctx, userId, true, logger);
 });
 
 bot.action('resetmeter_confirm_no', async (ctx) => {
-  await resetmeterConfirmCallback(ctx, false, logger);
+  const userId = await resolveUserId(ctx.from.id.toString());
+  await resetmeterConfirmCallback(ctx, userId, false, logger);
 });
 
 bot.action(/^metertype:(grid_import|solar_export)$/, async (ctx) => {

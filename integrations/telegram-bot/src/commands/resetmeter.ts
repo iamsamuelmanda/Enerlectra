@@ -60,13 +60,7 @@ function createSafeLogger(base: Logger | undefined, context: Record<string, unkn
   };
 }
 
-export async function resetmeterCommand(ctx: Context, logger?: Logger) {
-  const userId = ctx.from?.id?.toString();
-  if (!userId) {
-    await ctx.reply('Unable to identify user.');
-    return;
-  }
-
+export async function resetmeterCommand(ctx: Context, userId: string, logger?: Logger) {
   const log = createSafeLogger(logger, { command: '/resetmeter', userId });
 
   const { data: memberships, error: membershipError } = await supabase
@@ -104,10 +98,7 @@ export async function resetmeterCommand(ctx: Context, logger?: Logger) {
   );
 }
 
-export async function resetmeterTypeCallback(ctx: Context, meterType: MeterType, logger?: Logger) {
-  const userId = ctx.from?.id?.toString();
-  if (!userId) return;
-
+export async function resetmeterTypeCallback(ctx: Context, userId: string, meterType: MeterType, logger?: Logger) {
   const log = createSafeLogger(logger, { callback: 'resetmeter_type', userId, meterType });
   const session = await getResetSession(userId);
 
@@ -140,10 +131,7 @@ export async function resetmeterTypeCallback(ctx: Context, meterType: MeterType,
   );
 }
 
-export async function resetmeterConfirmCallback(ctx: Context, confirmed: boolean, logger?: Logger) {
-  const userId = ctx.from?.id?.toString();
-  if (!userId) return;
-
+export async function resetmeterConfirmCallback(ctx: Context, userId: string, confirmed: boolean, logger?: Logger) {
   const log = createSafeLogger(logger, { callback: 'resetmeter_confirm', userId, confirmed });
   const session = await getResetSession(userId);
 
