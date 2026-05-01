@@ -38,8 +38,14 @@ function resetKey(userId: string): string {
 }
 
 async function getResetSession(userId: string): Promise<ResetSession | null> {
-  const data = await redis.get<string>(resetKey(userId));
-  return data ? (JSON.parse(data) as ResetSession) : null;
+  const data = await redis.get<string | object>(resetKey(userId));
+  if (!data) return null;
+
+  if (typeof data === 'string') {
+    return JSON.parse(data) as ResetSession;
+  }
+
+  return data as ResetSession;
 }
 
 async function setResetSession(userId: string, session: ResetSession): Promise<void> {
