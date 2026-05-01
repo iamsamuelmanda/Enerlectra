@@ -26,6 +26,7 @@ const OCR_CONFIG = {
   FALLBACK_CONFIDENCE: 0.85,
   SANITY_DELTA_MAX_KWH: 500,
   ABSOLUTE_MAX_KWH: 999_999,
+  SUSPICIOUS_MAX_KWH: 10_000,
   CLAUDE_MODEL: 'claude-haiku-4-5-20251001' as const,
   WORKER_COUNT: parseInt(process.env.TESSERACT_WORKERS ?? '1', 10),
   CACHE_TTL: parseInt(process.env.REDIS_CACHE_TTL ?? '3600', 10),
@@ -439,6 +440,13 @@ Your tasks:
 1. Read the main cumulative kilowatt-hour value.
 2. Classify the meter type from visual cues.
 
+CRITICAL DECIMAL HANDLING:
+- The display may show a decimal point (e.g., 36.38 or 152.61).
+- You MUST preserve the decimal point exactly as shown.
+- If the display shows "36.38", return "36.38" — NOT "3638".
+- If the display shows "36,38", return "36.38" (convert comma to dot).
+- If you are unsure whether a dot is a decimal or just dirt on the display, assume it is a decimal point for values under 1000 kWh.
+
 Allowed meter types:
 - grid_import
 - solar_export
@@ -452,7 +460,7 @@ Classification hints:
 Output rules:
 - Return exactly one line.
 - Use this exact format: NUMBER|TYPE
-- Examples: 152.61|grid_import, 282|solar_export, 8430.6|unknown
+- Examples: 152.61|grid_import, 36.38|grid_import, 282|solar_export, 8430.6|unknown
 - Do not include units or any extra words.
 - If the reading is unclear or unreadable, return exactly: UNREADABLE|unknown`;
 
@@ -546,6 +554,14 @@ async function callClaudeVision(imageUrl: string, logger: pino.Logger): Promise<
   const textBlock = message.content.find((block) => block.type === 'text');
   const rawText = textBlock?.type === 'text' ? textBlock.text.trim() : '';
   const parsed = parseClaudeVisionResponse(rawText);
+
+  if (parsed.kwh > OCR_CONFIG.SUSPICIOUS_MAX_KWH) {
+    logger.warn(
+      { kwh: parsed.kwh, rawText: parsed.rawText },
+      'Claude returned suspiciously large reading — possible decimal point missed'
+    );
+    throw new Error(`Suspicious reading ${parsed.kwh} — decimal point likely missed. Please retake photo with better focus or enter manually.`);
+  }
 
   logger.debug({ rawText: parsed.rawText, meterType: parsed.meterType }, 'Claude vision parsed response');
   return parsed;
