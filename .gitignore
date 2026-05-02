@@ -56,3 +56,8 @@ node_modules/
 *.txt
 scripts/debug-*.ts
 integrations/telegram-bot/scripts/test-redis.js
+backup_/
+*.backup*
+*.backup
+eng.traineddata
+axioma-audit.json
