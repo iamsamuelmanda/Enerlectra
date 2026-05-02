@@ -16,7 +16,7 @@ import { validateReading } from './services/validation';
 import { calculateValue, type ValueEstimate } from './services/tariff-calculator';
 import { OCRRateLimiter } from './services/rate-limiter';
 import { createPendingRedemption, requestLencoPayout } from './services/settlement';
-import { computeSettlementScore, type ScoreResult } from './services/settlementScore';
+import { computeSettlementScore, type SettlementScoreResult } from './services/settlementScore';
 import { decideSettlement, type SettlementDecision } from './services/settlementDecision';
 import { backfillPCUWalletForUser, mintPCUForExportReading } from './services/pcuMinting';
 import { transferPCU } from './services/pcuTransfer';
@@ -557,7 +557,7 @@ function formatReadingMessage(
   isFirstReading: boolean,
   isAfterReset: boolean,
   visualMismatch?: boolean,
-  scoreResult?: ScoreResult,
+  scoreResult?: SettlementScoreResult,
   decision?: SettlementDecision
 ): string {
   const periodLabel = formatPeriod(period);
