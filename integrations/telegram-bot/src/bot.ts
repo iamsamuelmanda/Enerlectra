@@ -10,11 +10,14 @@ import { createRedisSessionStore } from './lib/session-store';
 import pino from 'pino';
 import crypto from 'node:crypto';
 
+
 import { MeterOcrResult, MeterType, readMeterOCR, setLogger as setOcrLogger } from './services/ocr';
 import { validateReading } from './services/validation';
 import { calculateValue, type ValueEstimate } from './services/tariff-calculator';
 import { OCRRateLimiter } from './services/rate-limiter';
 import { createPendingRedemption, requestLencoPayout } from './services/settlement';
+import { computeSettlementScore, type ScoreResult } from './services/settlementScore';
+import { decideSettlement, type SettlementDecision } from './services/settlementDecision';
 import { backfillPCUWalletForUser, mintPCUForExportReading } from './services/pcuMinting';
 import { transferPCU } from './services/pcuTransfer';
 import {
@@ -94,15 +97,19 @@ interface ReadingRecord {
   metadata: Record<string, unknown> | null;
 }
 
-interface ValidationResult {
+// NOTE: ValidationResult is imported from ./services/validation (discriminated union)
+// We re-declare a local interface for the fields bot.ts needs, then cast.
+interface LocalValidationResult {
   valid: boolean;
   reason?: string;
   delta?: number;
   prevKwh?: number | null;
-  flag?: 'first_reading' | 'after_reset' | 'normal';
+  flag?: 'first_reading' | 'after_reset' | 'normal' | 'meter_rollover';
   visualMismatch?: boolean;
   imageHash?: string;
   hammingDistance?: number;
+  hoursSinceLastReading?: number | null;
+  maxAllowed?: number | null;
 }
 
 interface ValueResult {
@@ -385,7 +392,7 @@ async function resolveCluster(
   return { clusterId: null, unitId: null };
 }
 
-// ─── UI Helpers ──────────────────────────────────────────────────────
+// ─── UI Helpers ────────────────────────────────────────────────
 async function promptForCluster(ctx: BotContext): Promise<void> {
   const { data: clusters, error } = await supabase
     .from('clusters')
@@ -431,13 +438,16 @@ async function replyOrEdit(
 }
 
 // ─── Value & Payout Logic ────────────────────────────────────────────
+
+// CHANGED: Added decision parameter and gated payout logic
 async function handleReadingValueAndPayout(
   ctx: BotContext,
   userId: string,
   clusterId: string,
   reading: ReadingRecord,
-  validation: ValidationResult,
-  requestId: string
+  validation: LocalValidationResult,
+  requestId: string,
+  decision: SettlementDecision
 ): Promise<ValueResult> {
   const isExport =
     reading.meter_type === 'solar_export' || reading.meter_type === 'solar_generation';
@@ -462,6 +472,16 @@ async function handleReadingValueAndPayout(
           ? '\nExport reading saved, but PCU wallet update is pending.'
           : '\nExport baseline recorded, but wallet setup is pending.';
     }
+  }
+
+  // NEW: Gate payout on settlement decision
+  if (decision !== 'INSTANT') {
+    if (decision === 'REVIEW') {
+      result.message += '\n\nStatus: Under review — high confidence reading required for instant payout.';
+    } else if (decision === 'REJECT') {
+      result.message = '\nReading rejected by settlement scoring.';
+    }
+    return result;
   }
 
   if (!validation.delta || validation.delta <= 0) {
@@ -525,6 +545,7 @@ async function handleReadingValueAndPayout(
   }
 }
 
+// CHANGED: Added score and decision display parameters
 function formatReadingMessage(
   currentKwh: number,
   prevKwh: number | null,
@@ -535,7 +556,9 @@ function formatReadingMessage(
   valueResult: ValueResult,
   isFirstReading: boolean,
   isAfterReset: boolean,
-  visualMismatch?: boolean
+  visualMismatch?: boolean,
+  scoreResult?: ScoreResult,
+  decision?: SettlementDecision
 ): string {
   const periodLabel = formatPeriod(period);
 
@@ -581,6 +604,20 @@ function formatReadingMessage(
     msg += '\n\nNote: Meter image differs from previous submission. Contact support if you changed meters.';
   }
 
+  // NEW: Append settlement score and decision
+  if (scoreResult && decision && decision !== 'REJECT') {
+    msg += `\n\n*Score*: ${scoreResult.score.toFixed(2)}\n`;
+    msg += `Physics: ${scoreResult.breakdown.physics.toFixed(2)} | `;
+    msg += `Temporal: ${scoreResult.breakdown.temporal.toFixed(2)} | `;
+    msg += `Trust: ${scoreResult.breakdown.trust.toFixed(2)}`;
+
+    if (decision === 'REVIEW') {
+      msg += `\n⚠️ Under review — support will verify.`;
+    }
+  } else if (decision === 'REJECT') {
+    msg += `\n\n⚠️ Reading rejected by settlement scoring.`;
+  }
+
   return msg;
 }
 
@@ -619,6 +656,45 @@ async function processAndSaveReading(
       return;
     }
 
+    // Cast to local interface for convenient field access
+    const v = validation as unknown as LocalValidationResult;
+
+    // === NEW: Compute settlement score ===
+    const isFirstOrReset = v.flag === 'first_reading' || v.flag === 'after_reset';
+
+    const timeSinceLastReadingSec = (v.hoursSinceLastReading ?? 1) * 3600;
+
+    const meterRules: Record<string, number> = {
+      grid_import: 2.5,
+      solar_import: 1.5,
+      solar_export: 20,
+      solar_generation: 20,
+      generator: 5,
+      unit_submeter: 1,
+      unknown: 2.5,
+    };
+    const maxAllowedKwh = (meterRules[ocrResult.meterType] ?? 2.5) * (v.hoursSinceLastReading ?? 1);
+
+    const scoreResult = computeSettlementScore({
+      deltaKwh: v.delta ?? 0,
+      timeSinceLastReadingSec,
+      maxAllowedKwh,
+      userTrustScore: 0.6,
+      deviceConsistencyScore: 1.0,
+    });
+
+    const estimatedValue = (v.delta ?? 0) * 65;
+    const decision = decideSettlement(scoreResult.score, estimatedValue);
+
+    logger.info({
+      requestId,
+      userId,
+      score: scoreResult.score,
+      decision,
+      breakdown: scoreResult.breakdown,
+    }, 'Settlement score computed');
+    // === END NEW ===
+
     const period = getCurrentPeriod();
     const readingKey = generateReadingKey(
       userId,
@@ -629,11 +705,11 @@ async function processAndSaveReading(
     );
 
     const metadata: Record<string, unknown> = {};
-    if (validation.imageHash) metadata.image_hash = validation.imageHash;
-    if (validation.hammingDistance !== undefined) {
-      metadata.hamming_distance = validation.hammingDistance;
+    if (v.imageHash) metadata.image_hash = v.imageHash;
+    if (v.hammingDistance !== undefined) {
+      metadata.hamming_distance = v.hammingDistance;
     }
-    if (validation.visualMismatch) metadata.visual_mismatch = true;
+    if (v.visualMismatch) metadata.visual_mismatch = true;
 
     const { data: reading, error: insertError } = await supabase
       .from('meter_readings')
@@ -649,7 +725,7 @@ async function processAndSaveReading(
         captured_at: new Date().toISOString(),
         reporting_period: period,
         source: 'telegram',
-        delta_kwh: validation.delta ?? 0,
+        delta_kwh: v.delta ?? 0,
         reading_key: readingKey,
         status: 'active',
         metadata,
@@ -660,28 +736,34 @@ async function processAndSaveReading(
     if (insertError) throw insertError;
     if (!reading) throw new Error('Insert succeeded but no reading returned');
 
+    // CHANGED: Pass decision to handleReadingValueAndPayout
     const valueResult = await handleReadingValueAndPayout(
       ctx,
       userId,
       clusterId,
       reading as ReadingRecord,
-      validation as ValidationResult,
-      requestId
+      v,
+      requestId,
+      decision
     );
 
-    const isFirstReading = validation.flag === 'first_reading';
-    const isAfterReset = validation.flag === 'after_reset';
+    const isFirstReading = v.flag === 'first_reading';
+    const isAfterReset = v.flag === 'after_reset';
+
+    // CHANGED: Pass score and decision to formatReadingMessage
     const messageText = formatReadingMessage(
       ocrResult.kwh!,
-      validation.prevKwh ?? null,
-      validation.delta ?? null,
+      v.prevKwh ?? null,
+      v.delta ?? null,
       ocrResult.meterType,
       period,
       clusterId,
       valueResult,
       isFirstReading,
       isAfterReset,
-      validation.visualMismatch
+      v.visualMismatch,
+      scoreResult,
+      decision
     );
 
     await clearPendingReading(telegramId);
@@ -935,7 +1017,7 @@ bot.command('balance', async (ctx) => {
     `*PCU Balance*\n\n` +
       `Available\n${data.balance_pcu} PCU\n\n` +
       `Lifetime earned\n${data.total_minted_pcu} PCU\n\n` +
-      `/redeem <amoun..,mt> to cash out.`,
+      `/redeem <amount> to cash out.`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -952,7 +1034,7 @@ bot.command('status', async (ctx) => {
 
   await ctx.reply(
     `*Status*\n\n` +
-      `Community\n\`${clusterId}\`\n\n` +  // ← backticks escape the underscore
+      `Community\n\`${clusterId}\`\n\n` +
       `Mobile\n${phone ?? 'Not registered - /register'}\n\n` +
       `Send a meter photo to log your next reading.`,
     { parse_mode: 'Markdown' }
@@ -1100,10 +1182,9 @@ bot.command('history', async (ctx) => {
     const delta = reading.delta_kwh
       ? `${reading.delta_kwh > 0 ? '+' : ''}${reading.delta_kwh} kWh`
       : 'baseline';
-    
-    // FIX: Sanitize meter_type to prevent Telegram Markdown parse errors
+
     const sanitizedMeterType = reading.meter_type.replace(/_/g, ' ');
-    
+
     msg += `${reading.reading_kwh} kWh (${sanitizedMeterType}) - ${delta} - ${date}\n`;
 
     if (
@@ -1251,6 +1332,7 @@ bot.action(/^metertype:(grid_import|solar_export)$/, async (ctx) => {
   );
 });
 
+// CHANGED: Added settlement score computation to /read command
 bot.command('read', async (ctx) => {
   const parts = ctx.message.text.split(' ');
   const kwh = parseFloat(parts[1]);
@@ -1283,6 +1365,43 @@ bot.command('read', async (ctx) => {
     return ctx.reply(`Rejected\n\n${validation.reason}`);
   }
 
+  // Cast to local interface for convenient field access
+  const v = validation as unknown as LocalValidationResult;
+
+  // === NEW: Compute settlement score for manual /read ===
+  const timeSinceLastReadingSec = (v.hoursSinceLastReading ?? 1) * 3600;
+
+  const meterRules: Record<string, number> = {
+    grid_import: 2.5,
+    solar_import: 1.5,
+    solar_export: 20,
+    solar_generation: 20,
+    generator: 5,
+    unit_submeter: 1,
+    unknown: 2.5,
+  };
+  const maxAllowedKwh = (meterRules[meterType] ?? 2.5) * (v.hoursSinceLastReading ?? 1);
+
+  const scoreResult = computeSettlementScore({
+    deltaKwh: v.delta ?? 0,
+    timeSinceLastReadingSec,
+    maxAllowedKwh,
+    userTrustScore: 0.6,
+    deviceConsistencyScore: 1.0,
+  });
+
+  const estimatedValue = (v.delta ?? 0) * 65;
+  const decision = decideSettlement(scoreResult.score, estimatedValue);
+
+  logger.info({
+    requestId,
+    userId,
+    score: scoreResult.score,
+    decision,
+    breakdown: scoreResult.breakdown,
+  }, 'Settlement score computed (manual /read)');
+  // === END NEW ===
+
   const period = getCurrentPeriod();
   const readingKey = generateReadingKey(userId, clusterId, meterType, period, kwh);
 
@@ -1298,7 +1417,7 @@ bot.command('read', async (ctx) => {
       captured_at: new Date().toISOString(),
       reporting_period: period,
       source: 'telegram_manual',
-      delta_kwh: validation.delta ?? 0,
+      delta_kwh: v.delta ?? 0,
       reading_key: readingKey,
       status: 'active',
     })
@@ -1314,27 +1433,34 @@ bot.command('read', async (ctx) => {
     return ctx.reply('Reading saved but response was empty.');
   }
 
+  // CHANGED: Pass decision to handleReadingValueAndPayout
   const valueResult = await handleReadingValueAndPayout(
     ctx,
     userId,
     clusterId,
     reading as ReadingRecord,
-    validation as ValidationResult,
-    requestId
+    v,
+    requestId,
+    decision
   );
 
-  const isFirstReading = validation.flag === 'first_reading';
-  const isAfterReset = validation.flag === 'after_reset';
+  const isFirstReading = v.flag === 'first_reading';
+  const isAfterReset = v.flag === 'after_reset';
+
+  // CHANGED: Pass score and decision to formatReadingMessage
   const messageText = formatReadingMessage(
     kwh,
-    validation.prevKwh ?? null,
-    validation.delta ?? null,
+    v.prevKwh ?? null,
+    v.delta ?? null,
     meterType,
     period,
     clusterId,
     valueResult,
     isFirstReading,
-    isAfterReset
+    isAfterReset,
+    undefined,
+    scoreResult,
+    decision
   );
 
   await ctx.reply(messageText, { parse_mode: 'Markdown' });

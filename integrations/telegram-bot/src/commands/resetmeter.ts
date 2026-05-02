@@ -90,12 +90,12 @@ export async function resetmeterCommand(ctx: Context, userId: string, logger?: L
   log.info({ clusterId }, 'Reset flow started');
 
   await ctx.reply(
-    `*Reset Meter Baseline*\\n\\n` +
+    `*Reset Meter Baseline*\n\n` +
     `This will mark the next reading as a *new baseline* for the selected meter. ` +
-    `Use this when:\\n` +
-    `• A meter has been replaced\\n` +
-    `• A meter was reset to zero\\n` +
-    `• You are switching to a different physical meter\\n\\n` +
+    `Use this when:\n` +
+    `• A meter has been replaced\n` +
+    `• A meter was reset to zero\n` +
+    `• You are switching to a different physical meter\n\n` +
     `Select the meter type to reset:`,
     {
       parse_mode: 'Markdown',
@@ -121,11 +121,11 @@ export async function resetmeterTypeCallback(ctx: Context, userId: string, meter
 
   await ctx.answerCbQuery();
   await ctx.editMessageText(
-    `*Confirm Reset*\\n\\n` +
-    `Meter type: *${METER_TYPE_LABELS[meterType]}*\\n\\n` +
-    `This will:\\n` +
-    `1. Mark the *next submitted reading* as the new baseline\\n` +
-    `2. Ignore the previous reading history for delta calculations\\n\\n` +
+    `*Confirm Reset*\n\n` +
+    `Meter type: *${METER_TYPE_LABELS[meterType]}*\n\n` +
+    `This will:\n` +
+    `1. Mark the *next submitted reading* as the new baseline\n` +
+    `2. Ignore the previous reading history for delta calculations\n\n` +
     `Are you sure?`,
     {
       parse_mode: 'Markdown',
@@ -187,8 +187,8 @@ export async function resetmeterConfirmCallback(ctx: Context, userId: string, co
 
   await ctx.answerCbQuery('Baseline reset');
   await ctx.editMessageText(
-    `*Baseline reset recorded*\\n\\n` +
-    `Meter: *${METER_TYPE_LABELS[meterType]}*\\n\\n` +
+    `*Baseline reset recorded*\n\n` +
+    `Meter: *${METER_TYPE_LABELS[meterType]}*\n\n` +
     `The *next reading* you submit for this meter will be treated as a new baseline. ` +
     `Delta calculations will start from that reading.`,
     { parse_mode: 'Markdown' }

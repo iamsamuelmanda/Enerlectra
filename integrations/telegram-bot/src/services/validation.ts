@@ -139,9 +139,10 @@ export const VALIDATION_CONFIG = {
   RESET_MARKER_TOLERANCE_HOURS: 48,
 } as const;
 
+// CHANGED: Added hoursSinceLastReading and maxAllowed to both branches
 export type ValidationResult =
-  | { valid: true; delta: number | null; prevKwh: number | null; deltaKwh?: number; imageHash?: string; hammingDistance?: number; visualMismatch?: boolean; reason?: never; flag?: 'meter_rollover' | 'first_reading' | 'after_reset' }
-  | { valid: false; reason: string; delta?: never; prevKwh?: never; flag?: 'possible_meter_reset' | 'low_confidence' };
+  | { valid: true; delta: number | null; prevKwh: number | null; deltaKwh?: number; imageHash?: string; hammingDistance?: number; visualMismatch?: boolean; reason?: never; flag?: 'meter_rollover' | 'first_reading' | 'after_reset'; hoursSinceLastReading?: number | null; maxAllowed?: number | null }
+  | { valid: false; reason: string; delta?: never; prevKwh?: never; flag?: 'possible_meter_reset' | 'low_confidence'; hoursSinceLastReading?: never; maxAllowed?: never };
 
 export interface ValidationContext {
   userId: string;
@@ -297,7 +298,7 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
         : Infinity;
       if (markerAgeHours <= VALIDATION_CONFIG.RESET_MARKER_TOLERANCE_HOURS) {
         log.info({ markerAgeHours }, 'Recent reset marker found; treating as first reading');
-        return { valid: true, delta: null, prevKwh: null, flag: 'after_reset' };
+        return { valid: true, delta: null, prevKwh: null, flag: 'after_reset', hoursSinceLastReading: null, maxAllowed: null };
       }
       continue;
     }
@@ -341,7 +342,7 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
 
   if (lastActualReading === null) {
     log.info({ newKwh: sanitizedKwh }, 'First reading for this meter accepted as baseline');
-    return { valid: true, delta: null, prevKwh: null, flag: 'first_reading' };
+    return { valid: true, delta: null, prevKwh: null, flag: 'first_reading', hoursSinceLastReading: null, maxAllowed: null };
   }
 
   const prevKwh = lastActualReading.reading_kwh;
@@ -440,7 +441,7 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
 
   const resultFlag = delta !== sanitizedKwh - prevKwh ? 'meter_rollover' : undefined;
   log.info({ prevKwh, newKwh: sanitizedKwh, delta, hoursSinceLastReading, hammingDistance, visualMismatch }, 'Reading validated successfully');
-  return { valid: true, delta, prevKwh, deltaKwh: delta, imageHash, hammingDistance, visualMismatch, flag: resultFlag };
+  return { valid: true, delta, prevKwh, deltaKwh: delta, imageHash, hammingDistance, visualMismatch, flag: resultFlag, hoursSinceLastReading, maxAllowed: maxIncreaseKwh };
 }
 
 export function getValidationFailureReason(error: unknown): string {
