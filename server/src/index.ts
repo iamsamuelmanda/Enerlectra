@@ -161,7 +161,7 @@ async function getExchangeRate(from: string = 'USD', to: string = 'ZMW'): Promis
     logger.info(`✅ [EXCHANGE RATE] Live rate: ${rate}`);
     return { rate, live: true };
   } catch (error: any) {
-    logger.error('[EXCHANGE RATE ERROR]', error.message);
+    logger.error({ err: error?.message ?? error }, '[EXCHANGE RATE ERROR]');
     return { rate: FALLBACK_RATE, live: false, error: error.message || 'Unknown error' };
   }
 }

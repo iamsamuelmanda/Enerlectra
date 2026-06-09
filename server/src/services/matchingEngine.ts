@@ -205,15 +205,9 @@ export async function executeMatch(match: Match): Promise<void> {
       from_account_id: sellerAccount.account_id,
       to_account_id: buyerAccount.account_id,
       amount: amountKwh,
-      unit: 'PCU',
+      settlement_cycle_id: txId,
       operation_type: 'ENERGY_TRADE',
-      metadata: {
-        listing_id: listing.id,
-        request_id: request.id,
-        price_per_kwh: pricePerKwh,
-        total_zmw: totalZmw,
-      },
-      transaction_id: txId,
+      description: `Energy trade ${listing.id} → ${request.id}`,
     });
 
     const ledgerTxId = (ledgerResult as any)?.transaction_id || (ledgerResult as any)?.tx_id || txId;

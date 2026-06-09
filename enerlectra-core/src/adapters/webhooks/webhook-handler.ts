@@ -90,7 +90,8 @@ export class WebhookHandler {
     secret: string;
     verifier: (payload: string, signature: string, secret: string) => boolean;
   }): Promise<WebhookProcessingResult> {
-    const rawPayload: string = params.payload instanceof Buffer ? params.payload.toString('utf8') : params.payload;
+    const rawPayload =
+      typeof params.payload === 'string' ? params.payload : params.payload.toString('utf8');
     const parsed = this.parsePayload(rawPayload);
     const webhookId = this.resolveWebhookId(params.provider, parsed, rawPayload, params.signature);
     const eventType = this.resolveEventType(parsed, params.provider);

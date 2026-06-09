@@ -37,15 +37,14 @@ router.post('/stake', async (req, res) => {
     const poolAccount = '00000000-0000-0000-0000-000000000001';
 
     const ledger = new LedgerService(supabase);
-await ledger.transfer({
-  from_account_id: account.account_id,
-  to_account_id: poolAccount,
-  amount: amount_pcu,
-  unit: 'PCU',
-  operation_type: 'STAKE',
-  metadata: { user_id: userId },
-  settlement_cycle_id: crypto.randomUUID(), // Satisfies NOT NULL constraint
-});
+    await ledger.transfer({
+      from_account_id: account.account_id,
+      to_account_id: poolAccount,
+      amount: amount_pcu,
+      settlement_cycle_id: crypto.randomUUID(),
+      operation_type: 'STAKE',
+      description: `Stake PCU for user ${userId}`,
+    });
 
     await supabase.from('stakes').insert({
       user_id: userId,

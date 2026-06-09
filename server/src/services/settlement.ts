@@ -21,6 +21,7 @@ export interface PayoutRequest {
   phoneNumber:     string;
   narration?:      string;
   idempotencyKey?: string;
+  reference?:      string;
 }
 
 export interface PayoutResult {
@@ -69,7 +70,7 @@ export async function requestLencoPayout(
     throw new Error('LENCO_ACCOUNT_ID is not configured.');
   }
 
-  const reference      = `ENR-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+  const reference      = params.reference || `ENR-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
   const idempotencyKey = params.idempotencyKey || crypto.randomUUID();
 
   // Record pending payout in DB

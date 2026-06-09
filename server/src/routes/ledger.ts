@@ -84,9 +84,9 @@ router.post('/transfer', async (req, res) => {
       from_account_id: senderAccount.account_id,
       to_account_id: receiverAccount.account_id,
       amount,
-      unit: 'PCU',
+      settlement_cycle_id: transferId,
       operation_type: 'PCU_TRANSFER',
-      metadata: { description, transfer_id: transferId },
+      description: description || `PCU transfer ${transferId}`,
     });
 
     // 5. Fetch updated balances

@@ -72,4 +72,5 @@ export enum AccountType {
     settlement_cycle_id: string;
     operation_type: string;
     description?: string;
+    metadata?: Record<string, unknown>;
   }

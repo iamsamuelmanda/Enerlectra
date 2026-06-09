@@ -157,11 +157,12 @@ router.post('/clusters/:clusterId/reconcile', authenticate, async (req: any, res
     const reconciliationResult = reconcileEnergyAllocation({
       readings: readings.map((r: any) => ({
         clusterId: r.cluster_id,
-        unitId: r.unit_id,
+        unitId: r.unit_id || r.user_id,
         userId: r.user_id,
         readingKwh: r.reading_kwh,
         meterType: r.meter_type,
         reportingPeriod: r.reporting_period,
+        source: 'manual' as const,
       })),
       ownership: ownership.map((o: any) => ({
         userId: o.user_id,

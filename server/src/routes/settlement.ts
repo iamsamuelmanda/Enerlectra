@@ -100,7 +100,7 @@ router.post('/run', authenticate, async (req, res) => {
   }
 
   try {
-    const result = await runClusterSettlement(cluster_id, period);
+    const result = await runClusterSettlement(cluster_id, period, { supabase });
     return res.json({ success: true, result });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });

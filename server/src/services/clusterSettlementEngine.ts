@@ -81,11 +81,12 @@ export class ClusterSettlementEngine {
     const reconciliation = reconcileEnergyAllocation({
       readings: readings.map((r: SettlementReadingRow) => ({
         clusterId: r.cluster_id,
-        unitId: r.unit_id,
+        unitId: r.unit_id || r.user_id,
         userId: r.user_id,
         readingKwh: r.reading_kwh,
-        meterType: r.meter_type,
+        meterType: r.meter_type as 'grid' | 'solar' | 'unit',
         reportingPeriod: r.reporting_period,
+        source: 'manual' as const,
       })),
       ownership: ownership.map((o: OwnershipSnapshotRow) => ({
         userId: o.user_id,
@@ -98,15 +99,15 @@ export class ClusterSettlementEngine {
     const tariffRate = await this.getTariffRate(clusterId, period);
     const allocations: ClusterAllocationResult[] = [];
 
-    for (const alloc of reconciliation.allocations) {
-      const netKwh = Number(alloc.allocatedKwh) - Number(alloc.consumptionKwh);
+    for (const share of reconciliation.unitShares) {
+      const netKwh = Number(share.gridSurplusDeficit);
       const amountZmw = Math.abs(netKwh) * tariffRate;
-      const entry: ClusterAllocationResult = { userId: alloc.userId, netKwh, amountZmw };
+      const entry: ClusterAllocationResult = { userId: share.userId, netKwh, amountZmw };
 
       if (netKwh > 0) {
         await mintPCUForExportReading({
-          id: `settlement-${clusterId}-${period}-${alloc.userId}`,
-          user_id: alloc.userId,
+          id: `settlement-${clusterId}-${period}-${share.userId}`,
+          user_id: share.userId,
           cluster_id: clusterId,
           delta_kwh: netKwh,
           meter_type: 'solar_export',
@@ -117,7 +118,7 @@ export class ClusterSettlementEngine {
         entry.mintedPcu = netKwh;
       } else if (netKwh < 0) {
         await this.recordPendingPayout({
-          userId: alloc.userId,
+          userId: share.userId,
           clusterId,
           period,
           amountZmw,
@@ -146,8 +147,8 @@ export class ClusterSettlementEngine {
 
     if (writeError) throw writeError;
 
-    const totalGeneration = Number(reconciliation.totalGeneration || 0);
-    const totalConsumption = Number(reconciliation.totalConsumption || 0);
+    const totalGeneration = Number(reconciliation.allocation.solarTotalKwh || 0);
+    const totalConsumption = Number(reconciliation.allocation.gridTotalKwh || 0);
     const netKwh = totalGeneration - totalConsumption;
 
     logger.info({ clusterId, period, netKwh }, 'Settlement complete');

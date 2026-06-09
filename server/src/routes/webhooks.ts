@@ -1,8 +1,8 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import crypto from 'node:crypto';
-import { WebhookHandler } from '../../enerlectra-core/src/adapters/webhooks/webhook-handler';
-import { supabase } from '../../enerlectra-core/src/lib/supabase';
+import { WebhookHandler } from '../../../enerlectra-core/src/adapters/webhooks/webhook-handler';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase';
 import { paymentOrchestrator } from '../services/payment-orchestrator';
 
 const router = express.Router();
