@@ -1,15 +1,23 @@
-/**
- * Webhook Handler
- * Secure webhook processing with signature verification
- * Handles MTN, Airtel, and Lenco/Broadpay callbacks
- */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { PaymentOrchestrator } from '../../domain/payment/payment-orchestrator';
 export interface WebhookPayload {
-    event: string;
-    data: any;
-    timestamp: string;
+    event?: string;
+    type?: string;
+    kind?: string;
+    data?: any;
+    timestamp?: string | number;
     signature?: string;
+    reference?: string;
+    transaction_id?: string;
+    transactionId?: string;
+    id?: string;
+    status?: string;
+    amount?: number | string;
+    phone_number?: string;
+    msisdn?: string;
+    provider_ref?: string;
+    message?: string;
+    error?: string;
 }
 export interface WebhookProcessingResult {
     success: boolean;
@@ -19,56 +27,32 @@ export interface WebhookProcessingResult {
     retry?: boolean;
 }
 export declare class WebhookSignatureVerifier {
-    /**
-     * Verify MTN webhook signature
-     */
+    static verify(payload: string, signature: string, secret: string, algorithm: 'sha256' | 'sha512', output?: 'hex' | 'base64'): boolean;
     static verifyMTNSignature(payload: string, signature: string, secret: string): boolean;
-    /**
-     * Verify Airtel webhook signature
-     */
     static verifyAirtelSignature(payload: string, signature: string, secret: string): boolean;
-    /**
-     * Verify Lenco webhook signature
-     */
     static verifyLencoSignature(payload: string, signature: string, secret: string): boolean;
-    /**
-     * Timing-safe string comparison
-     */
-    private static timingSafeEqual;
+    static safeEqual(a: string, b: string): boolean;
 }
-/** WEBHOOK HANDLER */
 export declare class WebhookHandler {
     private supabase;
     private orchestrator;
     constructor(supabase: SupabaseClient, orchestrator: PaymentOrchestrator);
-    processMTNWebhook(payload: string, signature: string | undefined, secret: string): Promise<WebhookProcessingResult>;
-    processAirtelWebhook(payload: string, signature: string | undefined, secret: string): Promise<WebhookProcessingResult>;
+    processMTNWebhook(payload: string | Buffer, signature: string | undefined, secret: string): Promise<WebhookProcessingResult>;
+    processAirtelWebhook(payload: string | Buffer, signature: string | undefined, secret: string): Promise<WebhookProcessingResult>;
     processLencoWebhook(payload: string | Buffer, signature: string | undefined, secret: string): Promise<WebhookProcessingResult>;
+    private processProviderWebhook;
+    private parsePayload;
+    private resolveEventType;
+    private resolveKind;
+    private resolveReference;
+    private resolveWebhookId;
+    private resolveTimestamp;
+    private isFresh;
     private logWebhook;
-    /**
-     * Update webhook processing status
-     */
     private updateWebhookStatus;
-    getFailedWebhooks(maxRetries?: number): Promise<Array<{
-        id: string;
-        source: string;
-        payload: string;
-        retry_count: number;
-    }>>;
-    retryWebhook(webhookId: string, source: string, payload: string, secret: string): Promise<WebhookProcessingResult>;
-}
-export declare class WebhookRetryScheduler {
-    private handler;
-    private secrets;
-    constructor(handler: WebhookHandler, secrets: {
-        mtn: string;
-        airtel: string;
-        lenco: string;
-    });
-    processFailedWebhooks(): Promise<{
-        processed: number;
-        succeeded: number;
-        failed: number;
-    }>;
-    private sleep;
+    private normalizeContributionStatus;
+    private normalizePayoutStatus;
+    private handleContributionWebhook;
+    private handlePayoutWebhook;
+    private mapProviderToRail;
 }

@@ -90,7 +90,7 @@ export class WebhookHandler {
     secret: string;
     verifier: (payload: string, signature: string, secret: string) => boolean;
   }): Promise<WebhookProcessingResult> {
-    const rawPayload = params.payload instanceof Buffer ? params.payload.toString('utf8') : params.payload;
+    const rawPayload: string = params.payload instanceof Buffer ? params.payload.toString('utf8') : params.payload;
     const parsed = this.parsePayload(rawPayload);
     const webhookId = this.resolveWebhookId(params.provider, parsed, rawPayload, params.signature);
     const eventType = this.resolveEventType(parsed, params.provider);
@@ -305,34 +305,4 @@ export class WebhookHandler {
     if (p.includes('lenco')) return PaymentRail.BANK;
     return PaymentRail.BANK;
   }
-}
-'''
-route = r'''import { Router, type Request, type Response } from 'express';
-import { WebhookHandler } from '../handlers/webhook-handler';
-
-export function createWebhookRouter(handler: WebhookHandler) {
-  const router = Router();
-
-  router.post('/mtn', async (req: Request, res: Response) => {
-    const signature = (req.header('x-mtn-signature') || req.header('x-signature') || undefined) as string | undefined;
-    const secret = process.env.MTN_WEBHOOK_SECRET || '';
-    const result = await handler.processMTNWebhook(req.body, signature, secret);
-    return result.success ? res.status(200).json({ ok: true }) : res.status(400).json({ ok: false, error: result.error });
-  });
-
-  router.post('/airtel', async (req: Request, res: Response) => {
-    const signature = (req.header('x-airtel-signature') || req.header('x-signature') || undefined) as string | undefined;
-    const secret = process.env.AIRTEL_WEBHOOK_SECRET || '';
-    const result = await handler.processAirtelWebhook(req.body, signature, secret);
-    return result.success ? res.status(200).json({ ok: true }) : res.status(400).json({ ok: false, error: result.error });
-  });
-
-  router.post('/lenco', async (req: Request, res: Response) => {
-    const signature = (req.header('x-lenco-signature') || req.header('x-signature') || undefined) as string | undefined;
-    const secret = process.env.LENCO_WEBHOOK_SECRET || '';
-    const result = await handler.processLencoWebhook(req.body, signature, secret);
-    return result.success ? res.status(200).json({ ok: true }) : res.status(400).json({ ok: false, error: result.error });
-  });
-
-  return router;
 }

@@ -9,8 +9,13 @@
     "start": "tsx ./server/src/index.ts",
     "dev": "tsx ./server/src/index.ts",
     "build": "npm run build:client",
-    "build:client": "cd client && npm install --include=dev && npx vite build",
+    "build:client": "cd client && npm ci && npx vite build",
     "build:server": "tsc -p tsconfig.server.json",
+    "typecheck:server": "tsc -p tsconfig.ci-server.json",
+    "typecheck:client": "cd client && npx tsc --noEmit",
+    "typecheck:telegram-bot": "cd integrations/telegram-bot && npx tsc --noEmit",
+    "test": "node --test test/ci-smoke.test.mjs",
+    "ci": "npm test && npm run typecheck:client && npm run build:client && npm run typecheck:telegram-bot",
     "clean": "rm -rf dist client/dist"
   },
   "dependencies": {

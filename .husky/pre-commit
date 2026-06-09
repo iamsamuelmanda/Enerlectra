@@ -1,2 +1,2 @@
 #!/bin/sh
-cd client && npx tsc --noEmit
+cd client && npx tsc --noEmit && cd ../integrations/telegram-bot && npx tsc --noEmit

@@ -3,7 +3,7 @@ services:
     name: enerlectra-backend
     env: node
     plan: free
-    buildCommand: "npm install"
+    buildCommand: "npm ci"
     startCommand: "npm start"
     envVars:
       - key: NODE_ENV
@@ -14,6 +14,6 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://enerlectra-frontend-c406365od-samuel-mandas-projects.vercel.app,http://localhost:3000
-    healthCheckPath: /api/v1/health
+    healthCheckPath: /api/health
     autoDeploy: true
     branch: main
