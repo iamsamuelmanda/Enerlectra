@@ -55,6 +55,8 @@ const SELECTED_CLUSTER_PREFIX = `${REDIS_KEY_PREFIX}:selected_cluster`;
 interface BotSession {
   clusterId?: string;
   awaitingPhone?: boolean;
+  awaitingSearch?: boolean;
+  awaitingMeterLookup?: boolean;
 }
 
 interface BotContext extends Context {
@@ -1372,37 +1374,11 @@ function renwasolDbErrorMessage(error: { code?: string; message?: string }): str
 // Customer view sub‑menu
 bot.action('demo_customer', async (ctx) => {
   await ctx.answerCbQuery();
-  const subKeyboard = [
-    [{ text: 'Meter 20045123 (Healthy)', callback_data: 'cust_view_20045123' }],
-    [{ text: 'Meter 20047890 (Failed)', callback_data: 'cust_view_20047890' }],
-  ];
-  await ctx.reply('Select a demo meter:', { reply_markup: { inline_keyboard: subKeyboard } });
-});
-
-bot.action(/cust_view_(.+)/, async (ctx) => {
-  await ctx.answerCbQuery();
-  const meter = ctx.match[1];
-  const { data: txns, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('meter_number', meter)
-    .order('created_at', { ascending: false })
-    .limit(3);
-
-  if (error) {
-    logger.error({ error, meter }, 'renwasol cust_view failed');
-    return ctx.reply(renwasolDbErrorMessage(error));
-  }
-  if (!txns?.length) return ctx.reply('No transactions found for this meter.');
-
-  let msg = `*Meter ${meter}*\n\n`;
-  txns.forEach(t => {
-    const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
-    msg += `${emoji} K${t.amount} — ${new Date(t.created_at).toLocaleDateString('en-GB')}\n`;
-    if (t.status === 'DELIVERED') msg += `   Token: \`${t.token}\`\n`;
-    if (t.status === 'FAILED') msg += `   Reason: ${t.failure_reason}\n`;
-  });
-  await ctx.reply(msg, { parse_mode: 'Markdown' });
+  ctx.session.awaitingMeterLookup = true;
+  await ctx.reply(
+    '👁️ *Customer View*\n\nEnter a meter number to see recent transactions.',
+    { parse_mode: 'Markdown' }
+  );
 });
 
 // Operator Dashboard
@@ -1419,12 +1395,35 @@ bot.action('demo_operator', async (ctx) => {
     return ctx.reply(renwasolDbErrorMessage(error));
   }
 
+  const delivered = txns?.filter(t => t.status === 'DELIVERED').length ?? 0;
+  const pending = txns?.filter(t => t.status === 'PENDING' || t.status === 'PROCESSING').length ?? 0;
+  const failed = txns?.filter(t => t.status === 'FAILED').length ?? 0;
+
   let msg = `*Operator Dashboard*\n\n`;
-  txns?.forEach(t => {
+  msg += `Today\n`;
+  msg += `✅ Delivered: ${delivered}\n`;
+  msg += `⏳ Pending: ${pending}\n`;
+  msg += `❌ Failed: ${failed}\n\n`;
+  msg += `*Recent Transactions*\n\n`;
+  msg += `_Tap a transaction for details:_\n`;
+
+  // Build a row of inline buttons for each transaction
+  const txButtons = txns?.slice(0,5).map(t => {
     const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
-    msg += `${emoji} \`${t.id.slice(0,8)}\` K${t.amount} — Meter ${t.meter_number} — ${t.status}\n`;
+    return [
+      { text: `${emoji} K${t.amount} - ${t.meter_number}`, callback_data: `txn_detail_${t.id}` }
+    ];
+  }) ?? [];
+
+  await ctx.reply(msg, {
+    parse_mode: 'Markdown',
+    reply_markup: {
+      inline_keyboard: [
+        ...txButtons,
+        [{ text: '🔄 Refresh', callback_data: 'demo_operator' }]
+      ]
+    }
   });
-  await ctx.reply(msg, { parse_mode: 'Markdown' });
 });
 
 // Failed Transactions + Alert
@@ -1460,51 +1459,13 @@ bot.action('demo_failed', async (ctx) => {
 // Search
 bot.action('demo_search', async (ctx) => {
   await ctx.answerCbQuery();
-  const subKeyboard = [
-    [{ text: 'Search by phone: +260977123456', callback_data: 'search_phone_260977123456' }],
-    [{ text: 'Search by meter: 20045123', callback_data: 'search_meter_20045123' }],
-  ];
-  await ctx.reply('Quick demo searches:', { reply_markup: { inline_keyboard: subKeyboard } });
+  ctx.session.awaitingSearch = true;
+  await ctx.reply(
+    '🔎 *Search Transaction*\n\nEnter a meter number, phone number, or transaction ID.',
+    { parse_mode: 'Markdown' }
+  );
 });
 
-bot.action(/search_phone_(.+)/, async (ctx) => {
-  await ctx.answerCbQuery();
-  const phone = `+${ctx.match[1]}`;
-  const { data: txns, error } = await supabase
-    .from('transactions')
-    .select('*')
-    .ilike('customer_phone', `%${phone}%`)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  if (error) {
-    logger.error({ error, phone }, 'renwasol search_phone failed');
-    return ctx.reply(renwasolDbErrorMessage(error));
-  }
-  if (!txns?.length) return ctx.reply('No transactions found.');
-  let msg = `*Search results for ${phone}*\n\n`;
-  txns.forEach(t => {
-    const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
-    msg += `${emoji} K${t.amount} — Meter ${t.meter_number} — ${t.status}\n`;
-  });
-  await ctx.reply(msg, { parse_mode: 'Markdown' });
-});
-
-bot.action(/search_meter_(.+)/, async (ctx) => {
-  const meter = ctx.match[1];
-  const { data: txns } = await supabase
-    .from('transactions')
-    .select('*')
-    .eq('meter_number', meter)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  if (!txns?.length) return ctx.reply('No transactions found.');
-  let msg = `*Search results for meter ${meter}*\n\n`;
-  txns.forEach(t => {
-    const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
-    msg += `${emoji} K${t.amount} — ${t.status}\n`;
-  });
-  await ctx.reply(msg, { parse_mode: 'Markdown' });
-});
 
 // Recent Activity
 bot.action('demo_recent', async (ctx) => {
@@ -1525,6 +1486,36 @@ bot.action('demo_recent', async (ctx) => {
     const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
     msg += `${emoji} K${t.amount} — Meter ${t.meter_number} — ${t.status}\n`;
   });
+  await ctx.reply(msg, { parse_mode: 'Markdown' });
+});
+
+// Transaction detail drill‑down
+bot.action(/txn_detail_(.+)/, async (ctx) => {
+  await ctx.answerCbQuery();
+  const txnId = ctx.match[1];
+
+  const { data: txn, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('id', txnId)
+    .single();
+
+  if (error || !txn) {
+    return ctx.reply('Transaction not found.');
+  }
+
+  const statusEmoji = txn.status === 'DELIVERED' ? '✅' : txn.status === 'FAILED' ? '❌' : '⏳';
+
+  let msg = `*Transaction Detail*\n\n`;
+  msg += `ID: \`TXN-${txn.id.slice(0,8).toUpperCase()}\`\n`;
+  msg += `Status: ${statusEmoji} ${txn.status}\n`;
+  msg += `Amount: K${txn.amount}\n`;
+  msg += `Meter: ${txn.meter_number}\n`;
+  msg += `Customer: ${txn.customer_phone}\n`;
+  msg += `Date: ${new Date(txn.created_at).toLocaleDateString('en-GB')}\n`;
+  if (txn.token) msg += `Token: \`${txn.token}\`\n`;
+  if (txn.failure_reason) msg += `Reason: ${txn.failure_reason}\n`;
+
   await ctx.reply(msg, { parse_mode: 'Markdown' });
 });
 
@@ -1721,6 +1712,78 @@ bot.on(message('text'), async (ctx, next) => {
       { parse_mode: 'Markdown' }
     );
   }
+
+      // Free‑text meter lookup (Renwasol demo — Customer View)
+      if (ctx.session.awaitingMeterLookup) {
+        ctx.session.awaitingMeterLookup = false;
+        const meter = ctx.message.text.trim();
+  
+        if (!meter) {
+          return ctx.reply('Please enter a meter number.');
+        }
+  
+        const { data: txns, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('meter_number', meter)
+          .order('created_at', { ascending: false })
+          .limit(3);
+  
+        if (error) {
+          logger.error({ error, meter }, 'renwasol meter lookup failed');
+          return ctx.reply(renwasolDbErrorMessage(error));
+        }
+  
+        if (!txns?.length) {
+          return ctx.reply(`No transactions found for meter ${meter}.`);
+        }
+  
+        let msg = `*Meter ${meter}*\n\n`;
+        txns.forEach(t => {
+          const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
+          msg += `${emoji} K${t.amount} — ${new Date(t.created_at).toLocaleDateString('en-GB')}\n`;
+          if (t.status === 'DELIVERED') msg += `   Token: \`${t.token}\`\n`;
+          if (t.status === 'FAILED') msg += `   Reason: ${t.failure_reason}\n`;
+        });
+        return ctx.reply(msg, { parse_mode: 'Markdown' });
+      }
+
+ // State-dependent flow: free‑text search (Renwasol demo)
+if (ctx.session.awaitingSearch) {
+  ctx.session.awaitingSearch = false;
+  const query = ctx.message.text.trim();
+
+  if (!query) {
+    return ctx.reply('Please enter a meter number, phone number, or transaction ID.');
+  }
+
+  const searchPattern = `%${query}%`;
+
+  const { data: txns, error } = await supabase
+    .from('transactions')
+    .select('*')
+    .or(`meter_number.ilike.${searchPattern},customer_phone.ilike.${searchPattern}`)
+    .order('created_at', { ascending: false })
+    .limit(5);
+
+  if (error) {
+    logger.error({ error, query }, 'renwasol free-text search failed');
+    return ctx.reply(renwasolDbErrorMessage(error));
+  }
+
+  if (!txns?.length) {
+    return ctx.reply(`No transactions found for "${query}".`);
+  }
+
+  let msg = `*Search results for "${query}"*\n\n`;
+  txns.forEach(t => {
+    const emoji = t.status === 'DELIVERED' ? '✅' : t.status === 'FAILED' ? '❌' : '⏳';
+    msg += `${emoji} K${t.amount} — Meter ${t.meter_number} — ${t.status}\n`;
+    if (t.status === 'FAILED') msg += `   Reason: ${t.failure_reason}\n`;
+  });
+  return ctx.reply(msg, { parse_mode: 'Markdown' });
+}
+
 
   // State-dependent flow: pending redemption confirmation
   const userId = await resolveUserId(telegramId);
