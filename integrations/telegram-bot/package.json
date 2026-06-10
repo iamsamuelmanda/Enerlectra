@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/bot.js",
     "dev": "ts-node src/bot.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:renwasol": "node scripts/check-renwasol-demo.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",

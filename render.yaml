@@ -1,5 +1,23 @@
 services:
   - type: web
+    name: enerlectra-ellie-bot
+    env: node
+    plan: free
+    rootDir: integrations/telegram-bot
+    buildCommand: "npm ci && npm run build"
+    startCommand: "npm start"
+    healthCheckPath: /
+    autoDeploy: true
+    branch: main
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: WEBHOOK_URL
+        value: https://enerlectra-ellie-bot.onrender.com
+
+  - type: web
     name: enerlectra-backend
     env: node
     plan: free

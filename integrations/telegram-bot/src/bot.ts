@@ -976,7 +976,8 @@ bot.command('help', async (ctx) => {
       `/redeem <amount> - Cash out PCU\n` +
       `/transfer <amount> <@user> - Send PCU\n` +
       `/clusters - Browse communities\n` +
-      `/resetmeter - Reset meter after replacement`,
+      `/resetmeter - Reset meter after replacement\n` +
+      `/renwasol - Renwasol transaction visibility demo`,
     { parse_mode: 'Markdown' }
   );
 });
@@ -1289,7 +1290,7 @@ bot.command('resetmeter', async (ctx) => {
 });
 
 // ===================== RENWASOL DEMO HUB =====================
-bot.command('renwasol', async (ctx) => {
+async function sendRenwasolMenu(ctx: Context) {
   const keyboard = [
     [
       { text: '👁️ Customer View', callback_data: 'demo_customer' },
@@ -1308,6 +1309,11 @@ bot.command('renwasol', async (ctx) => {
     `*Renwasol · Transaction Visibility*\n\nSelect a view:`,
     { parse_mode: 'Markdown', reply_markup: { inline_keyboard: keyboard } }
   );
+}
+
+// 'render' alias — common typo
+bot.command(['renwasol', 'render'], async (ctx) => {
+  await sendRenwasolMenu(ctx);
 });
 
 bot.action(/^resetmeter_type_(.+)$/, async (ctx) => {
@@ -1356,6 +1362,13 @@ bot.action(/^metertype:(grid_import|solar_export)$/, async (ctx) => {
 
 // --- Renwasol demo actions ---
 
+function renwasolDbErrorMessage(error: { code?: string; message?: string }): string {
+  if (error.code === '42P01') {
+    return 'Demo table missing. Run supabase/migrations/008_renwasol_transactions.sql in Supabase SQL Editor.';
+  }
+  return `Demo query failed: ${error.message || 'unknown error'}`;
+}
+
 // Customer view sub‑menu
 bot.action('demo_customer', async (ctx) => {
   await ctx.answerCbQuery();
@@ -1367,14 +1380,19 @@ bot.action('demo_customer', async (ctx) => {
 });
 
 bot.action(/cust_view_(.+)/, async (ctx) => {
+  await ctx.answerCbQuery();
   const meter = ctx.match[1];
-  const { data: txns } = await supabase
+  const { data: txns, error } = await supabase
     .from('transactions')
     .select('*')
     .eq('meter_number', meter)
     .order('created_at', { ascending: false })
     .limit(3);
 
+  if (error) {
+    logger.error({ error, meter }, 'renwasol cust_view failed');
+    return ctx.reply(renwasolDbErrorMessage(error));
+  }
   if (!txns?.length) return ctx.reply('No transactions found for this meter.');
 
   let msg = `*Meter ${meter}*\n\n`;
@@ -1390,11 +1408,16 @@ bot.action(/cust_view_(.+)/, async (ctx) => {
 // Operator Dashboard
 bot.action('demo_operator', async (ctx) => {
   await ctx.answerCbQuery();
-  const { data: txns } = await supabase
+  const { data: txns, error } = await supabase
     .from('transactions')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(10);
+
+  if (error) {
+    logger.error({ error }, 'renwasol demo_operator failed');
+    return ctx.reply(renwasolDbErrorMessage(error));
+  }
 
   let msg = `*Operator Dashboard*\n\n`;
   txns?.forEach(t => {
@@ -1407,12 +1430,16 @@ bot.action('demo_operator', async (ctx) => {
 // Failed Transactions + Alert
 bot.action('demo_failed', async (ctx) => {
   await ctx.answerCbQuery();
-  const { data: failed } = await supabase
+  const { data: failed, error } = await supabase
     .from('transactions')
     .select('*')
     .eq('status', 'FAILED')
     .order('created_at', { ascending: false });
 
+  if (error) {
+    logger.error({ error }, 'renwasol demo_failed failed');
+    return ctx.reply(renwasolDbErrorMessage(error));
+  }
   if (!failed?.length) return ctx.reply('No failed transactions. 🎉');
 
   let alertMsg = `*⚠️ Failed Transactions*\n\n`;
@@ -1434,20 +1461,25 @@ bot.action('demo_failed', async (ctx) => {
 bot.action('demo_search', async (ctx) => {
   await ctx.answerCbQuery();
   const subKeyboard = [
-    [{ text: 'Search by phone: +260977123456', callback_data: 'search_phone_0977123456' }],
+    [{ text: 'Search by phone: +260977123456', callback_data: 'search_phone_260977123456' }],
     [{ text: 'Search by meter: 20045123', callback_data: 'search_meter_20045123' }],
   ];
   await ctx.reply('Quick demo searches:', { reply_markup: { inline_keyboard: subKeyboard } });
 });
 
 bot.action(/search_phone_(.+)/, async (ctx) => {
-  const phone = '+' + ctx.match[1];
-  const { data: txns } = await supabase
+  await ctx.answerCbQuery();
+  const phone = `+${ctx.match[1]}`;
+  const { data: txns, error } = await supabase
     .from('transactions')
     .select('*')
-    .or(`customer_phone.ilike.%${phone}%`)
+    .ilike('customer_phone', `%${phone}%`)
     .order('created_at', { ascending: false })
     .limit(5);
+  if (error) {
+    logger.error({ error, phone }, 'renwasol search_phone failed');
+    return ctx.reply(renwasolDbErrorMessage(error));
+  }
   if (!txns?.length) return ctx.reply('No transactions found.');
   let msg = `*Search results for ${phone}*\n\n`;
   txns.forEach(t => {
@@ -1477,11 +1509,16 @@ bot.action(/search_meter_(.+)/, async (ctx) => {
 // Recent Activity
 bot.action('demo_recent', async (ctx) => {
   await ctx.answerCbQuery();
-  const { data: txns } = await supabase
+  const { data: txns, error } = await supabase
     .from('transactions')
     .select('*')
     .order('created_at', { ascending: false })
     .limit(10);
+
+  if (error) {
+    logger.error({ error }, 'renwasol demo_recent failed');
+    return ctx.reply(renwasolDbErrorMessage(error));
+  }
 
   let msg = `*Recent Activity*\n\n`;
   txns?.forEach(t => {
@@ -1745,23 +1782,52 @@ process.once('SIGTERM', () => {
 // ─── Bot Launch ──────────────────────────────────────────────────────
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
 
-setTimeout(() => {
-  if (WEBHOOK_URL) {
-    // Production: webhook via Express (shares port with health check)
-    bot.telegram.setWebhook(`${WEBHOOK_URL}/webhook`);
-    app.use(bot.webhookCallback('/webhook'));
-    app.listen(Number(PORT), () => {
-      logger.info(`Ellie is online via webhook on port ${PORT}`);
-    });
-  } else {
-    // Development: polling
-    bot
-      .launch()
-      .then(() => logger.info('Ellie is online via polling!'))
-      .catch((err: unknown) => {
-        const error = err instanceof Error ? err : new Error(String(err));
-        logger.fatal({ err: error.message }, 'Bot polling launch failed');
-        process.exit(1);
-      });
+async function registerBotCommands() {
+  try {
+    await bot.telegram.setMyCommands([
+      { command: 'start', description: 'Welcome' },
+      { command: 'help', description: 'List commands' },
+      { command: 'balance', description: 'Check PCU balance' },
+      { command: 'status', description: 'View linked cluster' },
+      { command: 'history', description: 'Past submissions' },
+      { command: 'renwasol', description: 'Renwasol transaction demo' },
+    ]);
+    logger.info('Telegram command menu updated (includes /renwasol)');
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err : new Error(String(err));
+    logger.warn({ err: error.message }, 'Failed to register Telegram commands');
   }
+}
+
+setTimeout(() => {
+  void (async () => {
+    await registerBotCommands();
+
+    if (WEBHOOK_URL) {
+      app.use(bot.webhookCallback('/webhook'));
+      app.listen(Number(PORT), async () => {
+        logger.info(`Ellie is online via webhook on port ${PORT}`);
+        try {
+          await bot.telegram.setWebhook(`${WEBHOOK_URL}/webhook`);
+          const info = await bot.telegram.getWebhookInfo();
+          logger.info(
+            { url: info.url, pending: info.pending_update_count },
+            'Webhook configured'
+          );
+        } catch (err: unknown) {
+          const error = err instanceof Error ? err : new Error(String(err));
+          logger.error({ err: error.message }, 'Webhook setup failed');
+        }
+      });
+    } else {
+      bot
+        .launch()
+        .then(() => logger.info('Ellie is online via polling!'))
+        .catch((err: unknown) => {
+          const error = err instanceof Error ? err : new Error(String(err));
+          logger.fatal({ err: error.message }, 'Bot polling launch failed');
+          process.exit(1);
+        });
+    }
+  })();
 }, WEBHOOK_URL ? 1000 : 10000);
