@@ -1374,6 +1374,7 @@ function renwasolDbErrorMessage(error: { code?: string; message?: string }): str
 // Customer view sub‑menu
 bot.action('demo_customer', async (ctx) => {
   await ctx.answerCbQuery();
+  ctx.session.awaitingSearch = false;
   ctx.session.awaitingMeterLookup = true;
   await ctx.reply(
     '👁️ *Customer View*\n\nEnter a meter number to see recent transactions.',
@@ -1459,6 +1460,7 @@ bot.action('demo_failed', async (ctx) => {
 // Search
 bot.action('demo_search', async (ctx) => {
   await ctx.answerCbQuery();
+  ctx.session.awaitingMeterLookup = false;
   ctx.session.awaitingSearch = true;
   await ctx.reply(
     '🔎 *Search Transaction*\n\nEnter a meter number, phone number, or transaction ID.',
