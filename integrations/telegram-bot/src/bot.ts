@@ -1291,6 +1291,18 @@ bot.command('resetmeter', async (ctx) => {
   await resetmeterCommand(ctx, userId, logger);
 });
 
+bot.command('privacy', async (ctx) => {
+  await ctx.reply(
+    `*Enerlectra Privacy Policy*\n\n` +
+    `Data collected: Telegram ID, username, phone number, meter readings, location.\n\n` +
+    `Why: To process energy settlements and deliver payouts.\n\n` +
+    `Storage: Encrypted via Supabase. Never sold to third parties.\n\n` +
+    `Contact: support@enerlectra.com`,
+    { parse_mode: 'Markdown' }
+  );
+});
+
+
 // ===================== RENWASOL DEMO HUB =====================
 async function sendRenwasolMenu(ctx: Context) {
   const keyboard = [
@@ -1877,6 +1889,7 @@ async function registerBotCommands() {
       { command: 'status', description: 'View linked cluster' },
       { command: 'history', description: 'Past submissions' },
       { command: 'renwasol', description: 'Renwasol transaction demo' },
+      { command: 'privacy', description: 'Privacy policy' },
     ]);
     logger.info('Telegram command menu updated (includes /renwasol)');
   } catch (err: unknown) {
