@@ -5,7 +5,7 @@ import { BotContext } from '../types/context';
 import { supabase } from '../lib/supabase';
 import { redis } from '../lib/redis';
 import { logger } from '../services/logger';
-import { logMetric, trackTransactionInvestigation } from '../services/metrics'; // ← updated import
+import { logMetric, trackTransactionInvestigation } from '../services/metrics';
 
 // ─── Transaction Dashboard ──────────────────────────────────────────
 export async function handleTransactionDashboard(ctx: BotContext) {
@@ -96,6 +96,7 @@ export async function handleFailedTransactions(ctx: BotContext) {
 export async function startSearch(ctx: BotContext) {
   await ctx.answerCbQuery();
   const telegramId = ctx.from!.id.toString();
+  await redis.del(`demo_state:${telegramId}`);   // ← CLEAR STALE STATE
   await redis.set(`demo_state:${telegramId}`, 'search', { ex: 120 });
   await ctx.reply('🔎 *Search Transaction*\n\nEnter a meter number, phone number, or transaction ID.', {
     parse_mode: 'Markdown',
@@ -106,6 +107,7 @@ export async function startSearch(ctx: BotContext) {
 export async function startCustomerView(ctx: BotContext) {
   await ctx.answerCbQuery();
   const telegramId = ctx.from!.id.toString();
+  await redis.del(`demo_state:${telegramId}`);   // ← CLEAR STALE STATE
   await redis.set(`demo_state:${telegramId}`, 'meter_lookup', { ex: 120 });
   await ctx.reply('👁️ *Customer View*\n\nEnter a meter number to see recent transactions.', {
     parse_mode: 'Markdown',
@@ -134,13 +136,13 @@ export async function handleRecentActivity(ctx: BotContext) {
   });
 
   await ctx.reply(msg, { parse_mode: 'Markdown' });
-  await logMetric('recent_activity_viewed', ctx.state.userId, orgId); // ← new metric
+  await logMetric('recent_activity_viewed', ctx.state.userId, orgId);
 }
 
 // ─── Transaction Detail ─────────────────────────────────────────────
 export async function handleTransactionDetail(ctx: BotContext) {
   await ctx.answerCbQuery();
-  const txnId = (ctx.callbackQuery as any).data.split('_').pop(); // using the regex pattern txn_detail_<id>
+  const txnId = (ctx.callbackQuery as any).data.split('_').pop();
   if (!txnId) return ctx.reply('Invalid transaction ID.');
 
   const { data: txn, error } = await supabase
@@ -158,9 +160,7 @@ export async function handleTransactionDetail(ctx: BotContext) {
 
   await ctx.reply(msg, { parse_mode: 'Markdown' });
 
-  // Track transaction investigation (only when an operator is linked)
   if (ctx.state.orgId) {
     await trackTransactionInvestigation(ctx.state.userId, ctx.state.orgId, txn.id);
   }
 }
-

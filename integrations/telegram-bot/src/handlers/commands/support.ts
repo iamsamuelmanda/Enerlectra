@@ -2,15 +2,17 @@
 import type { BotContext } from '../../types/context';
 import { getBotState } from '../../types/context';
 import { supabase } from '../../lib/supabase';
+import { redis } from '../../lib/redis';   // ← make sure this is imported
 import { logger } from '../../services/logger';
 import { queryHuggingFace } from '../../services/huggingface';
-import { trackTicketCreated } from '../../services/metrics';   // ← new import
+import { trackTicketCreated } from '../../services/metrics';
 
 export type Intent =
   | 'payment_status'
   | 'token_delivery'
   | 'fault_report'
   | 'account_balance'
+  | 'knowledge'   // ← new intent
   | 'unknown';
 
 interface TransactionRow {
@@ -32,17 +34,52 @@ interface SupportFacts {
 function detectIntent(message: string): Intent {
   const lower = message.toLowerCase();
 
-  if (/payment|paid|pay|money/.test(lower) && /received|status|went|through|confirmed/.test(lower)) {
+  // Payment status: asking about a specific payment
+  if (
+    (lower.includes('payment') || lower.includes('paid') || lower.includes('pay')) &&
+    (lower.includes('received') || lower.includes('status') ||
+     lower.includes('went') || lower.includes('through') ||
+     lower.includes('confirmed') || lower.includes('go through'))
+  ) {
     return 'payment_status';
   }
-  if (/token|code|voucher/.test(lower) && /not|didn't|fail|missing|work|arrive/.test(lower)) {
+
+  // Token delivery: asking about a token that hasn't arrived
+  if (
+    (lower.includes('token') || lower.includes('code') || lower.includes('voucher')) &&
+    (lower.includes('not') || lower.includes('didn\'t') || lower.includes('fail') ||
+     lower.includes('missing') || lower.includes('work') || lower.includes('arrive'))
+  ) {
     return 'token_delivery';
   }
-  if (/fault|broke|error|issue|problem/.test(lower) && /battery|inverter|solar|system/.test(lower)) {
+
+  // Fault report: explicitly reporting a technical problem
+  if (
+    (lower.includes('fault') || lower.includes('broke') || lower.includes('error') ||
+     lower.includes('issue') || lower.includes('problem')) &&
+    (lower.includes('battery') || lower.includes('inverter') ||
+     lower.includes('solar') || lower.includes('system') || lower.includes('meter'))
+  ) {
     return 'fault_report';
   }
-  if (/balance|how much|pcu|credit/.test(lower)) {
+
+  // Account balance: explicitly asking about balance or PCU amount
+  if (
+    (lower.includes('balance') || lower.includes('how much pcu') ||
+     lower.includes('how many pcu')) &&
+    !lower.includes('what is pcu') && !lower.includes('explain pcu')
+  ) {
     return 'account_balance';
+  }
+
+  // Knowledge questions (explanations, how‑to)
+  if (
+    lower.includes('what is') ||
+    lower.includes('explain') ||
+    lower.includes('how do i') ||
+    lower.includes('how does')
+  ) {
+    return 'knowledge';
   }
 
   return 'unknown';
@@ -55,6 +92,7 @@ async function detectIntentWithAI(userMessage: string): Promise<Intent> {
 - token_delivery (asking about a token or code)
 - fault_report (reporting a technical fault or problem)
 - account_balance (asking about balance or credits)
+- knowledge (asking for an explanation or general information)
 - unknown (none of the above)
 
 Request: "${userMessage}"
@@ -65,7 +103,7 @@ Category:`;
     const result = await queryHuggingFace(prompt);
     const cleaned = result.toLowerCase().replace(/[^a-z_]/g, '').trim();
     if (
-      ['payment_status', 'token_delivery', 'fault_report', 'account_balance'].includes(cleaned)
+      ['payment_status', 'token_delivery', 'fault_report', 'account_balance', 'knowledge'].includes(cleaned)
     ) {
       return cleaned as Intent;
     }
@@ -119,13 +157,14 @@ async function gatherFacts(
       };
     }
 
+    case 'knowledge':
     default:
       return {};
   }
 }
 
 // ─── Rule‑based response generation ──────────────────────────────────
-function generateResponse(intent: Intent, facts: SupportFacts, _userMessage: string): string {
+function generateResponse(intent: Intent, facts: SupportFacts, userMessage: string): string {
   switch (intent) {
     case 'payment_status': {
       const txns = facts.transactions || [];
@@ -161,6 +200,17 @@ function generateResponse(intent: Intent, facts: SupportFacts, _userMessage: str
       return `*Your PCU Balance*\n\nAvailable: ${bal.balance_pcu} PCU\nLifetime earned: ${bal.total_minted_pcu} PCU\n\nUse /redeem to cash out.`;
     }
 
+    case 'knowledge': {
+      // Small built‑in knowledge base
+      if (userMessage.toLowerCase().includes('pcu')) {
+        return 'PCU stands for Power Credit Unit. It is the digital energy credit you earn for verified solar exports. 1 PCU ≈ 1 kWh of exported energy. You can redeem PCU for mobile money via /redeem.';
+      }
+      if (userMessage.toLowerCase().includes('enerlectra')) {
+        return 'Enerlectra is an Energy Operations Layer – it helps you track, settle and get paid for energy, using a simple Telegram bot.';
+      }
+      return 'I can answer questions about PCU, payments, tokens, and faults. Try asking something specific.';
+    }
+
     default:
       return 'I am not sure how to help with that. You can try asking about payments, tokens, faults, or your balance. If you need urgent help, contact the operator.';
   }
@@ -193,6 +243,8 @@ async function generateResponseWithAI(
   } else if (intent === 'account_balance') {
     const bal = facts.balance || { balance_pcu: 0, total_minted_pcu: 0 };
     context = `Current balance: ${bal.balance_pcu} PCU. Lifetime earned: ${bal.total_minted_pcu} PCU.`;
+  } else if (intent === 'knowledge') {
+    context = 'The user is asking a general knowledge question.';
   } else {
     context = 'No specific facts available for this request.';
   }
@@ -224,6 +276,7 @@ function checkEscalation(intent: Intent, facts: SupportFacts): boolean {
     return true;
   }
   if (intent === 'unknown') return true;
+  // Knowledge questions do not need escalation
   return false;
 }
 
@@ -308,6 +361,10 @@ export async function handleSupport(ctx: BotContext): Promise<void> {
     return;
   }
 
+  // ── Clear any stale Redis workflow state ───────────────────────────
+  const telegramId = ctx.from!.id.toString();
+  await redis.del(`demo_state:${telegramId}`);
+
   const state = getBotState(ctx);
   if (!state) {
     await ctx.reply('Authentication error. Please try /start first.');
@@ -346,6 +403,7 @@ export async function handleSupport(ctx: BotContext): Promise<void> {
     );
   }
 }
+
 export async function handleFreeformSupport(ctx: any) {
   await handleSupport(ctx);
 }

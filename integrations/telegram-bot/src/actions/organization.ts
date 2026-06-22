@@ -113,7 +113,7 @@ export async function handleOrgSettings(ctx: BotContext) {
 export async function handleAddCustomer(ctx: BotContext) {
   await ctx.answerCbQuery();
   const telegramId = ctx.from!.id.toString();
+  await redis.del(`demo_state:${telegramId}`);   // ← CLEAR STALE STATE
   await redis.set(`demo_state:${telegramId}`, 'add_customer_meter', { ex: 120 });
   await ctx.reply('Enter the customer\'s meter number:');
 }
-
