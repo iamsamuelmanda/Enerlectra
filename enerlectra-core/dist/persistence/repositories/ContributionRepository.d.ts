@@ -88,3 +88,4 @@ export declare class ContributionRepository {
      */
     private mapRow;
 }
+

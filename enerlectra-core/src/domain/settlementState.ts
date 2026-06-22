@@ -5,3 +5,4 @@ export const SETTLEMENT_STATES: Record<SettlementState, SettlementState> = {
   PREVIEW: "PREVIEW",
   FINAL: "FINAL",
 };
+

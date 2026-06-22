@@ -57,3 +57,4 @@ export function hammingDistance(a: string, b: string): number {
 export function isVisuallySame(a: string, b: string, threshold = 25): boolean {
   return hammingDistance(a, b) <= threshold;
 }
+

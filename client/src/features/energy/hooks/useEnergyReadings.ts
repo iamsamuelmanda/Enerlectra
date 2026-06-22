@@ -19,3 +19,4 @@ export function useEnergyReadings(clusterId: string, from: string, to: string) {
 
   return { readings, loading, error };
 }
+

@@ -123,3 +123,4 @@ export declare class SettlementEngine {
      */
     static verifySettlement(settlement: Settlement): boolean;
 }
+

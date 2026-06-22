@@ -41,3 +41,4 @@ export declare function getTransitionHistory(supabase: SupabaseClient, settlemen
         timestamp: Date;
     }[];
 }>;
+

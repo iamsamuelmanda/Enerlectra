@@ -36,3 +36,4 @@ export declare class StateMachineIntegration {
      */
     static createTransitionEvent(trigger: keyof typeof MARKETPLACE_TRIGGERS, fromState: LifecycleState, toState: LifecycleState, metadata: Record<string, any>): StateTransitionEvent;
 }
+

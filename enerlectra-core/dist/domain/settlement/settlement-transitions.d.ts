@@ -22,3 +22,4 @@ export declare function verifyStateHash(cycle: SettlementCycle): boolean;
  * Check if cycle can transition to finalized
  */
 export declare function canFinalize(cycle: SettlementCycle): boolean;
+

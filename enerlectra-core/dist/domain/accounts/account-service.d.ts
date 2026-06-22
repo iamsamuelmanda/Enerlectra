@@ -50,3 +50,4 @@ export declare class AccountService {
     getClusterContributors(cluster_id: string): Promise<string[]>;
     private mapAccount;
 }
+

@@ -10,3 +10,4 @@ export declare function simulateOutcome({ installedKw, households, avgConsumptio
     deficitKwh: number;
     status: "healthy" | "stressed" | "offline";
 };
+

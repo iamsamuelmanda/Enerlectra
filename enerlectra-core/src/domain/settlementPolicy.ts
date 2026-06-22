@@ -17,3 +17,4 @@ export const SettlementPolicy = {
     return state === SETTLEMENT_STATES.PREVIEW;
   },
 };
+

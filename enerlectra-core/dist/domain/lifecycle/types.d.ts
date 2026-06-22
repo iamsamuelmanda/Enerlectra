@@ -7,3 +7,4 @@
  * - ClusterRepository lifecycle_state usage
  */
 export type LifecycleState = 'PLANNING' | 'FUNDING' | 'FUNDED' | 'INSTALLING' | 'OPERATIONAL' | 'FINALIZED' | 'CANCELLED' | 'FAILED';
+

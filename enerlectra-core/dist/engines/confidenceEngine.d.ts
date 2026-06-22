@@ -4,3 +4,4 @@ export declare function calculateConfidence({ progressPct, contributorsCount, da
     daysElapsed: number;
     totalDays: number;
 }): number;
+

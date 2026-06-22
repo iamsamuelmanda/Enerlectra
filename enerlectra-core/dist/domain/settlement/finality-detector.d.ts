@@ -38,3 +38,4 @@ export declare class FinalityDetector {
         challenge_window_end?: Date;
     }): Promise<boolean>;
 }
+

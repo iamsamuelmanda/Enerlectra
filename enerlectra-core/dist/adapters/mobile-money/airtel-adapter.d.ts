@@ -112,3 +112,4 @@ export declare class AirtelMoneyAdapter {
 }
 export declare function createAirtelAdapter(config: AirtelConfig): AirtelMoneyAdapter;
 export declare function getAirtelConfigFromEnv(): AirtelConfig;
+

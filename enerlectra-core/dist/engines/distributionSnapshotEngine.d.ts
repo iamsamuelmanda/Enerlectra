@@ -13,3 +13,4 @@ export interface DistributionSnapshot {
  * FINAL, AUDITABLE ENERGY DISTRIBUTION
  */
 export declare function generateDistributionSnapshot(clusterId: string, ownership: OwnershipEntry[], totalSurplusKwh: number): DistributionSnapshot;
+

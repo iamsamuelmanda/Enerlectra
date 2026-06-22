@@ -19,3 +19,4 @@ export function useOwnership(clusterId: string) {
 
   return { ownership, loading, error };
 }
+

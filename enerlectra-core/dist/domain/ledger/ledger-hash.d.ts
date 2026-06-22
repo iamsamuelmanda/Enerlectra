@@ -69,3 +69,4 @@ export declare function computeCycleHash(cycle: {
  * Used for cycle hash computation
  */
 export declare function computeLedgerMerkleRoot(entryHashes: string[]): string;
+

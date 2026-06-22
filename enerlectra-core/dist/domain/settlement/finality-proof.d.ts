@@ -36,3 +36,4 @@ export declare function exportFinalityProof(proof: FinalityProof): string;
  * Import finality proof from JSON
  */
 export declare function importFinalityProof(json: string): FinalityProof;
+

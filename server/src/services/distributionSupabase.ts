@@ -72,3 +72,4 @@ export async function hasFinalDistributionForSnapshot(
 
   return !!(data && data.length > 0);
 }
+

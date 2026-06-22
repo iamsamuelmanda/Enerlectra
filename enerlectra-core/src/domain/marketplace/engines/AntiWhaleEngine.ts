@@ -386,3 +386,4 @@ export class AntiWhaleEngine {
     return 1.0;
   }
 }
+

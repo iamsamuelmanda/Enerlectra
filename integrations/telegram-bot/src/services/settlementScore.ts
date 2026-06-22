@@ -74,3 +74,4 @@ export type ScoreInputs = {
       breakdown: { physics, temporal, trust, device },
     };
   }
+

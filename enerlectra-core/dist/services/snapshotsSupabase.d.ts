@@ -20,3 +20,4 @@ export declare function getSnapshotHistoryForCluster(clusterId: string, limit?: 
  * Get snapshots by lifecycle state transition
  */
 export declare function getSnapshotsByStateTransition(clusterId: string, toState: LifecycleState): Promise<ClusterSnapshot[]>;
+

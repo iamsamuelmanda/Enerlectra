@@ -10,3 +10,4 @@ export declare class Settlement {
     moveToPreview(): void;
     finalize(): void;
 }
+

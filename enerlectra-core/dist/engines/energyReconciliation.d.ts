@@ -41,3 +41,4 @@ export declare function reconcileEnergyAllocation({ readings, ownership, cluster
     };
 };
 export {};
+

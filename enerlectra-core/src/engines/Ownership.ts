@@ -67,3 +67,4 @@ function normalizeOwnership(entries: OwnershipEntry[]): OwnershipEntry[] {
 export function isParticipant(snapshot: OwnershipSnapshot, userId: string): boolean {
   return snapshot.entries.some(e => e.userId === userId && e.pct > 0);
 }
+

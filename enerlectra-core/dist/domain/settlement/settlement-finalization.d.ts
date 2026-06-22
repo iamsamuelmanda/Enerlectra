@@ -96,3 +96,4 @@ export declare function exportSettlementProof(cycle: SettlementCycle): {
     entitlementCount: number;
     timestamp: number;
 };
+

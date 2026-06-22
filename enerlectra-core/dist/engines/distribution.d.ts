@@ -17,3 +17,4 @@ export declare function distributeOutcome(ownership: OwnershipEntry[], totalKwh:
  * Ensures the cluster ownership table is mathematically sound.
  */
 export declare function validateOwnershipSum(ownership: OwnershipEntry[]): void;
+

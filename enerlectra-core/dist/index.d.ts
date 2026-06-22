@@ -51,3 +51,4 @@ export { SettlementRepository, } from './persistence/repositories/SettlementRepo
 export { ClusterRepository, } from './persistence/repositories/ClusterRepository';
 export { UserRepository, } from './persistence/repositories/UserRepository';
 export { supabase } from './lib/supabase';
+

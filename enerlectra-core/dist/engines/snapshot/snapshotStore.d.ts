@@ -43,3 +43,4 @@ export declare function getLatestSnapshot(clusterId: string): OwnershipSnapshotR
  * Throws if not found.
  */
 export declare function getSnapshotById(clusterId: string, snapshotId: string): OwnershipSnapshotRecord;
+

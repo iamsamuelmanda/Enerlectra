@@ -92,3 +92,4 @@ class ExchangeRateService {
 }
 
 export const exchangeRateService = new ExchangeRateService();
+

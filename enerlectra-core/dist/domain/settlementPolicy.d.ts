@@ -5,3 +5,4 @@ export declare const SettlementPolicy: {
     canSimulate(state: SettlementState): boolean;
     canFinalize(state: SettlementState): boolean;
 };
+

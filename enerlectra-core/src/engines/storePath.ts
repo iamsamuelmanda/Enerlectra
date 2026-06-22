@@ -13,3 +13,4 @@ export function storeFile(filename: string): string {
   ensureStoreDir()
   return path.join(STORE_DIR, filename)
 }
+

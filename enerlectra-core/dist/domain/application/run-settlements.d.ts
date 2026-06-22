@@ -31,3 +31,4 @@ export declare function runDailySettlement(supabase: SupabaseClient, request: Ru
  * Call this 24 hours after entering finality window
  */
 export declare function attemptFinalization(supabase: SupabaseClient, settlement_cycle_id: string): Promise<RunSettlementResult>;
+

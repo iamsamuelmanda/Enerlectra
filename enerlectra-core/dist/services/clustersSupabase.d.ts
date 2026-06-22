@@ -36,3 +36,4 @@ export declare function getClustersByLocation(location: string): Promise<Cluster
 export declare function getClustersByState(state: LifecycleState): Promise<ClusterRecord[]>;
 export declare function getClustersNearingDeadline(hoursRemaining?: number): Promise<ClusterRecord[]>;
 export declare function getFullyFundedClusters(): Promise<ClusterRecord[]>;
+

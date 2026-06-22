@@ -42,3 +42,4 @@ export declare class SettlementRepository {
      */
     private mapRow;
 }
+

@@ -5,3 +5,4 @@ export interface Transaction {
     amountPCU: number;
     createdAt: string;
 }
+

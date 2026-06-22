@@ -40,3 +40,4 @@ export declare class LedgerService {
     private getAccountUnit;
     private mapEntry;
 }
+

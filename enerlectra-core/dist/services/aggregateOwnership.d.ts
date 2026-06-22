@@ -8,3 +8,4 @@ export interface AggregatedOwnership {
     percent: number;
 }
 export declare function aggregateOwnership(transactions: Transaction[]): AggregatedOwnership[];
+

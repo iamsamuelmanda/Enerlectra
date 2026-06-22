@@ -44,3 +44,4 @@ export function appendAuditEvent(event: Omit<AuditEvent, 'timestamp'>) {
 }
 
 const FILE = storeFile('audit-log.json')
+

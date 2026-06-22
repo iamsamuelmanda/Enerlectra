@@ -11,3 +11,4 @@ export interface Cluster {
     status: 'open';
     createdAt: string;
 }
+

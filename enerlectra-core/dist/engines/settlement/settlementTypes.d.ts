@@ -16,3 +16,4 @@ export interface SettlementInstruction {
     generatedAt: string;
     supersedesSettlementId?: string;
 }
+

@@ -40,3 +40,4 @@ export declare function getCycleFingerprint(cycle: SettlementCycle): string;
  * Verify two cycles are identical by hash
  */
 export declare function cyclesEqual(a: SettlementCycle, b: SettlementCycle): boolean;
+

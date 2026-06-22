@@ -127,3 +127,4 @@ export declare enum TreasuryOperationType {
     RESERVE_ALLOCATION = "RESERVE_ALLOCATION",// To reserves
     RESERVE_RELEASE = "RESERVE_RELEASE"
 }
+

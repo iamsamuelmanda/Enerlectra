@@ -14,3 +14,4 @@ export declare function evaluateCampaign({ totalUnits, targetUnits, deadline, ta
     };
     failureLossKwh: number;
 };
+

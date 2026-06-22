@@ -41,3 +41,4 @@ export declare class AccountReconciliation {
      */
     verifyCycleReconciled(settlement_cycle_id: string): Promise<boolean>;
 }
+

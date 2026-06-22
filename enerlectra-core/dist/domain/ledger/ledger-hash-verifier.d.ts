@@ -45,3 +45,4 @@ export declare class LedgerHashVerifier {
         first_break_at: number | null;
     }>;
 }
+

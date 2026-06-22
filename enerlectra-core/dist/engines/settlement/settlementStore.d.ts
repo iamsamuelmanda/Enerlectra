@@ -19,3 +19,4 @@ export declare function getNetForUser(userId: string): {
     userId: string;
     netZMW: number;
 };
+

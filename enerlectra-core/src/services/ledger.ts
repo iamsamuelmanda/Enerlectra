@@ -28,3 +28,4 @@ export function recordContribution(entry: ContributionEntry): void {
 }
 
 const file = storeFile('contributions.json')
+

@@ -21,3 +21,4 @@ export function atomicWriteJson(
   // 2) Atomic replace
   fs.renameSync(tmpPath, filePath)
 }
+

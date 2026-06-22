@@ -51,3 +51,4 @@ export declare class UserRepository {
      */
     private mapRow;
 }
+

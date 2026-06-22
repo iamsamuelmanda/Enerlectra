@@ -62,3 +62,4 @@ export declare function getClusterContributions(clusterId: string): Promise<Cont
  * Check if contribution can be withdrawn
  */
 export declare function canWithdrawContribution(contributionId: string): Promise<boolean>;
+

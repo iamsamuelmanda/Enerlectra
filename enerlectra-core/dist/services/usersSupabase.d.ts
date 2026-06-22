@@ -25,3 +25,4 @@ export declare function getUserByEmail(email: string): Promise<UserRecord | null
 export declare function updateUserClass(userId: string, newClass: UserClass): Promise<UserRecord>;
 export declare function updateUserTotalInvested(userId: string, delta: number): Promise<UserRecord>;
 export declare function incrementUserClusterCount(userId: string): Promise<UserRecord>;
+

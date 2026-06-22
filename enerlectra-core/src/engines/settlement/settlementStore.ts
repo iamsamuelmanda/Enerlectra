@@ -84,3 +84,4 @@ export function getNetForUser(
   const netZMW = records.reduce((sum, r) => sum + r.amountZMW, 0)
   return { userId, netZMW }
 }
+

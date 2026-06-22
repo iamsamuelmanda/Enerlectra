@@ -102,3 +102,4 @@ export function createDatabaseFromEnv(): Database {
     max: parseInt(process.env.DB_POOL_SIZE || '20', 10),
   });
 }
+

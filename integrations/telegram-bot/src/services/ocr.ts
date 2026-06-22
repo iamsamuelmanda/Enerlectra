@@ -806,3 +806,4 @@ export function registerOCRShutdownHandlers(): void {
   process.once('SIGTERM', () => shutdown('SIGTERM'));
   process.once('SIGINT', () => shutdown('SIGINT'));
 }
+

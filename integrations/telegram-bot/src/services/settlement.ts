@@ -240,3 +240,4 @@ export async function getPayoutStatus(reference: string): Promise<PayoutResult> 
     errorMessage: data.error_message,
   };
 }
+

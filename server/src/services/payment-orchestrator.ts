@@ -4,3 +4,4 @@ import { TreasuryService } from '../../../enerlectra-core/src/domain/treasury/tr
 
 const treasury = new TreasuryService(supabase);
 export const paymentOrchestrator = new PaymentOrchestrator(supabase, treasury);
+

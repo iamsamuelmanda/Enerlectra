@@ -475,3 +475,4 @@ export class SettlementEngine {
     return recalculatedHash === settlement.hash;
   }
 }
+

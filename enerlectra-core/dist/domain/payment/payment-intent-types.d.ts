@@ -95,3 +95,4 @@ export declare function isTerminalState(state: PaymentIntentState): boolean;
 export declare function isSuccessState(state: PaymentIntentState): boolean;
 export declare function isFailureState(state: PaymentIntentState): boolean;
 export declare function canTransitionTo(currentState: PaymentIntentState, targetState: PaymentIntentState): boolean;
+

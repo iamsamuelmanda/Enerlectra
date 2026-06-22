@@ -6,3 +6,4 @@ export type ContributionEntry = {
     timestamp: string;
 };
 export declare function recordContribution(entry: ContributionEntry): void;
+

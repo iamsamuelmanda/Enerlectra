@@ -132,3 +132,4 @@ export async function getUserConsent(userId: string): Promise<boolean> {
   }
   return data?.consent_given ?? false;
 }
+

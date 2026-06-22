@@ -96,3 +96,4 @@ export declare class AntiWhaleEngine {
      */
     static calculateEarlyInvestorBonus(clusterFundingPct: number): number;
 }
+

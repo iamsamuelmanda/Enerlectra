@@ -41,3 +41,4 @@ export function useAuth() {
 
   return { user, isLoading, signOut };
 }
+

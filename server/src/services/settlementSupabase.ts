@@ -95,3 +95,4 @@ export async function getNetForUserFromDb(userId: string): Promise<{
 
   return { userId, totalKwh, totalAmountZMW };
 }
+

@@ -134,3 +134,4 @@ export declare class SnapshotEngine {
         ownershipChanges: Map<string, number>;
     };
 }
+

@@ -21,3 +21,4 @@ export declare function calculateOwnershipFromContributions(contributions: Array
  * Validates if a user is a "Participant" (owns > 0%) in a cluster.
  */
 export declare function isParticipant(snapshot: OwnershipSnapshot, userId: string): boolean;
+

@@ -39,3 +39,4 @@ export declare class SnapshotRepository {
      */
     private mapRow;
 }
+

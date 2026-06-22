@@ -11,3 +11,4 @@ export interface AuditEvent {
  * This is the system ledger.
  */
 export declare function appendAuditEvent(event: Omit<AuditEvent, 'timestamp'>): void;
+

@@ -33,3 +33,4 @@ export declare class Database {
  * Create database instance from environment
  */
 export declare function createDatabaseFromEnv(): Database;
+

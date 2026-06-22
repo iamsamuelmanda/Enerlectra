@@ -34,3 +34,4 @@ export declare function computeStateHash(cycle: SettlementCycle): string;
  * Create initial settlement cycle
  */
 export declare function createSettlementCycle(cluster_id: string, settlement_date: string): SettlementCycle;
+

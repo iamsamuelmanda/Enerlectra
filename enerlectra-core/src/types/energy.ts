@@ -41,3 +41,4 @@ export interface ReconciliationResult {
   allocation: EnergyAllocation;
   unitShares: UnitEnergyShare[];
 }
+

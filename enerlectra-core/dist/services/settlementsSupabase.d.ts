@@ -27,3 +27,4 @@ export declare function getSettlementHistoryForCluster(clusterId: string, limit?
  * Get user settlement history (flat ParticipantSettlement list)
  */
 export declare function getUserSettlements(userId: string, limit?: number): Promise<ParticipantSettlement[]>;
+

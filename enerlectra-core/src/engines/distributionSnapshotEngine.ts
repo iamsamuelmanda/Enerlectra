@@ -32,3 +32,4 @@ export function generateDistributionSnapshot(
     generatedAt: new Date().toISOString()
   }
 }
+

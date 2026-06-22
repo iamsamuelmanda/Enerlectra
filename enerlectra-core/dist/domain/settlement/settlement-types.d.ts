@@ -68,3 +68,4 @@ export declare function isValidWh(value: WattHours): boolean;
 export declare function assertNonNegativeNgwee(value: Ngwee, context: string): void;
 export declare function assertNonNegativeWh(value: WattHours, context: string): void;
 export {};
+

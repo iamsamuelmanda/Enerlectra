@@ -107,3 +107,4 @@ export declare class MTNMobileMoneyAdapter {
 }
 export declare function createMTNAdapter(config: MTNConfig): MTNMobileMoneyAdapter;
 export declare function getMTNConfigFromEnv(): MTNConfig;
+

@@ -27,3 +27,4 @@ export declare function detailedValidate(cycle: SettlementCycle): {
     valid: boolean;
     errors: string[];
 };
+

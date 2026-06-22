@@ -38,3 +38,4 @@ export declare class AccountInvariants {
      */
     private getBalance;
 }
+

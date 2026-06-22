@@ -187,3 +187,4 @@ export declare enum MarketplaceErrorCode {
  * Human-readable error messages
  */
 export declare const MARKETPLACE_ERROR_MESSAGES: Record<MarketplaceErrorCode, string>;
+

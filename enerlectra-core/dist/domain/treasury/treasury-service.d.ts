@@ -84,3 +84,4 @@ export declare class TreasuryService {
     private getRailStatus;
     private getExternalEscrowAccount;
 }
+

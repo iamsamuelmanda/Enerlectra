@@ -6,3 +6,4 @@ export function decideSettlement(score: number, amount: number): SettlementDecis
   if (score >= 0.45) return 'REVIEW';       // lowered from 0.5
   return 'REJECT';
 }
+

@@ -30,3 +30,4 @@ export declare function isTerminalState(state: EEState): boolean;
  * Check if a state allows challenge
  */
 export declare function isChallengeableState(state: EEState): boolean;
+

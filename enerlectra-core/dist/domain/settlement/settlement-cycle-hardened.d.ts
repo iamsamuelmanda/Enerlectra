@@ -85,3 +85,4 @@ export interface SerializedSettlementCycle {
 }
 export declare function serializeSettlementCycle(cycle: SettlementCycle): SerializedSettlementCycle;
 export declare function deserializeSettlementCycle(data: SerializedSettlementCycle): SettlementCycle;
+

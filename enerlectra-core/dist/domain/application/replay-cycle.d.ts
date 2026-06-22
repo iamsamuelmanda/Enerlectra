@@ -35,3 +35,4 @@ export declare function verifyEntireLedger(supabase: SupabaseClient): Promise<{
     cryptographically_sound: boolean;
     errors: string[];
 }>;
+

@@ -16,3 +16,4 @@ interface GenerateSettlementParams {
  */
 export declare function generateSettlementInstructions(params: GenerateSettlementParams): SettlementInstruction[];
 export {};
+

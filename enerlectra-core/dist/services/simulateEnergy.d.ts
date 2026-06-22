@@ -17,3 +17,4 @@ export type SimulationResult = {
  * No I/O, no side effects.
  */
 export declare function simulateEnergy({ target_kW, days, peakKwhPerKW, avgConsumptionPerHouse, households }: SimulationInput): SimulationResult;
+

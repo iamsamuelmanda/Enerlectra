@@ -73,3 +73,4 @@ export declare class SettlementService {
     private mapCycle;
     private serializeCycle;
 }
+

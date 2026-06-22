@@ -20,3 +20,4 @@ export declare function findDistributionBySnapshotId(snapshotId: string): FinalD
  * Caller is responsible for ensuring the snapshot is not already finalized.
  */
 export declare function appendFinalDistribution(record: Omit<FinalDistributionRecord, 'distributionId' | 'finalizedAt'>): FinalDistributionRecord;
+

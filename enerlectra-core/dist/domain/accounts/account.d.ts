@@ -59,3 +59,4 @@ export interface TransferRequest {
     operation_type: string;
     description?: string;
 }
+

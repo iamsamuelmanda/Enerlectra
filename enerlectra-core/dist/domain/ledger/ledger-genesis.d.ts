@@ -24,3 +24,4 @@ export declare function verifyGenesisEntry(entry: {
     entry_sequence: number;
     previous_hash: string;
 }): boolean;
+

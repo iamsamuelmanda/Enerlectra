@@ -41,3 +41,4 @@ export class Settlement {
     this.state = SETTLEMENT_STATES.FINAL;
   }
 }
+

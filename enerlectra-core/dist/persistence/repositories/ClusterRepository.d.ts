@@ -82,3 +82,4 @@ export declare class ClusterRepository {
      */
     private mapRow;
 }
+
