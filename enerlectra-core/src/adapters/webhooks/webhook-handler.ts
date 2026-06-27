@@ -109,17 +109,21 @@ export class WebhookHandler {
     if (!logged.inserted) return { success: true, webhookId, processed: false };
 
     try {
-      if (params.signature) {
-        const ok = params.verifier(rawPayload, params.signature, params.secret);
-        if (!ok) {
-          await this.updateWebhookStatus(webhookId, 'FAILED', 'Invalid signature');
-          return { success: false, webhookId, processed: false, error: 'Invalid signature' };
-        }
+      // ✅ FIXED: Closed security bypass flaw. Enforces signature verification if a signed channel is executing.
+      if (!params.signature) {
+        await this.updateWebhookStatus(webhookId, 'FAILED', 'Missing required signature header');
+        return { success: false, webhookId, processed: false, error: 'Missing signature', retry: false };
+      }
+
+      const ok = params.verifier(rawPayload, params.signature, params.secret);
+      if (!ok) {
+        await this.updateWebhookStatus(webhookId, 'FAILED', 'Invalid signature');
+        return { success: false, webhookId, processed: false, error: 'Invalid signature', retry: false };
       }
 
       if (timestamp !== null && !this.isFresh(timestamp)) {
         await this.updateWebhookStatus(webhookId, 'FAILED', 'Stale webhook');
-        return { success: false, webhookId, processed: false, error: 'Stale webhook' };
+        return { success: false, webhookId, processed: false, error: 'Stale webhook', retry: false };
       }
 
       if (kind === 'unknown') {
@@ -136,8 +140,16 @@ export class WebhookHandler {
       await this.updateWebhookStatus(webhookId, 'COMPLETED');
       return { success: true, webhookId, processed: true };
     } catch (error: any) {
+      // ✅ FIXED: Differentiates between infrastructure errors (retry: true) and unresolvable logical errors
+      const isUnresolvable = error?.message?.includes('Ghost transaction') || error?.message?.includes('Missing contribution reference');
       await this.updateWebhookStatus(webhookId, 'ERROR', error?.message || 'Webhook processing failed');
-      return { success: false, webhookId, processed: false, error: error?.message || 'Webhook processing failed', retry: true };
+      return { 
+        success: false, 
+        webhookId, 
+        processed: false, 
+        error: error?.message || 'Webhook processing failed', 
+        retry: !isUnresolvable 
+      };
     }
   }
 
@@ -229,8 +241,6 @@ export class WebhookHandler {
     const amountZmw = Number(amountRaw);
     const contributionStatus = this.normalizeContributionStatus(String(params.payload?.status || params.payload?.data?.status || params.eventType || 'PENDING'));
 
-    // ✅ FIXED: Look up using a defensive .or() query checking both intent_id (the reference displayed to users) 
-    // and external_reference (if previously indexed) to accommodate all aggregator styles.
     const { data: intent, error: fetchError } = await this.supabase
       .from(CONTRIBUTIONS_TABLE)
       .select('*')
@@ -238,23 +248,13 @@ export class WebhookHandler {
       .maybeSingle();
     if (fetchError) throw fetchError;
 
+    // ✅ FIXED: Prevent unresolvable retry storm. If the transaction cannot be verified locally, 
+    // we halt processing explicitly to notify our upstream orchestration layers.
     if (!intent) {
-      if (contributionStatus === 'FAILED') return; // Cannot update state for an unresolvable record
-
-      const fallback = await this.orchestrator.confirmPayment({
-        externalReference,
-        rail: this.mapProviderToRail(params.provider),
-        amountNgwee: ngwee(Number.isFinite(amountZmw) ? Math.round(amountZmw * 100) : 0),
-        confirmedAt: new Date(),
-        metadata: { provider: params.provider, eventType: params.eventType, payload: params.payload },
-      });
-      if (!fallback.success) throw new Error(fallback.error || 'Contribution confirmation failed');
-      return;
+      throw new Error(`Ghost transaction: Reference ${externalReference} found no database match.`);
     }
 
     if (contributionStatus === 'FAILED') {
-      // ✅ FIXED: Routes explicitly through the Orchestrator domain machine rather than running an invalid manual update.
-      // This properly handles treasury release mechanisms and transitions state safely to FAILED.
       await this.orchestrator.markPaymentFailed(
         intent.intent_id,
         'PROVIDER_WEBHOOK_FAILURE',
@@ -263,9 +263,6 @@ export class WebhookHandler {
       return;
     }
 
-    // ✅ FIXED: Satisfies PaymentOrchestrator.confirmPayment's inner dependency contract.
-    // If the record exists but its external_reference is unpopulated, we index it here before calling confirmPayment
-    // so that the internal 'findByExternalReference' lookup resolves without dropping out.
     if (!intent.external_reference) {
       const { error: updateRefError } = await this.supabase
         .from(CONTRIBUTIONS_TABLE)
