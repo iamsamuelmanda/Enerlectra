@@ -229,14 +229,18 @@ export class WebhookHandler {
     const amountZmw = Number(amountRaw);
     const contributionStatus = this.normalizeContributionStatus(String(params.payload?.status || params.payload?.data?.status || params.eventType || 'PENDING'));
 
+    // ✅ FIXED: Look up using a defensive .or() query checking both intent_id (the reference displayed to users) 
+    // and external_reference (if previously indexed) to accommodate all aggregator styles.
     const { data: intent, error: fetchError } = await this.supabase
       .from(CONTRIBUTIONS_TABLE)
       .select('*')
-      .eq('transaction_id', externalReference)
+      .or(`intent_id.eq.${externalReference},external_reference.eq.${externalReference}`)
       .maybeSingle();
     if (fetchError) throw fetchError;
 
     if (!intent) {
+      if (contributionStatus === 'FAILED') return; // Cannot update state for an unresolvable record
+
       const fallback = await this.orchestrator.confirmPayment({
         externalReference,
         rail: this.mapProviderToRail(params.provider),
@@ -244,19 +248,30 @@ export class WebhookHandler {
         confirmedAt: new Date(),
         metadata: { provider: params.provider, eventType: params.eventType, payload: params.payload },
       });
-      if (!fallback.success && contributionStatus === 'FAILED') throw new Error(fallback.error || 'Contribution confirmation failed');
       if (!fallback.success) throw new Error(fallback.error || 'Contribution confirmation failed');
       return;
     }
 
     if (contributionStatus === 'FAILED') {
-      const { error } = await this.supabase.from(CONTRIBUTIONS_TABLE).update({
-        status: 'FAILED',
-        metadata: { ...(intent.metadata || {}), webhook: params.payload },
-        updated_at: new Date().toISOString(),
-      }).eq('transaction_id', externalReference);
-      if (error) throw error;
+      // ✅ FIXED: Routes explicitly through the Orchestrator domain machine rather than running an invalid manual update.
+      // This properly handles treasury release mechanisms and transitions state safely to FAILED.
+      await this.orchestrator.markPaymentFailed(
+        intent.intent_id,
+        'PROVIDER_WEBHOOK_FAILURE',
+        params.payload?.message || params.payload?.error || 'Transaction rejected by rail network'
+      );
       return;
+    }
+
+    // ✅ FIXED: Satisfies PaymentOrchestrator.confirmPayment's inner dependency contract.
+    // If the record exists but its external_reference is unpopulated, we index it here before calling confirmPayment
+    // so that the internal 'findByExternalReference' lookup resolves without dropping out.
+    if (!intent.external_reference) {
+      const { error: updateRefError } = await this.supabase
+        .from(CONTRIBUTIONS_TABLE)
+        .update({ external_reference: externalReference })
+        .eq('intent_id', intent.intent_id);
+      if (updateRefError) throw updateRefError;
     }
 
     const confirmation = await this.orchestrator.confirmPayment({
