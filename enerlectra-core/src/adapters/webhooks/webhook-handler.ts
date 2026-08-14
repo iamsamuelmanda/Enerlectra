@@ -262,6 +262,9 @@ export class WebhookHandler {
         'PROVIDER_WEBHOOK_FAILURE',
         params.payload?.message || params.payload?.error || 'Transaction rejected by rail network'
       );
+
+      // Global Event Loop Trigger: Contribution failed explicitly at the provider level
+      eventBus.publish('payment.failed', { externalReference, amountZmw, provider: params.provider, reason: 'Provider dropped transaction' });
       return;
     }
 
