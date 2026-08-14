@@ -1,8 +1,10 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { PaymentOrchestrator } from '../../domain/payment/payment-orchestrator';
-import { PaymentRail } from '../../domain/treasury/treasury-types';
-import { ngwee } from '../../domain/settlement/settlement-types';
+import { PaymentOrchestrator } from '../../domain/payment/payment-orchestrator.js';
+import { PaymentRail } from '../../domain/treasury/treasury-types.js';
+import { ngwee } from '../../domain/settlement/settlement-types.js';
+// Import the unified event bus for publishing domain events
+import { eventBus } from '../../core/eventing/event-bus.js';
 
 export interface WebhookPayload {
   event?: string;
@@ -246,6 +248,9 @@ export class WebhookHandler {
       });
       if (!fallback.success && contributionStatus === 'FAILED') throw new Error(fallback.error || 'Contribution confirmation failed');
       if (!fallback.success) throw new Error(fallback.error || 'Contribution confirmation failed');
+
+      // Global Event Loop Trigger: Fallback verification confirmed a successful ledger contribution
+      eventBus.publish('payment.confirmed', { externalReference, amountZmw, provider: params.provider });
       return;
     }
 
@@ -256,6 +261,9 @@ export class WebhookHandler {
         updated_at: new Date().toISOString(),
       }).eq('transaction_id', externalReference);
       if (error) throw error;
+
+      // Global Event Loop Trigger: Contribution failed explicitly at the provider level
+      eventBus.publish('payment.failed', { externalReference, amountZmw, provider: params.provider, reason: 'Provider dropped transaction' });
       return;
     }
 
@@ -268,6 +276,9 @@ export class WebhookHandler {
     });
 
     if (!confirmation.success) throw new Error(confirmation.error || 'Payment confirmation failed');
+
+    // Global Event Loop Trigger: Standard confirmation execution pipeline successful
+    eventBus.publish('payment.confirmed', { externalReference, amountZmw, provider: params.provider });
   }
 
   private async handlePayoutWebhook(params: { webhookId: string; eventType: string; reference: string | null; payload: any; provider: string }): Promise<void> {
@@ -297,6 +308,15 @@ export class WebhookHandler {
 
     const { error } = await this.supabase.from(SETTLEMENT_PAYOUTS_TABLE).update(update).eq('reference', reference);
     if (error) throw error;
+
+    // Global Event Loop Trigger: Settlement disbursement state modified
+    eventBus.publish('payout.updated', {
+      reference,
+      status,
+      provider: params.provider,
+      providerRef,
+      errorMessage: update.error_message
+    });
   }
 
   private mapProviderToRail(provider: string): PaymentRail {
@@ -307,3 +327,4 @@ export class WebhookHandler {
     return PaymentRail.BANK;
   }
 }
+
