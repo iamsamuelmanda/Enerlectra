@@ -111,17 +111,21 @@ export class WebhookHandler {
     if (!logged.inserted) return { success: true, webhookId, processed: false };
 
     try {
-      if (params.signature) {
-        const ok = params.verifier(rawPayload, params.signature, params.secret);
-        if (!ok) {
-          await this.updateWebhookStatus(webhookId, 'FAILED', 'Invalid signature');
-          return { success: false, webhookId, processed: false, error: 'Invalid signature' };
-        }
+      // ✅ FIXED: Closed security bypass flaw. Enforces signature verification if a signed channel is executing.
+      if (!params.signature) {
+        await this.updateWebhookStatus(webhookId, 'FAILED', 'Missing required signature header');
+        return { success: false, webhookId, processed: false, error: 'Missing signature', retry: false };
+      }
+
+      const ok = params.verifier(rawPayload, params.signature, params.secret);
+      if (!ok) {
+        await this.updateWebhookStatus(webhookId, 'FAILED', 'Invalid signature');
+        return { success: false, webhookId, processed: false, error: 'Invalid signature', retry: false };
       }
 
       if (timestamp !== null && !this.isFresh(timestamp)) {
         await this.updateWebhookStatus(webhookId, 'FAILED', 'Stale webhook');
-        return { success: false, webhookId, processed: false, error: 'Stale webhook' };
+        return { success: false, webhookId, processed: false, error: 'Stale webhook', retry: false };
       }
 
       if (kind === 'unknown') {
@@ -138,8 +142,16 @@ export class WebhookHandler {
       await this.updateWebhookStatus(webhookId, 'COMPLETED');
       return { success: true, webhookId, processed: true };
     } catch (error: any) {
+      // ✅ FIXED: Differentiates between infrastructure errors (retry: true) and unresolvable logical errors
+      const isUnresolvable = error?.message?.includes('Ghost transaction') || error?.message?.includes('Missing contribution reference');
       await this.updateWebhookStatus(webhookId, 'ERROR', error?.message || 'Webhook processing failed');
-      return { success: false, webhookId, processed: false, error: error?.message || 'Webhook processing failed', retry: true };
+      return { 
+        success: false, 
+        webhookId, 
+        processed: false, 
+        error: error?.message || 'Webhook processing failed', 
+        retry: !isUnresolvable 
+      };
     }
   }
 
@@ -234,37 +246,31 @@ export class WebhookHandler {
     const { data: intent, error: fetchError } = await this.supabase
       .from(CONTRIBUTIONS_TABLE)
       .select('*')
-      .eq('transaction_id', externalReference)
+      .or(`intent_id.eq.${externalReference},external_reference.eq.${externalReference}`)
       .maybeSingle();
     if (fetchError) throw fetchError;
 
+    // ✅ FIXED: Prevent unresolvable retry storm. If the transaction cannot be verified locally, 
+    // we halt processing explicitly to notify our upstream orchestration layers.
     if (!intent) {
-      const fallback = await this.orchestrator.confirmPayment({
-        externalReference,
-        rail: this.mapProviderToRail(params.provider),
-        amountNgwee: ngwee(Number.isFinite(amountZmw) ? Math.round(amountZmw * 100) : 0),
-        confirmedAt: new Date(),
-        metadata: { provider: params.provider, eventType: params.eventType, payload: params.payload },
-      });
-      if (!fallback.success && contributionStatus === 'FAILED') throw new Error(fallback.error || 'Contribution confirmation failed');
-      if (!fallback.success) throw new Error(fallback.error || 'Contribution confirmation failed');
-
-      // Global Event Loop Trigger: Fallback verification confirmed a successful ledger contribution
-      eventBus.publish('payment.confirmed', { externalReference, amountZmw, provider: params.provider });
-      return;
+      throw new Error(`Ghost transaction: Reference ${externalReference} found no database match.`);
     }
 
     if (contributionStatus === 'FAILED') {
-      const { error } = await this.supabase.from(CONTRIBUTIONS_TABLE).update({
-        status: 'FAILED',
-        metadata: { ...(intent.metadata || {}), webhook: params.payload },
-        updated_at: new Date().toISOString(),
-      }).eq('transaction_id', externalReference);
-      if (error) throw error;
-
-      // Global Event Loop Trigger: Contribution failed explicitly at the provider level
-      eventBus.publish('payment.failed', { externalReference, amountZmw, provider: params.provider, reason: 'Provider dropped transaction' });
+      await this.orchestrator.markPaymentFailed(
+        intent.intent_id,
+        'PROVIDER_WEBHOOK_FAILURE',
+        params.payload?.message || params.payload?.error || 'Transaction rejected by rail network'
+      );
       return;
+    }
+
+    if (!intent.external_reference) {
+      const { error: updateRefError } = await this.supabase
+        .from(CONTRIBUTIONS_TABLE)
+        .update({ external_reference: externalReference })
+        .eq('intent_id', intent.intent_id);
+      if (updateRefError) throw updateRefError;
     }
 
     const confirmation = await this.orchestrator.confirmPayment({
@@ -327,4 +333,3 @@ export class WebhookHandler {
     return PaymentRail.BANK;
   }
 }
-
