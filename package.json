@@ -7,7 +7,7 @@
   "main": "server/src/index.ts",
   "scripts": {
     "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { try { require('husky').install() } catch (e) {} }\"",
-    "start": "tsx -r tsconfig-paths/register ./dist/server/src/index.js",
+   "start": "tsx -r tsconfig-paths/register ./server/src/index.ts",
     "dev": "tsx ./server/src/index.ts",
     "build": "npm run build:client",
     "build:client": "cd client && npx vite build",
