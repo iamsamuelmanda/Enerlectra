@@ -1,5 +1,5 @@
 // src/services/pcuMinting.ts
-import { supabase } from "../../../enerlectra-core/src/lib/supabase";
+import { supabase } from "../../../enerlectra-core/src/lib/supabase.js";
 
 interface MeterReading {
   id: string;

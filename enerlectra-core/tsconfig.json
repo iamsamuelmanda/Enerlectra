@@ -1,17 +1,32 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "rootDir": "src",
-    "outDir": "dist",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "./src",
+    "outDir": "./dist",
     "declaration": true,
+    "declarationMap": false,
     "strict": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "allowImportingTsExtensions": false,
-    "noEmitOnError": false
+    "forceConsistentCasingInFileNames": true,
+    "noEmitOnError": false,
+    "noEmit": false,
+    "baseUrl": ".",
+    "paths": {
+      "enerlectra-core/*": ["src/*"],
+      "enerlectra-core/src/*": ["src/*"]
+    }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/tests", "src/examples"]
+  "include": ["./src/**/*.ts"],
+  "exclude": [
+    "./node_modules",
+    "./dist",
+    "./dist/**/*",
+    "./src/tests",
+    "./src/examples",
+    "./src/lib/ledgerService.ts",
+    "./src/lib/app/**"
+  ]
 }

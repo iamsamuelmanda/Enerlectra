@@ -4,8 +4,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { computeEntryHash, verifyEntryHash } from './ledger-hash';
-import { isGenesisHash } from './ledger-genesis';
+import { computeEntryHash, verifyEntryHash } from './ledger-hash.js';
+import { isGenesisHash } from './ledger-genesis.js';
 
 export interface HashChainVerificationResult {
   valid: boolean;

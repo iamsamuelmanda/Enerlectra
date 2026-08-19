@@ -3,7 +3,7 @@ import { Router } from 'express';
 import {
   getClusterState,
   setClusterState,
-} from '../services/settlementStateSupabase';
+} from '../services/settlementStateSupabase.js';
 
 type SettlementState = 'DRAFT' | 'PILOT' | 'ACTIVE' | 'SETTLED' | 'CLOSED' | 'PREVIEW';
 

@@ -7,11 +7,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // PATH FIXES: '../domain/...' -> '../...'
-import { LedgerService } from '../accounts/ledger-service';
-import { AccountInvariants } from '../accounts/invariants';
-import { AccountUnit } from '../accounts/account';
-import { computeStateHash } from '../settlement/settlement-cycle';
-import { LedgerHashVerifier } from '../ledger/ledger-hash-verifier';
+import { LedgerService } from '../accounts/ledger-service.js';
+import { AccountInvariants } from '../accounts/invariants.js';
+import { AccountUnit } from '../accounts/account.js';
+import { computeStateHash } from '../settlement/settlement-cycle.js';
+import { LedgerHashVerifier } from '../ledger/ledger-hash-verifier.js';
 
 export interface ReplayResult {
   settlement_cycle_id: string;

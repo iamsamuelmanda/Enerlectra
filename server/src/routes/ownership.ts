@@ -3,7 +3,7 @@ import { Router } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { createClient } from '@supabase/supabase-js';
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 const router = Router();
 
 if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {

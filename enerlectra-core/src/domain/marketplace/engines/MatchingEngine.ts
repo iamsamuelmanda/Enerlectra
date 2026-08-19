@@ -5,7 +5,7 @@
  * Uses deterministic scoring for repeatability.
  */
 
-import { ClusterSnapshot } from './SnapshotEngine';
+import { ClusterSnapshot } from './SnapshotEngine.js';
 
 export interface Supplier {
   id: string;

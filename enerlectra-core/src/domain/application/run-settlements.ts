@@ -9,7 +9,7 @@ import {
   SettlementService,
   ProductionReport,
   ContributorAllocation,
-} from '../settlement/settlement-service';
+} from '../settlement/settlement-service.js';
 
 export interface RunSettlementRequest {
   cluster_id: string;

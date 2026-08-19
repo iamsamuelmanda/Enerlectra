@@ -1,4 +1,4 @@
-import { SettlementState, SETTLEMENT_STATES } from "./settlementState";
+import { SettlementState, SETTLEMENT_STATES } from "./settlementState.js";
 
 export const SettlementPolicy = {
   canContribute(state: SettlementState): boolean {

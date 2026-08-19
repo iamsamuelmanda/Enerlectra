@@ -5,7 +5,7 @@
  */
 
 import { createHash } from 'crypto';
-import { SettlementCycle } from './settlement-cycle-hardened';
+import { SettlementCycle } from './settlement-cycle-hardened.js';
 
 // ═══════════════════════════════════════════════════════════════
 // CANONICAL SERIALIZATION (Critical for deterministic hashing)

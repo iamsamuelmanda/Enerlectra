@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import pino from 'pino';
 import { reconcileEnergyAllocation } from 'enerlectra-core';
-import { mintPCUForExportReading } from './pcuMinting';
+import { mintPCUForExportReading } from './pcuMinting.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 

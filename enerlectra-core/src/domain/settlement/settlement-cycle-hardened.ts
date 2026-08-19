@@ -11,7 +11,7 @@ import {
     wattHours,
     ZERO_NGWEE,
     ZERO_WH
-  } from './settlement-types';
+  } from './settlement-types.js';
   
   // ═══════════════════════════════════════════════════════════════
   // SETTLEMENT STATE MACHINE

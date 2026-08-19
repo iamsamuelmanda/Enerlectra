@@ -12,6 +12,8 @@ import crypto from 'node:crypto';
 import rateLimit from 'express-rate-limit';
 import prometheus from 'prom-client';
 import pino from 'pino';
+import { posthog } from './services/posthog.js';
+import { setupExpressRequestContext, setupExpressErrorHandler } from 'posthog-node';
 
 // ──────────────────────────────────────────────────────────────
 // ESM path configuration
@@ -48,6 +50,39 @@ import { mintPCUForExportReading } from './services/pcuMinting.js';
 import { runClusterSettlement } from './services/clusterSettlementEngine.js';
 
 // ──────────────────────────────────────────────────────────────
+// Decoupled Core Infrastructure & Intelligence Imports
+// ──────────────────────────────────────────────────────────────
+
+// 1. EventPublisher (Fixed: Import the Class, not a variable)
+import * as eventPublisherModule from '../../enerlectra-core/src/core/eventing/event-publisher.js';
+const EventPublisher = (
+  (eventPublisherModule as any).EventPublisher ?? 
+  (eventPublisherModule as any).default?.EventPublisher ?? 
+  (eventPublisherModule as any).default
+);
+
+// 2. WhatsAppWebhookHandler (Safe ESM wrapper)
+import * as waWebhookModule from '../../enerlectra-core/src/adapters/whatsapp/webhook-handler.js';
+const WhatsAppWebhookHandler = (
+  (waWebhookModule as any).WhatsAppWebhookHandler ?? 
+  (waWebhookModule as any).default?.WhatsAppWebhookHandler ?? 
+  (waWebhookModule as any).default
+);
+
+// 3. Kernel Composition Root
+import { createKernel } from '../../enerlectra-core/src/bootstrap/create-kernel.js';
+import { IncomingMessageEvent } from '../../enerlectra-core/src/core/contracts/incoming-message.js';
+
+// 4. whatsAppClient (Safe ESM wrapper)
+import * as waSenderModule from '../../enerlectra-core/src/adapters/whatsapp/sender.js';
+const whatsAppClient = (
+  (waSenderModule as any).whatsAppClient ?? 
+  (waSenderModule as any).default?.whatsAppClient ?? 
+  (waSenderModule as any).default
+);
+
+
+// ──────────────────────────────────────────────────────────────
 // Express app setup
 // ──────────────────────────────────────────────────────────────
 const app = express();
@@ -65,6 +100,51 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
   } catch (error) {
     logger.warn('⚠️ Supabase not configured, running in demo mode');
   }
+}
+
+const kernel = createKernel();
+// Initialized with the composed kernel's workflow engine
+const whatsAppHandler = new WhatsAppWebhookHandler(supabase, kernel.workflowEngine);
+
+/** Thin adapter: text + phone → EllieWorker reply (matches EventPublisher subscriber). */
+async function processIncomingAgentQuery(
+  body: string,
+  senderPhone: string
+): Promise<string> {
+  if (!supabase) {
+    throw new Error('Database ledger not available');
+  }
+
+  // Route through the Kernel's WorkflowEngine instead of direct EllieWorker
+  const event: IncomingMessageEvent = {
+    eventId: crypto.randomUUID(),
+    correlationId: crypto.randomUUID(),
+    conversationId: `whatsapp:${senderPhone}`,
+    timestamp: new Date().toISOString(),
+    channel: 'whatsapp',
+    interaction: 'text',
+    sender: {
+      id: senderPhone,
+      channel: 'whatsapp',
+      phoneNumber: senderPhone,
+      role: 'unknown',
+    },
+    text: body,
+    metadata: {},
+  };
+
+  const execCtx = {
+    supabase,
+    logger,
+    correlationId: event.correlationId,
+    aiContext: {},
+    actorId: senderPhone,
+    organizationId: 'default-org',
+    posthog,
+  };
+
+  await kernel.workflowEngine.processIncomingMessage(event, execCtx);
+  return 'Your request has been processed by the Enerlectra Kernel.';
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -98,6 +178,9 @@ app.get('/metrics', async (req, res) => {
 app.use(cors());
 app.use(express.json());
 
+// Intercept incoming connection details context before route mounting
+setupExpressRequestContext(posthog, app);
+
 app.use((req, res, next) => {
   const requestId = crypto.randomUUID();
   res.setHeader('X-Request-ID', requestId);
@@ -129,7 +212,11 @@ async function authenticate(req: any, res: any, next: any) {
     return res.status(401).json({ error: 'Unauthorized: Invalid token' });
   }
   req.user = user;
-  next();
+
+  // Scopes all telemetry operations happening inside this request frame to the user's explicit UUID
+  posthog.withContext({ distinctId: user.id }, () => {
+    next();
+  });
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -190,6 +277,7 @@ app.get('/api/health', (req, res) => {
       anthropic: !!process.env.ANTHROPIC_API_KEY,
       exchangeRate: !!process.env.EXCHANGE_RATE_API_KEY,
       prometheus: true,
+      posthog: true,
     },
   });
 });
@@ -302,6 +390,8 @@ app.post('/api/clusters', authenticate, async (req: any, res) => {
       .insert([{ name, location, target_kw, target_usd: target_usd || null, deadline: deadline || null, lifecycle_state: 'open', created_at: new Date().toISOString() }])
       .select().single();
     if (error) throw error;
+
+    posthog.capture({ event: 'cluster_created', properties: { clusterId: data.id, targetKw: target_kw } });
     res.status(201).json(data);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -319,6 +409,8 @@ app.put('/api/clusters/:id', authenticate, async (req: any, res) => {
       .select().single();
     if (error) throw error;
     if (!data) return res.status(404).json({ error: 'Cluster not found' });
+
+    posthog.capture({ event: 'cluster_updated', properties: { clusterId: req.params.id } });
     res.json(data);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -344,7 +436,6 @@ const LENCO_SECRET_KEY = process.env.LENCO_SECRET_KEY || '';
 
 function verifyLencoSignature(payload: string, signature?: string): boolean {
   if (!LENCO_SECRET_KEY || !signature) return false;
-  // SHA256 of the secret first, then HMAC-SHA512
   const webhookHashKey = crypto.createHash('sha256').update(LENCO_SECRET_KEY).digest('hex');
   const expected = crypto.createHmac('sha512', webhookHashKey).update(payload).digest('hex');
   return crypto.timingSafeEqual(
@@ -363,7 +454,6 @@ app.post('/api/webhooks/lenco', express.raw({ type: 'application/json' }), async
     }
 
     const body = JSON.parse(rawBody || '{}');
-    // Lenco nests data inside body.data
     const reference   = body.data?.reference   || body.reference;
     const status      = body.data?.status      || body.status;
     const providerRef = body.data?.lencoReference || body.id;
@@ -374,7 +464,6 @@ app.post('/api/webhooks/lenco', express.raw({ type: 'application/json' }), async
 
     if (!supabase) return res.status(503).json({ error: 'Database not available' });
 
-    // Idempotency check
     const { data: existing } = await supabase
       .from('webhook_events')
       .select('provider_ref')
@@ -384,7 +473,6 @@ app.post('/api/webhooks/lenco', express.raw({ type: 'application/json' }), async
 
     if (existing) return res.status(200).json({ received: true });
 
-    // Log the webhook event
     await supabase.from('webhook_events').insert({
       provider: 'lenco',
       provider_ref: providerRef,
@@ -393,23 +481,92 @@ app.post('/api/webhooks/lenco', express.raw({ type: 'application/json' }), async
       payload: body,
     });
 
-    // Update settlement payout status
     const payoutStatus = status === 'SUCCESSFUL' ? 'completed'
-                      : status === 'FAILED'    ? 'failed'
-                      : 'processing';
+                       : status === 'FAILED'     ? 'failed'
+                       : 'processing';
 
-    await supabase
+    // Enriched query syntax to pluck the associated user identity out of the transaction update context
+    const { data: updatedPayout } = await supabase
       .from('settlement_payouts')
       .update({
         status: payoutStatus,
         completed_at: status === 'SUCCESSFUL' ? new Date().toISOString() : null,
       })
-      .eq('reference', reference);
+      .eq('reference', reference)
+      .select('user_id')
+      .maybeSingle();
+
+    // Track banking settlements to PostHog
+    const targetUser = updatedPayout?.user_id || 'system_anonymous';
+    posthog.capture({
+      distinctId: targetUser,
+      event: 'settlement_payout_processed',
+      properties: { reference, provider: 'lenco', status: payoutStatus }
+    });
 
     return res.status(200).json({ received: true });
   } catch (error: any) {
     logger.error({ err: error?.message || error }, 'Lenco webhook error');
     return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
+// WhatsApp inbound webhook (Authkey)
+// ──────────────────────────────────────────────────────────────
+app.post('/api/webhooks/whatsapp', async (req, res) => {
+  if (!supabase) {
+    return res.status(503).json({ error: 'Database ledger not available' });
+  }
+  try {
+    const result = await whatsAppHandler.processInbound(req.body);
+    if (!result.success) return res.status(400).json(result);
+    return res.sendStatus(200);
+  } catch (err) {
+    logger.error({ err }, '[WhatsApp Webhook Error]');
+    return res.sendStatus(500);
+  }
+});
+
+// ──────────────────────────────────────────────────────────────
+// Ellie Operator Agent Global Event Subscriber Execution Loop
+// ──────────────────────────────────────────────────────────────
+EventPublisher.subscribe('message.received', async (payload: any) => {
+  // payload is now the IncomingMessageEvent object
+  const senderPhone = payload.sender.phoneNumber;
+  const body = payload.text || '';
+  
+  logger.info(`[Event Broker System] Inbound worker telemetry query triggered from: ${senderPhone}`);
+  
+  posthog.capture({
+    distinctId: senderPhone,
+    event: 'message_received',
+    properties: { eventId: payload.eventId, channel: payload.channel }
+  });
+
+  try {
+    // 1. Process query
+    const agentBriefingResponse = await processIncomingAgentQuery(body, senderPhone);
+    
+    // 2. Dispatch reply
+    const dispatchResult = await whatsAppClient.sendTemplate({
+      mobile: senderPhone,
+      templateId: process.env.AUTHKEY_ELLIE_TEMPLATE_ID || '40109',
+      bodyValues: { '1': agentBriefingResponse }
+    });
+
+    if (!dispatchResult.success) {
+      logger.error({ error: dispatchResult.error }, `[Outbound Channel Error] Failed for: ${senderPhone}`);
+    } else {
+      logger.info({ providerMessageId: dispatchResult.providerMessageId }, `[Outbound Dispatch] Ellie responded to ${senderPhone}`);
+      posthog.capture({
+        distinctId: senderPhone,
+        event: 'whatsapp_response_dispatched',
+        properties: { providerMessageId: dispatchResult.providerMessageId }
+      });
+    }
+  } catch (pipelineException: any) {
+    logger.error({ err: pipelineException?.message || pipelineException }, '[Fatal Intelligence Engine Trap]');
   }
 });
 
@@ -450,6 +607,16 @@ app.get('*', (req, res) => {
   });
 });
 
+// Catch route handling failure states and throw them straight into PostHog's exception monitor
+setupExpressErrorHandler(posthog, app);
+
+// Gracefully flush the remaining tracking commands stacked in the node lifecycle memory stack on runtime death
+process.on('SIGTERM', async () => {
+  logger.info('SIGTERM intercept caught. Compiling final analytics payload flush...');
+  await posthog.shutdown();
+  process.exit(0);
+});
+
 // ──────────────────────────────────────────────────────────────
 // Start server
 // ──────────────────────────────────────────────────────────────
@@ -459,6 +626,6 @@ app.listen(PORT, () => {
   logger.info('═'.repeat(70));
   logger.info(`🌐 Server: http://localhost:${PORT}`);
   logger.info(`📅 Started: ${new Date().toISOString()}`);
-  logger.info('📊 SERVICES: Supabase, Lenco, Prometheus, Cron, Staking, Ledger, Marketplace');
+  logger.info('📊 SERVICES: Supabase, Lenco, Prometheus, Cron, Staking, Ledger, Marketplace, EllieAI, PostHog');
   logger.info('═'.repeat(70));
 });

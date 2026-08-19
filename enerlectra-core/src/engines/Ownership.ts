@@ -1,4 +1,4 @@
-import { OwnershipEntry } from './distribution';
+import { OwnershipEntry } from './distribution.js';
 
 /**
  * Snapshot represents the "Locked" ownership state for a specific 

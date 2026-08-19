@@ -20,7 +20,7 @@ export function isGenesisHash(hash: string): boolean {
  * Get previous hash for a new entry
  * Returns GENESIS_HASH if no previous entry exists
  */
-export function getPreviousHash(lastEntryHash: string | null): string {
+export function getPreviousHash(lastEntryHash: string | null | undefined): string {
   return lastEntryHash || GENESIS_HASH;
 }
 

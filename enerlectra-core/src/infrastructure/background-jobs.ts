@@ -5,11 +5,9 @@
 
 import { schedule, ScheduledTask } from 'node-cron';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { TreasuryReconciliation } from '../domain/treasury/treasury-reconciliation';
-import { TreasuryService } from '../domain/treasury/treasury-service';
-import { PaymentOrchestrator } from '../domain/payment/payment-orchestrator';
-import { WebhookRetryScheduler } from '../adapters/webhooks/webhook-handler';
-
+import { TreasuryReconciliation } from '../domain/treasury/treasury-reconciliation.js';
+import { TreasuryService } from '../domain/treasury/treasury-service.js';
+import { PaymentOrchestrator } from '../domain/payment/payment-orchestrator.js';
 // ═══════════════════════════════════════════════════════════════
 // JOB DEFINITIONS
 // ═══════════════════════════════════════════════════════════════
@@ -45,7 +43,6 @@ export class BackgroundJobScheduler {
       treasury: TreasuryService;
       reconciliation: TreasuryReconciliation;
       orchestrator: PaymentOrchestrator;
-      webhookRetry: WebhookRetryScheduler;
     }
   ) {
     this.supabase = supabase;
@@ -74,15 +71,6 @@ export class BackgroundJobScheduler {
       '* * * * *', // Every minute
       async () => {
         return await this.services.orchestrator.processExpiredIntents();
-      }
-    );
-
-    // Webhook retry (every 5 minutes)
-    this.registerJob(
-      'retry_failed_webhooks',
-      '*/5 * * * *', // Every 5 minutes
-      async () => {
-        return await this.services.webhookRetry.processFailedWebhooks();
       }
     );
 
@@ -293,9 +281,6 @@ export class BackgroundJobScheduler {
 
       case 'process_expired_intents':
         return async () => this.services.orchestrator.processExpiredIntents();
-
-      case 'retry_failed_webhooks':
-        return async () => this.services.webhookRetry.processFailedWebhooks();
 
       case 'expire_old_reservations':
         return async () => {

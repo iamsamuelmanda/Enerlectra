@@ -8,16 +8,16 @@ import {
     SettlementCycle,
     SettlementState,
     createSettlementCycle
-  } from './settlement-cycle-hardened';
+  } from './settlement-cycle-hardened.js';
   import {
     validateCycleInvariants,
     SettlementInvariantViolation
-  } from './settlement-invariants';
+  } from './settlement-invariants.js';
   import {
     computeCycleHash,
     computeCycleHashWithPrevious,
     verifyCycleHash
-  } from './settlement-hash';
+  } from './settlement-hash.js';
   
   // ═══════════════════════════════════════════════════════════════
   // STATE TRANSITION RULES

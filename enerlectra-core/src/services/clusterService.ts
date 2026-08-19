@@ -1,6 +1,6 @@
-import { storeFile } from '../engines/storePath';
-import { generateId } from '../utils/id';
-import { Cluster } from '../types/cluster';
+import { storeFile } from '../engines/storePath.js';
+import { generateId } from '../utils/id.js';
+import { Cluster } from '../types/cluster.js';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 

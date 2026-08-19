@@ -11,8 +11,8 @@ import {
   UserState,
   ClusterState,
   UserPosition,
-} from '../../domain/marketplace/engines/AntiWhaleEngine';
-import { ValidationResult } from '../../domain/marketplace/engines/AntiWhaleEngine';
+} from '../../domain/marketplace/engines/AntiWhaleEngine.js';
+import { ValidationResult } from '../../domain/marketplace/engines/AntiWhaleEngine.js';
 
 export interface ContributionRecord {
   id: string;

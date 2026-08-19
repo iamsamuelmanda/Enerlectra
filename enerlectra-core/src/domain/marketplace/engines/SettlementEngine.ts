@@ -5,13 +5,13 @@
  * Settlements are immutable and create audit trail.
  */
 
-import { LifecycleState } from '../../lifecycle/types';
-import { ClusterSnapshot, ParticipantSnapshot } from './SnapshotEngine';
+import { LifecycleState } from '../../lifecycle/types.js';
+import { ClusterSnapshot, ParticipantSnapshot } from './SnapshotEngine.js';
 import {
   MARKETPLACE_INVARIANTS,
   MarketplaceErrorCode,
   MARKETPLACE_ERROR_MESSAGES,
-} from '../rules/MarketplaceInvariants';
+} from '../rules/MarketplaceInvariants.js';
 
 export interface SettlementInput {
   clusterId: string;

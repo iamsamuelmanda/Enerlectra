@@ -5,7 +5,7 @@
  * UI cannot bypass. API cannot override. Persistence validates.
  */
 
-import { LifecycleState } from '../../lifecycle/types';
+import { LifecycleState } from '../../lifecycle/types.js';
 
 /**
  * Core marketplace invariants that must NEVER be violated

@@ -1,7 +1,7 @@
 // src/routes/ownershipLedger.ts
 import { Router } from 'express';
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
-import { getContributionsForCluster } from '../services/contributionsSupabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
+import { getContributionsForCluster } from '../services/contributionsSupabase.js';
 
 const router = Router();
 

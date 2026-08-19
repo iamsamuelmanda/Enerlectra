@@ -1,5 +1,5 @@
 // src/services/settlementStateSupabase.ts
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 
 type SettlementState = 'DRAFT' | 'PILOT' | 'ACTIVE' | 'SETTLED' | 'CLOSED' | 'PREVIEW';
 

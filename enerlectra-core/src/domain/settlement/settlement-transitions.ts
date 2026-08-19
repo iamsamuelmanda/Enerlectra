@@ -3,8 +3,8 @@
  * Handles state machine transitions with invariant enforcement
  */
 
-import { EEState, validateTransition } from './settlement-state.enum';
-import { SettlementCycle, computeStateHash } from './settlement-cycle';
+import { EEState, validateTransition } from './settlement-state.enum.js';
+import { SettlementCycle, computeStateHash } from './settlement-cycle.js';
 
 /**
  * Transition settlement cycle to next state

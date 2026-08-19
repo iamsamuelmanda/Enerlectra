@@ -4,8 +4,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sha256, computeLedgerMerkleRoot } from '../ledger/ledger-hash';
-import { LedgerService } from '../accounts/ledger-service';
+import { sha256, computeLedgerMerkleRoot } from '../ledger/ledger-hash.js';
+import { LedgerService } from '../accounts/ledger-service.js';
 
 export interface FinalityProof {
   settlement_cycle_id: string;

@@ -1,5 +1,5 @@
-import { atomicWriteJson } from '../atomicWrite'
-import { storeFile } from '../storePath'
+import { atomicWriteJson } from '../atomicWrite.js'
+import { storeFile } from '../storePath.js'
 import * as fs from 'fs'
 import * as path from 'path'
 

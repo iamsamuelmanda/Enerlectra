@@ -9,7 +9,7 @@ import {
   attemptFinalization,
   replayCycle,
   type RunSettlementRequest
-} from '../src';
+} from '../src.js';
 
 // Initialize Supabase
 const supabase = createClient(

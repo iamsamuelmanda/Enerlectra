@@ -1,8 +1,8 @@
-import { atomicWriteJson } from '../atomicWrite'
-import { storeFile } from '../storePath'
+import { atomicWriteJson } from '../atomicWrite.js'
+import { storeFile } from '../storePath.js'
 import fs from 'fs'
 import path from 'path'
-import { SettlementInstruction } from './settlementTypes'
+import { SettlementInstruction } from './settlementTypes.js'
 
 const STORE_DIR = path.join(process.cwd(), 'store')
 const FILE = storeFile('settlements.json')

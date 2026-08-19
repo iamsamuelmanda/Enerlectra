@@ -10,7 +10,7 @@ import {
   AccountUnit,
   AccountBalance,
   CreateAccountRequest
-} from './account';
+} from './account.js';
 
 export class AccountService {
   constructor(private supabase: SupabaseClient) {}

@@ -3,7 +3,7 @@
  * External boundary accounts and payment rail definitions
  */
 
-import { Ngwee } from '../settlement/settlement-types';
+import { Ngwee } from '../settlement/settlement-types.js';
 
 // ═══════════════════════════════════════════════════════════════
 // PAYMENT RAILS

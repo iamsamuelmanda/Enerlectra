@@ -4,7 +4,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { EEState } from './settlement-state.enum';
+import { EEState } from './settlement-state.enum.js';
 
 export interface ChallengeWindow {
   settlement_cycle_id: string;

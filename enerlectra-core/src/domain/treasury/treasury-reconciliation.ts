@@ -12,13 +12,13 @@ import {
   subtractNgwee,
   ZERO_NGWEE,
   formatNgwee,
-} from '../settlement/settlement-types';
+} from '../settlement/settlement-types.js';
 import {
   PaymentRail,
   ReconciliationReport,
   TreasuryState,
-} from './treasury-types';
-import { TreasuryService, TreasuryConfig } from './treasury-service';
+} from './treasury-types.js';
+import { TreasuryService, TreasuryConfig } from './treasury-service.js';
 
 // ═══════════════════════════════════════════════════════════════
 // RECONCILIATION ENGINE

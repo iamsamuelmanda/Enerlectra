@@ -6,7 +6,7 @@
  */
 
 import { Pool } from 'pg';
-import { LifecycleState } from '../../domain/lifecycle/types';
+import { LifecycleState } from '../../domain/lifecycle/types.js';
 
 export interface ClusterRecord {
   id: string;

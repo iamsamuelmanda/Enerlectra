@@ -3,7 +3,7 @@
 // /transfers/mobile-money = disbursement (you pay them)
 // /collections/mobile-money = collection (they pay you) ← WRONG for payouts
 
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 import type { Logger } from 'pino';
 import crypto from 'node:crypto';
 

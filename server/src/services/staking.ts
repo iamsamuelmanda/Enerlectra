@@ -1,4 +1,4 @@
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 
 const MINIMUM_STAKE = parseInt(process.env.MINIMUM_STAKE_PCU || '100');
 const VALIDATOR_REWARD = parseFloat(process.env.VALIDATOR_REWARD_PCT || '0.05');

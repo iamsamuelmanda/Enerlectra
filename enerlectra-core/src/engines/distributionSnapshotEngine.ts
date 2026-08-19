@@ -1,5 +1,5 @@
-import { distributeOutcome } from './distribution'
-import { OwnershipEntry } from './distribution'
+import { distributeOutcome } from './distribution.js'
+import { OwnershipEntry } from './distribution.js'
 
 export interface DistributionSnapshot {
   clusterId: string

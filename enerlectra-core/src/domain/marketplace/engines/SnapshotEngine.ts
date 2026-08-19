@@ -6,13 +6,13 @@
  * Enables replay, audit, and explainability.
  */
 
-import { LifecycleState } from '../../lifecycle/types';
+import { LifecycleState } from '../../lifecycle/types.js';
 import {
   MARKETPLACE_INVARIANTS,
   MARKETPLACE_STATE_RULES,
   MarketplaceErrorCode,
   MARKETPLACE_ERROR_MESSAGES,
-} from '../rules/MarketplaceInvariants';
+} from '../rules/MarketplaceInvariants.js';
 
 export interface SnapshotInput {
   clusterId: string;

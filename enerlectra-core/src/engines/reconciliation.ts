@@ -1,19 +1,21 @@
-import { distributeOutcome } from './distribution';
+import { distributeOutcome } from './distribution.js';
 import { 
   MeterReading, 
   EnergyAllocation, 
   UnitEnergyShare,
   ReconciliationResult 
-} from '../types/energy';
+} from '../types/energy.js';
 
-interface ReconciliationInput {
+export interface ReconciliationInput {
   readings: MeterReading[];
-  ownership: Array<{ userId: string; ownershipPct: number }>;
+  ownership: OwnershipEntry[];
   clusterId: string;
   period: string;
   gridRate?: number;    // ZMW per kWh (Zambia Grid Standard)
   solarRate?: number;   // ZMW per kWh (Discounted Clean Rate)
 }
+
+export type OwnershipEntry = { userId: string; ownershipPct: number };
 
 /**
  * The Brain of Enerlectra:

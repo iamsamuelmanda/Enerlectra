@@ -10,7 +10,7 @@ import {
   runDailySettlement,
   type ProductionReport,
   type ClusterCapacity
-} from '../src';
+} from '../src.js';
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,

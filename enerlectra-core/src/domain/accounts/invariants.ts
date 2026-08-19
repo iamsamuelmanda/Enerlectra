@@ -4,7 +4,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AccountUnit } from './account';
+import { AccountUnit } from './account.js';
 
 export class AccountInvariants {
   constructor(private supabase: SupabaseClient) {}

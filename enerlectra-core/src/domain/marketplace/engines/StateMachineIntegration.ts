@@ -4,8 +4,8 @@
  * Handles lifecycle transitions triggered by marketplace events.
  */
 
-import { LifecycleState } from '../../lifecycle/types';
-import { MARKETPLACE_TRIGGERS } from '../rules/MarketplaceInvariants';
+import { LifecycleState } from '../../lifecycle/types.js';
+import { MARKETPLACE_TRIGGERS } from '../rules/MarketplaceInvariants.js';
 
 export interface StateTransitionEvent {
   trigger: keyof typeof MARKETPLACE_TRIGGERS;

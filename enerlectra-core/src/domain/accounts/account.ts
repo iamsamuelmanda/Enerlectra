@@ -69,7 +69,7 @@ export enum AccountType {
     from_account_id: string;
     to_account_id: string;
     amount: number;
-    settlement_cycle_id: string;
+    settlement_cycle_id?: string | null;
     operation_type: string;
     description?: string;
     metadata?: Record<string, unknown>;

@@ -1,9 +1,9 @@
 import { Router } from 'express';
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
-import { authenticate } from '../middleware/auth';
-import { runClusterSettlement } from '../services/clusterSettlementEngine';
-import { insertSettlements, getSettlementsForUser, getSettlementsForCluster, getNetForUserFromDb } from '../services/settlementSupabase';
-import { getFinalDistributionFromDb } from '../services/distributionSupabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
+import { authenticate } from '../middleware/auth.js';
+import { runClusterSettlement } from '../services/clusterSettlementEngine.js';
+import { insertSettlements, getSettlementsForUser, getSettlementsForCluster, getNetForUserFromDb } from '../services/settlementSupabase.js';
+import { getFinalDistributionFromDb } from '../services/distributionSupabase.js';
 
 const router = Router();
 

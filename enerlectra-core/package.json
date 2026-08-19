@@ -1,7 +1,7 @@
 {
   "name": "@iamsamuelmanda/enerlectra-core",
   "version": "1.0.0",
-  "description": "Double‑entry ledger, settlement engine, and marketplace core for Enerlectra Protocol",
+  "description": "Enerlectra OS Kernel — Double‑entry ledger, settlement engine, and marketplace core",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -39,7 +39,8 @@
     "express": "^5.2.1",
     "nanoid": "^5.1.6",
     "node-cron": "^4.2.1",
-    "pg": "^8.20.0"
+    "pg": "^8.20.0",
+    "@anthropic-ai/sdk": "^0.8.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",

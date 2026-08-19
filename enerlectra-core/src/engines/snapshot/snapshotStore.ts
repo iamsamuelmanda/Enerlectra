@@ -1,8 +1,8 @@
 // src/engines/snapshot/snapshotStore.ts
 import fs from 'fs'
 import { nanoid } from 'nanoid'
-import { storeFile } from '../storePath'
-import { atomicWriteJson } from '../atomicWrite'
+import { storeFile } from '../storePath.js'
+import { atomicWriteJson } from '../atomicWrite.js'
 
 export interface OwnershipTotals {
   totalBaseUnits: number

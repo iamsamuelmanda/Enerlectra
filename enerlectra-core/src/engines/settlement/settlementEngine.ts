@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid'
-import { SettlementInstruction } from './settlementTypes'
+import { SettlementInstruction } from './settlementTypes.js'
 
 interface DistributionAllocation {
   userId: string

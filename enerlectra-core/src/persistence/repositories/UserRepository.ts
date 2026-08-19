@@ -5,9 +5,10 @@
  */
 
 import { Pool } from 'pg';
-import { UserState, UserClass } from '../../domain/marketplace/engines/AntiWhaleEngine';
+import { UserState, UserClass } from '../../domain/marketplace/engines/AntiWhaleEngine.js';
 
 export interface UserRecord extends UserState {
+  id: string;
   name: string;
   email: string;
   phone: string;

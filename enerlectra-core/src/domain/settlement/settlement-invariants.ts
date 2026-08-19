@@ -13,8 +13,8 @@ import {
     whEquals,
     ZERO_NGWEE,
     ZERO_WH
-  } from './settlement-types';
-  import { SettlementCycle, SettlementState } from './settlement-cycle-hardened';
+  } from './settlement-types.js';
+  import { SettlementCycle, SettlementState } from './settlement-cycle-hardened.js';
   
   // ═══════════════════════════════════════════════════════════════
   // INVARIANT VALIDATION

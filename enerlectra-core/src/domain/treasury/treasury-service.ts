@@ -12,7 +12,7 @@ import {
   subtractNgwee,
   ngweeEquals,
   ZERO_NGWEE
-} from '../settlement/settlement-types';
+} from '../settlement/settlement-types.js';
 import {
   PaymentRail,
   RailStatus,
@@ -25,7 +25,7 @@ import {
   InboundPayment,
   TreasuryOperation,
   TreasuryOperationType
-} from './treasury-types';
+} from './treasury-types.js';
 
 // ═══════════════════════════════════════════════════════════════
 // CONFIGURATION

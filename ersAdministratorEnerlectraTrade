@@ -1,0 +1,9 @@
+[33mcommit e993dcf221e9ac8a2f2e79097c52ac30b323303a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Merge: aca899a44 654804a9e
+Author: Samuel Manda <samuelmanda2002@gmail.com>
+Date:   Sat Aug 15 00:51:22 2026 +0200
+
+    merge: integrate upstream security fixes with local event bus
+
+ .../src/adapters/webhooks/webhook-handler.ts       | 71 [32m++++++++++++[m[31m----------[m
+ 1 file changed, 38 insertions(+), 33 deletions(-)

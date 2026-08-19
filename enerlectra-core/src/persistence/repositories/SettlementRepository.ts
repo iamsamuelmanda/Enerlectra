@@ -6,7 +6,7 @@
  */
 
 import { Pool } from 'pg';
-import { Settlement, ParticipantSettlement } from '../../domain/marketplace/engines/SettlementEngine';
+import { Settlement, ParticipantSettlement } from '../../domain/marketplace/engines/SettlementEngine.js';
 
 export class SettlementRepository {
   constructor(private pool: Pool) {}
@@ -133,7 +133,11 @@ export class SettlementRepository {
     }
     
     // Load full settlement with participants
-    return this.getById(settlementId)!;
+    const settlement = await this.getById(settlementId);
+    if (!settlement) {
+      throw new Error(`Settlement ${settlementId} not found after update`);
+    }
+    return settlement;
   }
   
   /**

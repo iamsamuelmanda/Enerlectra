@@ -6,8 +6,8 @@
  */
 
 import { Pool } from 'pg';
-import { ClusterSnapshot, ParticipantSnapshot } from '../../domain/marketplace/engines/SnapshotEngine';
-import { LifecycleState } from '../../domain/lifecycle/types';
+import { ClusterSnapshot, ParticipantSnapshot } from '../../domain/marketplace/engines/SnapshotEngine.js';
+import { LifecycleState } from '../../domain/lifecycle/types.js';
 
 export class SnapshotRepository {
   constructor(private pool: Pool) {}

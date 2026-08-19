@@ -1,9 +1,9 @@
 // src/services/snapshotsSupabase.ts
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 import {
   ClusterSnapshot,
-} from '../domain/marketplace/engines/SnapshotEngine';
-import { LifecycleState } from '../domain/lifecycle/types';
+} from '../domain/marketplace/engines/SnapshotEngine.js';
+import { LifecycleState } from '../domain/lifecycle/types.js';
 
 function mapRow(row: any): ClusterSnapshot {
   return {

@@ -1,7 +1,7 @@
 // src/services/clustersSupabase.ts
 
-import { supabase } from '../lib/supabase';
-import { LifecycleState } from '../domain/lifecycle/types';
+import { supabase } from '../lib/supabase.js';
+import { LifecycleState } from '../domain/lifecycle/types.js';
 
 // Shape is similar to ClusterState but defined locally for the service layer.
 export interface ClusterRecord {

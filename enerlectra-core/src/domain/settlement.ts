@@ -1,4 +1,4 @@
-import { SettlementState, SETTLEMENT_STATES } from "./settlementState";
+import { SettlementState, SETTLEMENT_STATES } from "./settlementState.js";
 
 export class Settlement {
   private state: SettlementState;

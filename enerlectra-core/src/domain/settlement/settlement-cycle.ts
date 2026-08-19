@@ -4,7 +4,7 @@
  */
 
 import crypto from 'crypto';
-import { EEState } from './settlement-state.enum';
+import { EEState } from './settlement-state.enum.js';
 
 export interface SettlementCycle {
   settlement_cycle_id: string;

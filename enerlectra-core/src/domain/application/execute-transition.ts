@@ -7,8 +7,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 // NOTE: path fixed – from ../domain/settlement/... to ../settlement/...
-import { EEState } from '../settlement/settlement-state.enum';
-import { SettlementService } from '../settlement/settlement-service';
+import { EEState } from '../settlement/settlement-state.enum.js';
+import { SettlementService } from '../settlement/settlement-service.js';
 
 export interface TransitionRequest {
   settlement_cycle_id: string;
@@ -140,7 +140,7 @@ export async function canTransitionTo(
   if (!current_state) return false;
 
   // NOTE: dynamic import path fixed to match the static one above
-  const { ALLOWED_TRANSITIONS } = await import('../settlement/settlement-state.enum');
+  const { ALLOWED_TRANSITIONS } = await import('../settlement/settlement-state.enum.js');
   const allowed = ALLOWED_TRANSITIONS[current_state] || [];
 
   return allowed.includes(target_state);

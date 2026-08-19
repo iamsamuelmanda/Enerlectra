@@ -5,7 +5,7 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { Ngwee, ngwee } from '../../domain/settlement/settlement-types';
+import { Ngwee, ngwee } from '../../domain/settlement/settlement-types.js';
 
 // ═══════════════════════════════════════════════════════════════
 // AIRTEL API CONFIGURATION
@@ -122,7 +122,7 @@ export class AirtelMoneyAdapter {
         Date.now() + (expiresIn - 300) * 1000
       ); // 5 min buffer
 
-      return this.accessToken;
+      return this.accessToken!;
     } catch (error: any) {
       throw new Error(`Airtel authentication failed: ${error.message}`);
     }

@@ -3,8 +3,8 @@
  * State machine for buyer payment orchestration
  */
 
-import { Ngwee, WattHours } from '../settlement/settlement-types';
-import { PaymentRail } from '../treasury/treasury-types';
+import { Ngwee, WattHours } from '../settlement/settlement-types.js';
+import { PaymentRail } from '../treasury/treasury-types.js';
 
 // ═══════════════════════════════════════════════════════════════
 // PAYMENT INTENT STATE MACHINE

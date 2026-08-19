@@ -6,9 +6,9 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { LedgerEntry, AccountUnit, TransferRequest } from './account';
-import { computeEntryHash } from '../ledger/ledger-hash';
-import { getPreviousHash } from '../ledger/ledger-genesis';
+import { LedgerEntry, AccountUnit, TransferRequest } from './account.js';
+import { computeEntryHash } from '../ledger/ledger-hash.js';
+import { getPreviousHash } from '../ledger/ledger-genesis.js';
 
 export class LedgerService {
   constructor(private supabase: SupabaseClient) {}
@@ -36,14 +36,14 @@ export class LedgerService {
     const entry_hash = computeEntryHash({
       ledger_entry_id: entry_id,
       account_id,
-      settlement_cycle_id,
+      settlement_cycle_id: settlement_cycle_id ?? '',
       debit_amount: 0,
       credit_amount: amount,
       unit,
       transaction_id: tx_id,
       operation_type,
       created_at,
-      previous_hash
+      previous_hash: previous_hash!
     });
 
     // Insert with hash
@@ -91,14 +91,14 @@ export class LedgerService {
     const entry_hash = computeEntryHash({
       ledger_entry_id: entry_id,
       account_id,
-      settlement_cycle_id,
+      settlement_cycle_id: settlement_cycle_id ?? '',
       debit_amount: amount,
       credit_amount: 0,
       unit,
       transaction_id: tx_id,
       operation_type,
       created_at,
-      previous_hash
+      previous_hash: previous_hash!
     });
 
     // Insert with hash
@@ -145,17 +145,18 @@ export class LedgerService {
 
     // Compute hash for debit entry
     const debit_entry_id = uuidv4();
+    const cycle_id: string = request.settlement_cycle_id ?? '';
     const debit_entry_hash = computeEntryHash({
       ledger_entry_id: debit_entry_id,
       account_id: request.from_account_id,
-      settlement_cycle_id: request.settlement_cycle_id,
+      settlement_cycle_id: cycle_id,
       debit_amount: request.amount,
       credit_amount: 0,
       unit: from_account,
       transaction_id,
       operation_type: request.operation_type,
       created_at,
-      previous_hash: previous_hash_1
+      previous_hash: previous_hash_1!
     });
 
     // Compute hash for credit entry (links to debit entry)
@@ -163,7 +164,7 @@ export class LedgerService {
     const credit_entry_hash = computeEntryHash({
       ledger_entry_id: credit_entry_id,
       account_id: request.to_account_id,
-      settlement_cycle_id: request.settlement_cycle_id,
+      settlement_cycle_id: cycle_id,
       debit_amount: 0,
       credit_amount: request.amount,
       unit: to_account,
@@ -228,10 +229,10 @@ export class LedgerService {
         .limit(1)
         .single();
 
-      return getPreviousHash(last_entry?.entry_hash || null);
+      return getPreviousHash(last_entry?.entry_hash ?? undefined);
     }
 
-    return getPreviousHash(data);
+    return getPreviousHash(data ?? undefined);
   }
 
   /**

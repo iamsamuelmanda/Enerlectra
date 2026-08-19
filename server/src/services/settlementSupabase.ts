@@ -1,4 +1,4 @@
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 
 export type DbSettlement = {
   id: string;

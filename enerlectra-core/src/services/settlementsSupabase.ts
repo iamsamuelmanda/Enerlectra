@@ -1,9 +1,9 @@
 // src/services/settlementsSupabase.ts
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 import {
   Settlement,
   ParticipantSettlement,
-} from '../domain/marketplace/engines/SettlementEngine';
+} from '../domain/marketplace/engines/SettlementEngine.js';
 
 function mapSettlementRow(row: any): Settlement {
   return {

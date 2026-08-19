@@ -1,4 +1,4 @@
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 
 const ZESCO_TARIFF_SOURCE_URL =
   process.env.ZESCO_TARIFF_SOURCE_URL ||

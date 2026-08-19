@@ -9,16 +9,16 @@ import {
   Ngwee,
   WattHours,
   ngwee
-} from '../settlement/settlement-types';
-import { PaymentRail } from '../treasury/treasury-types';
-import { TreasuryService } from '../treasury/treasury-service';
+} from '../settlement/settlement-types.js';
+import { PaymentRail } from '../treasury/treasury-types.js';
+import { TreasuryService } from '../treasury/treasury-service.js';
 import {
   PaymentIntent,
   PaymentIntentState,
   PaymentConfirmation,
   CreatePaymentIntentRequest
-} from './payment-intent-types';
-import { PaymentIntentService } from './payment-intent-service';
+} from './payment-intent-types.js';
+import { PaymentIntentService } from './payment-intent-service.js';
 
 // ═══════════════════════════════════════════════════════════════
 // PURCHASE FLOW RESULT

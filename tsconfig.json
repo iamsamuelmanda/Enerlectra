@@ -27,12 +27,13 @@
     "types": ["vite/client", "node"]
   },
   "include": [
-    "src",          // frontend
-    "server/src"    // new backend only
+    "src",
+    "server/src"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "server/../src" // exclude legacy backend at repo root
+    "enerlectra-core/dist",
+    "server/../src"
   ]
 }

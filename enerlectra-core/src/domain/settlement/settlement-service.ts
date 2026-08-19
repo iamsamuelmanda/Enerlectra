@@ -4,15 +4,15 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { EEState } from './settlement-state.enum';
-import { SettlementCycle, createSettlementCycle, computeSettlementCycleId } from './settlement-cycle';
-import { transitionState, assertValueComputation } from './settlement-transitions';
-import { FinalityDetector } from './finality-detector';
-import { AccountService } from '../accounts/account-service';
-import { LedgerService } from '../accounts/ledger-service';
-import { AccountInvariants } from '../accounts/invariants';
-import { AccountReconciliation } from '../accounts/reconciliation';
-import { AccountUnit } from '../accounts/account';
+import { EEState } from './settlement-state.enum.js';
+import { SettlementCycle, createSettlementCycle, computeSettlementCycleId } from './settlement-cycle.js';
+import { transitionState, assertValueComputation } from './settlement-transitions.js';
+import { FinalityDetector } from './finality-detector.js';
+import { AccountService } from '../accounts/account-service.js';
+import { LedgerService } from '../accounts/ledger-service.js';
+import { AccountInvariants } from '../accounts/invariants.js';
+import { AccountReconciliation } from '../accounts/reconciliation.js';
+import { AccountUnit } from '../accounts/account.js';
 
 export interface ProductionReport {
   cluster_id: string;

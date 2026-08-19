@@ -6,8 +6,8 @@
 
 import axios, { AxiosInstance } from 'axios';
 import { v4 as uuidv4 } from 'uuid';
-import { Ngwee, ngwee } from '../../domain/settlement/settlement-types';
-import { PaymentRail } from '../../domain/treasury/treasury-types';
+import { Ngwee, ngwee } from '../../domain/settlement/settlement-types.js';
+import { PaymentRail } from '../../domain/treasury/treasury-types.js';
 
 // ═══════════════════════════════════════════════════════════════
 // MTN API CONFIGURATION
@@ -122,7 +122,7 @@ export class MTNMobileMoneyAdapter {
       // Tokens typically expire in 1 hour
       this.tokenExpiresAt = new Date(Date.now() + 55 * 60 * 1000); // 55 min buffer
 
-      return this.accessToken;
+      return this.accessToken!;
     } catch (error: any) {
       throw new Error(`MTN authentication failed: ${error.message}`);
     }

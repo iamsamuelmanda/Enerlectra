@@ -5,13 +5,13 @@
 
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
 import { createClient } from '@supabase/supabase-js';
-import { PaymentOrchestrator } from '../../src/domain/payment/payment-orchestrator';
-import { PaymentIntentService } from '../../src/domain/payment/payment-intent-service';
-import { TreasuryService } from '../../src/domain/treasury/treasury-service';
-import { createMTNAdapter } from '../../src/adapters/mobile-money/mtn-adapter';
-import { WebhookHandler } from '../../src/adapters/webhooks/webhook-handler';
-import { ngwee, kwhToWh, zmwToNgwee } from '../../src/domain/settlement/settlement-types';
-import { PaymentRail } from '../../src/domain/treasury/treasury-types';
+import { PaymentOrchestrator } from '../../src/domain/payment/payment-orchestrator.js';
+import { PaymentIntentService } from '../../src/domain/payment/payment-intent-service.js';
+import { TreasuryService } from '../../src/domain/treasury/treasury-service.js';
+import { createMTNAdapter } from '../../src/adapters/mobile-money/mtn-adapter.js';
+import { WebhookHandler } from '../../src/adapters/webhooks/webhook-handler.js';
+import { ngwee, kwhToWh, zmwToNgwee } from '../../src/domain/settlement/settlement-types.js';
+import { PaymentRail } from '../../src/domain/treasury/treasury-types.js';
 
 describe('End-to-End Payment Flow', () => {
   let supabase: any;

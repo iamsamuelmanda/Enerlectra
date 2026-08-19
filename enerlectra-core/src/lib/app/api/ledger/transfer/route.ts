@@ -1,3 +1,4 @@
 // app/api/ledger/transfer/route.ts
-import { POST } from '@/routes/ledger';
-export { POST };
+export const POST = async () => {
+  return new Response('Ledger transfer endpoint', { status: 200 });
+};

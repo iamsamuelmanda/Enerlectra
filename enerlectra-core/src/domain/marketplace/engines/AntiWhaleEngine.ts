@@ -5,13 +5,13 @@
  * All validation happens HERE before persistence.
  */
 
-import { LifecycleState } from '../../lifecycle/types';
+import { LifecycleState } from '../../lifecycle/types.js';
 import {
   MARKETPLACE_INVARIANTS,
   MARKETPLACE_STATE_RULES,
   MarketplaceErrorCode,
   MARKETPLACE_ERROR_MESSAGES,
-} from '../rules/MarketplaceInvariants';
+} from '../rules/MarketplaceInvariants.js';
 
 export type UserClass = 'STARTER' | 'INVESTOR' | 'ANCHOR';
 

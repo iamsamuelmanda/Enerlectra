@@ -1,5 +1,5 @@
 // src/services/usersSupabase.ts
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase.js';
 
 // Minimal copies of the AntiWhale user types used at the service layer.
 // If you want to keep them in sync, you can later import the canonical types instead.

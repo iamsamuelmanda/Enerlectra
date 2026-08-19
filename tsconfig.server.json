@@ -5,10 +5,16 @@
       "moduleResolution": "NodeNext",
       "outDir": "dist/server",
       "rootDir": ".",
-      "noEmit": true,
+      "noEmit": false,
       "allowImportingTsExtensions": false,
       "lib": ["ES2022"],
-      "types": ["node"]
+      "types": ["node"],
+      "baseUrl": ".",
+      "paths": {
+        "enerlectra-core": ["enerlectra-core/src/index.ts"],
+        "enerlectra-core/*": ["enerlectra-core/src/*"],
+        "server/*": ["server/src/*"]
+      }
     },
     "include": [
       "server/**/*.ts",
@@ -17,6 +23,7 @@
     "exclude": [
       "client",
       "node_modules",
-      "**/*.test.ts"
+      "**/*.test.ts",
+      "enerlectra-core/src/examples/**/*.ts"
     ]
   }

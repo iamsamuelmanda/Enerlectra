@@ -4,10 +4,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { AccountUnit } from './account';
-import { AccountService } from './account-service';
-import { LedgerService } from './ledger-service';
-import { AccountInvariants } from './invariants';
+import { AccountUnit } from './account.js';
+import { AccountService } from './account-service.js';
+import { LedgerService } from './ledger-service.js';
+import { AccountInvariants } from './invariants.js';
 
 export interface ReconciliationResult {
   settlement_cycle_id: string;

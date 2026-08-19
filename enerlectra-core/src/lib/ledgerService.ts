@@ -1,7 +1,7 @@
 // server/src/routes/ledger.ts
 import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
-import { LedgerService } from 'enerlectra-core';
+import { LedgerService } from '../domain/accounts/ledger-service.js';
 import crypto from 'node:crypto';
 
 const router = Router();
@@ -89,9 +89,9 @@ router.post('/transfer', async (req, res) => {
       from_account_id: senderAccount.account_id,
       to_account_id: receiverAccount.account_id,
       amount,
-      unit: 'PCU',
       operation_type: 'PCU_TRANSFER',
-      metadata: { description, transfer_id: transferId },
+      description,
+      settlement_cycle_id: null,
     });
 
     // 5. Fetch updated balances

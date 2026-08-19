@@ -11,7 +11,7 @@ import {
   ngwee,
   wattHours,
   ZERO_NGWEE
-} from '../settlement/settlement-types';
+} from '../settlement/settlement-types.js';
 import {
   PaymentIntent,
   PaymentIntentState,
@@ -22,7 +22,7 @@ import {
   canTransitionTo,
   isTerminalState,
   ALLOWED_PAYMENT_TRANSITIONS
-} from './payment-intent-types';
+} from './payment-intent-types.js';
 
 // ═══════════════════════════════════════════════════════════════
 // ERRORS

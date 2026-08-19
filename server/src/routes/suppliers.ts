@@ -1,6 +1,6 @@
 // src/routes/suppliers.ts
 import { Router } from 'express';
-import { supabase } from '../../../enerlectra-core/src/lib/supabase';
+import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 import * as fs from 'fs';
 import * as path from 'path';
 

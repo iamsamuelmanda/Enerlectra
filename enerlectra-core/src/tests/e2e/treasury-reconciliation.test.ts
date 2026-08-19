@@ -5,10 +5,10 @@
 
 import { describe, test, expect, beforeAll } from '@jest/globals';
 import { createClient } from '@supabase/supabase-js';
-import { TreasuryService } from '../../src/domain/treasury/treasury-service';
-import { TreasuryReconciliation } from '../../src/domain/treasury/treasury-reconciliation';
-import { ngwee } from '../../src/domain/settlement/settlement-types';
-import { PaymentRail } from '../../src/domain/treasury/treasury-types';
+import { TreasuryService } from '../../src/domain/treasury/treasury-service.js';
+import { TreasuryReconciliation } from '../../src/domain/treasury/treasury-reconciliation.js';
+import { ngwee } from '../../src/domain/settlement/settlement-types.js';
+import { PaymentRail } from '../../src/domain/treasury/treasury-types.js';
 
 describe('Treasury Reconciliation', () => {
   let supabase: any;

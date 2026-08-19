@@ -3,7 +3,7 @@
  * Aggregates and analyzes production data over time
  */
 
-import type { ProductionReport } from './production-verifier';
+import type { ProductionReport } from './production-verifier.js';
 
 export interface DailyProduction {
   settlement_date: string;
