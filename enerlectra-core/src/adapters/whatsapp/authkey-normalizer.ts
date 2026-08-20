@@ -14,41 +14,99 @@ export interface CanonicalMessage {
 export class AuthkeyNormalizer {
   normalize(raw: any): CanonicalMessage | null {
     try {
-      const from = raw?.from || raw?.sender || raw?.mobile;
-      if (!from) return null;
+      // Authkey WABA payload structure:
+      // raw.eventContent.message
+      const message = raw?.eventContent?.message;
 
-      // Extract body: handle text, button replies, and media captions
-      const body = raw?.message || 
-                   raw?.text?.body || 
-                   raw?.body || 
-                   raw?.button_value || 
-                   raw?.interactive?.text || 
-                   '';
+      if (!message) {
+        console.error(
+          '[AuthkeyNormalizer] Missing eventContent.message',
+          JSON.stringify(raw, null, 2)
+        );
+        return null;
+      }
 
-      // For media (image/doc), we allow empty body as long as the type is correct
+      const from = message.from;
+      const messageId = message.id;
+
+      if (!from || !messageId) {
+        console.error(
+          '[AuthkeyNormalizer] Missing sender or message ID',
+          JSON.stringify(message, null, 2)
+        );
+        return null;
+      }
+
+      // Authkey text message:
+      // message.text.body
+      const body = message.text?.body || '';
+
       const type = this.determineType(raw);
-      if (!body && type === 'text') return null;
+
+      // Text messages must contain text.
+      if (type === 'text' && !body.trim()) {
+        console.error('[AuthkeyNormalizer] Text message has empty body');
+        return null;
+      }
 
       return {
-        messageId: String(raw?.id || raw?.messageId || raw?.message_id || crypto.randomUUID()),
+        messageId: String(messageId),
         fromNumber: String(from),
         body: String(body),
-        timestamp: raw?.timestamp ? Number(raw.timestamp) : Math.floor(Date.now() / 1000),
-        type: type,
+        timestamp: this.extractTimestamp(raw),
+        type,
         channel: 'whatsapp',
         direction: 'inbound',
         rawPayload: raw,
       };
-    } catch {
+    } catch (error) {
+      console.error('[AuthkeyNormalizer] Normalization failed', error);
       return null;
     }
   }
 
+  private extractTimestamp(raw: any): number {
+    const timestamp = Number(raw?.events?.timestamp);
+
+    if (Number.isFinite(timestamp) && timestamp > 0) {
+      return timestamp;
+    }
+
+    return Math.floor(Date.now() / 1000);
+  }
+
   private determineType(raw: any): 'text' | 'image' | 'audio' | 'unknown' {
-    const type = String(raw?.type || '').toLowerCase();
-    if (type === 'text' || raw?.button_value || raw?.interactive) return 'text';
-    if (type === 'image' || raw?.media_url?.includes('image')) return 'image';
-    if (type === 'audio' || raw?.media_url?.includes('audio')) return 'audio';
+    const message = raw?.eventContent?.message;
+
+    const contentType = String(
+      message?.contentType ||
+      message?.messageType ||
+      ''
+    ).toLowerCase();
+
+    if (contentType === 'text') {
+      return 'text';
+    }
+
+    if (contentType === 'image') {
+      return 'image';
+    }
+
+    if (contentType === 'audio') {
+      return 'audio';
+    }
+
+    // Authkey also supplies media_url.
+    const mediaUrl = String(raw?.media_url || '').toLowerCase();
+
+    if (mediaUrl.includes('image')) {
+      return 'image';
+    }
+
+    if (mediaUrl.includes('audio')) {
+      return 'audio';
+    }
+
     return 'unknown';
   }
-}
+      }
