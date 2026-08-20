@@ -161,10 +161,22 @@ export async function resolveWhatsAppUserId(phoneNumber: string): Promise<string
   });
 
   if (profileError) {
-    logger.error({ profileError, userId, phoneNumber }, 'Failed to create user profile for WhatsApp');
-    // Attempt to clean up auth user
-    await supabase.auth.admin.deleteUser(userId);
-    throw new Error('Profile creation failed');
+  logger.error(
+    {
+      profileError,
+      userId,
+      phoneNumber,
+      code: profileError.code,
+      message: profileError.message,
+      details: profileError.details,
+      hint: profileError.hint,
+    },
+    'Failed to create user profile for WhatsApp'
+  );
+
+  await supabase.auth.admin.deleteUser(userId);
+
+  throw new Error(`Profile creation failed: ${profileError.message}`);
   }
 
   // 5. Create channel_identity link
