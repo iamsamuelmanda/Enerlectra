@@ -142,8 +142,21 @@ export async function resolveWhatsAppUserId(phoneNumber: string): Promise<string
   });
 
   if (createAuthError || !newAuthUser?.user) {
-    logger.error({ createAuthError, phoneNumber }, 'Failed to create auth user for WhatsApp');
-    throw new Error('Auth user creation failed');
+  logger.error(
+    {
+      createAuthError,
+      phoneNumber,
+      status: createAuthError?.status,
+      code: createAuthError?.code,
+      name: createAuthError?.name,
+      message: createAuthError?.message,
+    },
+    'Failed to create auth user for WhatsApp'
+  );
+
+  throw new Error(
+    `Auth user creation failed: ${createAuthError?.message || 'unknown Supabase Auth error'}`
+  );
   }
 
   const userId = newAuthUser.user.id;
