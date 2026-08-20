@@ -169,13 +169,19 @@ export async function resolveWhatsAppUserId(phoneNumber: string): Promise<string
 
   // 5. Create channel_identity link
   const { error: identityError } = await supabase
-    .from('channel_identities')
-    .insert({
+  .from('channel_identities')
+  .upsert(
+    {
       user_id: userId,
       channel: 'whatsapp',
       external_id: phoneNumber,
-    });
-
+      updated_at: new Date().toISOString(),
+    },
+    {
+      onConflict: 'channel,external_id',
+    }
+  );
+  
   if (identityError) {
     logger.error({ identityError, userId, phoneNumber }, 'Failed to create channel identity');
     throw new Error('Channel identity creation failed');
