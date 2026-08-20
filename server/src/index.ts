@@ -512,20 +512,22 @@ app.post('/api/webhooks/lenco', express.raw({ type: 'application/json' }), async
 });
 
 // ──────────────────────────────────────────────────────────────
-// WhatsApp inbound webhook (Authkey)
+// WhatsApp inbound webhook — TEMPORARY AUTHKEY PROBE
 // ──────────────────────────────────────────────────────────────
 app.post('/api/webhooks/whatsapp', async (req, res) => {
-  if (!supabase) {
-    return res.status(503).json({ error: 'Database ledger not available' });
-  }
-  try {
-    const result = await whatsAppHandler.processInbound(req.body);
-    if (!result.success) return res.status(400).json(result);
-    return res.sendStatus(200);
-  } catch (err) {
-    logger.error({ err }, '[WhatsApp Webhook Error]');
-    return res.sendStatus(500);
-  }
+  logger.info({
+    headers: req.headers,
+    contentType: req.headers['content-type'],
+    body: req.body,
+  }, '[WhatsApp Probe] Raw inbound payload');
+
+  console.log('=== WHATSAPP PAYLOAD ===');
+  console.log(JSON.stringify(req.body, null, 2));
+
+  console.log('=== HEADERS ===');
+  console.log(JSON.stringify(req.headers, null, 2));
+
+  return res.status(200).json({ received: true });
 });
 
 // ──────────────────────────────────────────────────────────────
