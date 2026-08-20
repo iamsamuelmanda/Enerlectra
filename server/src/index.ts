@@ -512,22 +512,71 @@ app.post('/api/webhooks/lenco', express.raw({ type: 'application/json' }), async
 });
 
 // ──────────────────────────────────────────────────────────────
-// WhatsApp inbound webhook — TEMPORARY AUTHKEY PROBE
+// WhatsApp inbound webhook (Authkey WABA)
 // ──────────────────────────────────────────────────────────────
 app.post('/api/webhooks/whatsapp', async (req, res) => {
-  logger.info({
-    headers: req.headers,
-    contentType: req.headers['content-type'],
-    body: req.body,
-  }, '[WhatsApp Probe] Raw inbound payload');
+  const requestId = req.headers['x-request-id'];
 
-  console.log('=== WHATSAPP PAYLOAD ===');
-  console.log(JSON.stringify(req.body, null, 2));
+  try {
+    logger.info(
+      {
+        requestId,
+        eventType: req.body?.events?.eventType,
+        messageId: req.body?.eventContent?.message?.id,
+        from: req.body?.eventContent?.message?.from,
+        contentType: req.body?.eventContent?.message?.contentType,
+      },
+      '[WhatsApp Webhook] Inbound Authkey message'
+    );
 
-  console.log('=== HEADERS ===');
-  console.log(JSON.stringify(req.headers, null, 2));
+    if (!supabase) {
+      return res.status(503).json({
+        error: 'Database ledger not available',
+      });
+    }
 
-  return res.status(200).json({ received: true });
+    const result = await whatsAppHandler.processInbound(req.body);
+
+    if (!result.success) {
+      logger.error(
+        {
+          requestId,
+          messageId: result.messageId,
+          error: result.error,
+        },
+        '[WhatsApp Webhook] Processing failed'
+      );
+
+      return res.status(400).json(result);
+    }
+
+    logger.info(
+      {
+        requestId,
+        messageId: result.messageId,
+        processed: result.processed,
+      },
+      '[WhatsApp Webhook] Successfully processed'
+    );
+
+    return res.status(200).json({
+      received: true,
+      processed: result.processed,
+      messageId: result.messageId,
+    });
+  } catch (error: any) {
+    logger.error(
+      {
+        requestId,
+        err: error?.message || error,
+      },
+      '[WhatsApp Webhook] Fatal error'
+    );
+
+    return res.status(500).json({
+      error: 'Internal server error',
+    });
+  }
 });
 
 // ──────────────────────────────────────────────────────────────
