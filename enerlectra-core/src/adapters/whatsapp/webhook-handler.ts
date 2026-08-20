@@ -24,6 +24,14 @@ export class WhatsAppWebhookHandler {
 
   async processInbound(raw: any): Promise<WhatsAppWebhookResult> {
     const message = this.normalizer.normalize(raw);
+    
+    console.log('[WhatsApp Pipeline] Normalized message:', {
+  messageId: message?.messageId,
+  from: message?.fromNumber,
+  body: message?.body,
+  type: message?.type,
+});
+    
     if (!message) {
       return {
         success: false,
