@@ -161,36 +161,6 @@ export async function resolveWhatsAppUserId(phoneNumber: string): Promise<string
 
   const userId = newAuthUser.user.id;
 
-  // 4. Create public.users profile
-  const { error: profileError } = await supabase.from('users').insert({
-    id: userId,
-    name: 'WhatsApp User',
-    email: `whatsapp-${phoneNumber}@enerlectra.local`,
-    phone: phoneNumber,
-    location: null,
-    current_class: 'STARTER',
-    total_invested_usd: '0.00',
-    cluster_count: 0,
-  });
-
-  if (profileError) {
-  logger.error(
-    {
-      profileError,
-      userId,
-      phoneNumber,
-      code: profileError.code,
-      message: profileError.message,
-      details: profileError.details,
-      hint: profileError.hint,
-    },
-    'Failed to create user profile for WhatsApp'
-  );
-
-  await supabase.auth.admin.deleteUser(userId);
-
-  throw new Error(`Profile creation failed: ${profileError.message}`);
-  }
 
   // 5. Create channel_identity link
   const { error: identityError } = await supabase
