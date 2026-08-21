@@ -104,6 +104,53 @@ export class WhatsAppClient {
 
       const outputData = await response.json();
 
+console.log('[TRACE][Authkey_Response]', {
+  httpStatus: response.status,
+  ok: response.ok,
+  body: outputData,
+});
+
+const providerStatus = String(outputData?.status ?? '').toLowerCase();
+
+const isSuccess =
+  providerStatus === 'success' ||
+  outputData?.success === true;
+
+console.log('[TRACE][Authkey_Result]', {
+  providerStatus,
+  isSuccess,
+  providerMessageId:
+    outputData?.uuid ||
+    outputData?.logId ||
+    outputData?.LogID ||
+    'processed',
+});
+
+if (!isSuccess) {
+  console.error('[Authkey Gateway Error Payload]:', outputData);
+
+  return {
+    success: false,
+    status: 'failed',
+    error:
+      outputData?.error ||
+      outputData?.message ||
+      'Gateway parameter validation rejection',
+    raw: outputData,
+  };
+}
+
+return {
+  success: true,
+  status: 'sent',
+  providerMessageId:
+    outputData?.uuid ||
+    outputData?.logId ||
+    outputData?.LogID ||
+    'processed',
+  raw: outputData,
+};
+
 // Authkey returns "Success" with a capital S.
 const providerStatus = String(outputData?.status ?? '').toLowerCase();
 
