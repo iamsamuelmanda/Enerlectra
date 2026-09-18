@@ -7,7 +7,7 @@
   "main": "server/src/index.ts",
   "scripts": {
     "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { try { require('husky').install() } catch (e) {} }\"",
-   "start": "tsx -r tsconfig-paths/register ./server/src/index.ts",
+    "start": "tsx -r tsconfig-paths/register ./server/src/index.ts",
     "dev": "tsx ./server/src/index.ts",
     "build": "npm run build:client",
     "build:client": "cd client && npx vite build",
@@ -15,7 +15,7 @@
     "typecheck:server": "tsc -p tsconfig.ci-server.json",
     "typecheck:client": "cd client && npx tsc --noEmit",
     "typecheck:telegram-bot": "cd integrations/telegram-bot && npx tsc --noEmit",
-    "test": "node --test test/ci-smoke.test.mjs",
+    "test": "node --test test/ci-smoke.test.mjs test/v2-boundary.test.mjs",
     "ci": "npm test && npm run typecheck:server && npm run typecheck:client && npm run build:client && npm run typecheck:telegram-bot",
     "clean": "rm -rf dist client/dist"
   },
