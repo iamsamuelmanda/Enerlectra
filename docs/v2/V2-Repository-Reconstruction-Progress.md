@@ -49,9 +49,29 @@ The target project `enerlectra-v2` is healthy and contains the foundation migrat
 
 Foundation entities are organizations, actors, roles, permissions, role_permissions, memberships, and channel_identities.
 
+## Gate: Authenticated Tenant Context
+
+### Implemented
+
+- Added `server/src/platform/tenant/resolver.ts`.
+- Resolver verifies the Supabase access token before resolving any Enerlectra actor.
+- Actor status must be `ACTIVE`.
+- Organization access requires an `ACTIVE` membership; invited, suspended, and revoked memberships are excluded.
+- A supplied `organizationId` is only accepted when the authenticated actor has an active membership in that organization.
+- Multiple active memberships require explicit organization context.
+- Organization status must be `ACTIVE`.
+- Role and role-derived permissions are resolved from the verified membership.
+- Added executable tenant-context tests covering successful resolution, forged organization context, inactive actors, and ambiguous memberships.
+
+### Security invariant proven in code
+
+`access token → auth.users identity → actor → active membership → active organization → role → permissions → TenantContext`
+
+No client/channel-supplied organization identifier is treated as authorization proof.
+
 ## Next gate
 
-**Authenticated tenant-context resolution.**
+**Customer / Site / Asset domain foundation.**
 
 The next implementation must derive:
 
