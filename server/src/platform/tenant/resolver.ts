@@ -43,18 +43,8 @@ type MembershipRow = {
 };
 
 type PermissionRow = {
-  role_permissions: Array<{ permissions: { key: string } | null }> | null;
+  permissions: { key: string } | null;
 };
-
-function requireResult<T>(result: { data: T | null; error: { message: string } | null }, label: string): T {
-  if (result.error) {
-    throw new Error(`Tenant context lookup failed for ${label}: ${result.error.message}`);
-  }
-  if (result.data === null) {
-    throw new TenantContextError('MEMBERSHIP_NOT_FOUND', `Tenant context ${label} was not found`);
-  }
-  return result.data;
-}
 
 export function createTenantContextResolver(client: SupabaseClient): TenantContextResolver {
   return {
@@ -79,8 +69,8 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
       if (actorResult.error) {
         throw new Error(`Tenant actor lookup failed: ${actorResult.error.message}`);
       }
-      const actor = actorResult.data as ActorRow | null;
 
+      const actor = actorResult.data as ActorRow | null;
       if (!actor) {
         throw new TenantContextError('ACTOR_NOT_FOUND', 'Authenticated user has no Enerlectra actor');
       }
@@ -108,13 +98,12 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
       const memberships = (membershipResult.data ?? []) as MembershipRow[];
 
       if (memberships.length === 0) {
-        if (input.organizationId) {
-          throw new TenantContextError(
-            'MEMBERSHIP_NOT_FOUND',
-            'Actor has no active membership in the requested organization'
-          );
-        }
-        throw new TenantContextError('MEMBERSHIP_NOT_FOUND', 'Actor has no active organization membership');
+        throw new TenantContextError(
+          'MEMBERSHIP_NOT_FOUND',
+          input.organizationId
+            ? 'Actor has no active membership in the requested organization'
+            : 'Actor has no active organization membership'
+        );
       }
 
       if (memberships.length > 1) {
@@ -125,6 +114,7 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
       }
 
       const membership = memberships[0];
+
       if (!membership.organizations) {
         throw new TenantContextError('ORGANIZATION_NOT_FOUND', 'Membership organization could not be resolved');
       }
@@ -146,7 +136,7 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
 
       const permissionRows = (permissionResult.data ?? []) as PermissionRow[];
       const permissions = permissionRows
-        .map((row) => row.role_permissions?.[0]?.permissions?.key)
+        .map((row) => row.permissions?.key)
         .filter((key): key is string => Boolean(key));
 
       return {
