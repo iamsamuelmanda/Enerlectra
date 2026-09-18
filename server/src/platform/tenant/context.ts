@@ -15,13 +15,13 @@ export interface TenantContext {
  * TenantContext is the minimum authorization context required by V2
  * organization-scoped operations.
  *
- * This is a contract, not proof of authorization. A resolver must derive it
- * from authenticated identity + active membership and never trust a
- * client/channel-supplied organization_id as authorization evidence.
+ * This is a contract, not proof of authorization. The resolver derives it
+ * from a verified Supabase access token + active membership and never treats
+ * a client/channel-supplied organization_id as authorization evidence.
  */
 export interface TenantContextResolver {
   resolve(input: {
-    actorId: string;
+    accessToken: string;
     organizationId?: string;
     correlationId: string;
     requestId: string;
