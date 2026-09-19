@@ -130,7 +130,7 @@ Both tables:
 
 The target database was verified after migration: both tables have RLS enabled and forced, with only their SELECT/INSERT policies present.
 
-The Supabase security advisor currently reports only the previously intentional `public.create_organization(text)` SECURITY DEFINER warning from the foundation; no new warning was introduced by migration 005.
+The Supabase security advisor currently reports only the previously intentional `public.create_organization(text)` SECURITY DEFINER warning from the foundation; no new warning was introduced by the evidence/event migrations. Authenticated table privileges were also verified to be limited to SELECT and INSERT for observations/events.
 
 ## Current domain position
 
