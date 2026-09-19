@@ -136,28 +136,84 @@ The Supabase security advisor currently reports only the previously intentional 
 
 The operational path is now:
 
-`Identity → Organization → Role / Permissions → Membership → Tenant Context → Customer → Site → Asset → Observation → Event`
+Identity → Organization → Role / Permissions → Membership → Tenant Context → Customer → Site → Asset → Observation → Event → Situation → Work Item
 
-This is the point where Enerlectra moves from establishing **who is allowed to operate** toward establishing **what happened in the operational world**.
+The reconstruction has crossed the boundary from recognizing operational situations to organizing accountable operational response.
+
+### 5. Situation / Incident Foundation
+
+Implemented in migrations:
+
+1. 007_situation_foundation
+2. 008_situation_history_integrity
+
+A Situation is a mutable, tenant-scoped operational interpretation supported by immutable events.
+
+Implemented:
+
+- situations with bounded status and severity;
+- situation-to-event evidentiary links;
+- append-only situation status history;
+- automatic history on creation and status transitions;
+- tenant-scoped customer/site/asset relationships;
+- forced RLS and permission-gated access;
+- authenticated clients cannot directly manufacture situation history.
+
+The Situation model deliberately does not claim diagnosis or resolution merely because a report exists.
+
+### 6. Work Item / Operational Execution Foundation
+
+Implemented in migrations:
+
+1. 009_work_item_foundation
+2. 010_work_item_integrity_history
+3. 011_work_item_privilege_hardening
+4. 012_private_rls_helper_execute
+
+A Work Item is an authorized unit of operational work created to move a situation toward a verifiable outcome.
+
+Implemented:
+
+- tenant-scoped work_items;
+- situation linkage through composite tenant foreign keys;
+- optional tenant-consistent customer/site/asset subjects;
+- bounded work types, statuses, and priorities;
+- active same-organization assignee enforcement;
+- explicit lifecycle transition enforcement;
+- creator derived from authenticated actor context;
+- organization-scoped idempotency;
+- append-only work_item_history;
+- trigger-owned history for creation, assignment, start, completion, and cancellation;
+- terminal-state immutability;
+- work completion does not resolve the Situation.
+
+Security verification:
+
+- work_items RLS enabled and forced;
+- work_item_history RLS enabled and forced;
+- authenticated work access is limited to SELECT/INSERT/UPDATE on work_items and SELECT on work_item_history;
+- no authenticated DELETE grant or delete policy exists;
+- cross-tenant situation/assignee attempts were rejected;
+- suspended/revoked assignees were rejected;
+- direct history insertion was rejected;
+- tenant A could not see tenant B work;
+- duplicate organization/idempotency keys were rejected;
+- completed work left the Situation OPEN.
+
+A privilege issue discovered during authenticated-path testing was corrected: the private security-definer RLS helper functions now have EXECUTE for authenticated policy evaluation while remaining non-public and non-anon. This is tracked in migration 012.
+
+The Supabase security advisor remains limited to the previously intentional public.create_organization(text) SECURITY DEFINER warning. Performance advisor findings are pre-existing/index observations and were not expanded into unrelated cleanup during this gate.
 
 ## Next gate
 
-**Situation / Incident foundation.**
+**Action / Execution foundation.**
 
-The next stage should consume normalized events and evidence and establish contextual operational situations without turning derived interpretation into authoritative state.
+Do not build Ellie, console/UI, WhatsApp/Telegram adapters, telemetry, verification, marketplace, PCU, wallets, clusters, settlement, or a generic workflow engine yet.
+
+Action is the next architectural boundary because it represents something actually executed in the operational world. It must therefore be designed separately from Work Item and separately from Verification.
 
 Target path:
 
-`Observation → Event → Situation → Diagnosis → Work Item → Action → Verification → New Evidence`
+Observation → Event → Situation → Work Item → Action / Execution → Evidence → Verification → Situation update
 
-Do not build yet:
-
-- configurable console;
-- Ellie intelligence engine;
-- WhatsApp/Telegram product adapters;
-- marketplace/P2P trading;
-- generic workflow/no-code engine;
-- new business-model-specific databases or modules;
-- universal financial ledger as system-wide source of truth.
-
-The console and channel adapters come after the operational primitives are stable enough for them to become adapters over the same domain.
+Stop for an architectural review after Action / Execution before implementing Verification.
