@@ -202,7 +202,7 @@ Security verification:
 
 A privilege issue discovered during authenticated-path testing was corrected: the private security-definer RLS helper functions now have EXECUTE for authenticated policy evaluation while remaining non-public and non-anon. This is tracked in migration 012.
 
-The Supabase security advisor remains limited to the previously intentional public.create_organization(text) SECURITY DEFINER warning. Performance advisor findings are pre-existing/index observations and were not expanded into unrelated cleanup during this gate.
+The Supabase security advisor remains limited to the previously intentional public.create_organization(text) SECURITY DEFINER warning. Performance verification also added indexes for the Work Item foreign keys introduced by this gate; unrelated legacy/pre-existing index findings remain outside scope.
 
 ## Next gate
 
