@@ -69,9 +69,26 @@ Foundation entities are organizations, actors, roles, permissions, role_permissi
 
 No client/channel-supplied organization identifier is treated as authorization proof.
 
+## Gate: Customer / Site / Asset Foundation
+
+### Implemented
+
+- Added V2 `customers`, `sites`, and `assets` tables.
+- Every operational record has a direct `organization_id` tenant boundary.
+- Added indexes for tenant and relationship access paths.
+- Added strict status/check constraints and timestamp maintenance.
+- Enabled and forced RLS on all three tables.
+- CRUD policies are permission-gated through the private tenant authorization helpers.
+- Added composite tenant-scoped foreign keys so a site or asset cannot reference a customer/site belonging to another organization.
+- Applied migrations `003_customer_site_asset_foundation` and `004_customer_site_asset_tenant_integrity` to `enerlectra-v2`.
+
+### Domain boundary
+
+`Organization → Customer → Site → Asset` is a valid operational relationship, but it is **not** the canonical identity hierarchy. Each record remains directly tenant-scoped, and site/asset relationships are optional where the operating model requires them.
+
 ## Next gate
 
-**Customer / Site / Asset domain foundation.**
+**Evidence / Events foundation.**
 
 The next implementation must derive:
 
