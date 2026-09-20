@@ -70,82 +70,32 @@ Applied migrations:
 
 ### 4. Evidence / Events Foundation
 
-Implemented in migration `005_evidence_events_foundation`.
+Implemented in migrations `005_evidence_events_foundation` and `006_evidence_events_append_only_hardening`.
 
-Domain distinction is explicit:
+Domain distinction:
 
 `Observation = evidence received/observed about reality`
 
 `Event = normalized fact recognized by Enerlectra as having happened`
 
-`Situation = contextual interpretation of facts` (future gate)
+`Situation = contextual interpretation of facts`
 
-#### Observations
-
-The observation record captures:
-
-- organization and optional actor;
-- source/channel;
-- observation type;
-- observed and received timestamps;
-- optional customer/site/asset subject;
-- structured value;
-- provenance;
-- raw source reference;
-- correlation ID.
-
-Observations are append-only domain evidence.
-
-#### Events
-
-The event record captures:
-
-- organization and optional actor;
-- normalized event type;
-- occurred and recorded timestamps;
-- source;
-- optional customer/site/asset subject;
-- optional source observation;
-- structured payload;
-- provenance;
-- correlation ID;
-- causation ID.
-
-Events are append-only normalized facts.
-
-#### Traceability
-
-Events can point back to their source observation through a tenant-scoped foreign key. Correlation and causation identifiers provide the basis for tracing a larger operational chain.
-
-#### Tenant/security boundary
+Observations and Events are tenant-scoped and append-only. Events can reference source observations; correlation and causation identifiers provide traceability.
 
 Both tables:
 
-- carry a direct non-null `organization_id`;
-- use tenant-scoped composite foreign keys for customer/site/asset references;
+- carry non-null `organization_id`;
+- use tenant-scoped subject foreign keys;
 - have forced RLS;
-- expose only permission-gated SELECT and INSERT policies;
-- grant only SELECT/INSERT to authenticated users;
-- deliberately have no UPDATE/DELETE policies, establishing the append-only boundary.
-
-The target database was verified after migration: both tables have RLS enabled and forced, with only their SELECT/INSERT policies present.
-
-The Supabase security advisor currently reports only the previously intentional `public.create_organization(text)` SECURITY DEFINER warning from the foundation; no new warning was introduced by the evidence/event migrations. Authenticated table privileges were also verified to be limited to SELECT and INSERT for observations/events.
-
-## Current domain position
-
-The operational path is now:
-
-Identity → Organization → Role / Permissions → Membership → Tenant Context → Customer → Site → Asset → Observation → Event → Situation → Work Item
-
-The reconstruction has crossed the boundary from recognizing operational situations to organizing accountable operational response.
+- expose only permission-gated SELECT/INSERT;
+- have no authenticated UPDATE/DELETE capability.
 
 ### 5. Situation / Incident Foundation
 
 Implemented in migrations:
 
-1. 007_situation_foundation
-2. 008_situation_history_integrity
+1. `007_situation_foundation`
+2. `008_situation_history_integrity`
 
 A Situation is a mutable, tenant-scoped operational interpretation supported by immutable events.
 
@@ -165,16 +115,18 @@ The Situation model deliberately does not claim diagnosis or resolution merely b
 
 Implemented in migrations:
 
-1. 009_work_item_foundation
-2. 010_work_item_integrity_history
-3. 011_work_item_privilege_hardening
-4. 012_private_rls_helper_execute
+1. `009_work_item_foundation`
+2. `010_work_item_integrity_history`
+3. `011_work_item_privilege_hardening`
+4. `012_private_rls_helper_execute`
+5. `013_work_item_fk_indexes`
+6. `014_work_item_subject_fk_indexes`
 
-A Work Item is an authorized unit of operational work created to move a situation toward a verifiable outcome.
+A Work Item is the unit of accountable operational work created to move a Situation toward a verifiable outcome.
 
 Implemented:
 
-- tenant-scoped work_items;
+- tenant-scoped work items;
 - situation linkage through composite tenant foreign keys;
 - optional tenant-consistent customer/site/asset subjects;
 - bounded work types, statuses, and priorities;
@@ -182,38 +134,105 @@ Implemented:
 - explicit lifecycle transition enforcement;
 - creator derived from authenticated actor context;
 - organization-scoped idempotency;
-- append-only work_item_history;
+- append-only work-item history;
 - trigger-owned history for creation, assignment, start, completion, and cancellation;
 - terminal-state immutability;
 - work completion does not resolve the Situation.
 
-Security verification:
+Security verification established forced RLS, permission-gated authenticated access, no authenticated delete capability, cross-tenant relationship protection, assignee membership checks, append-only history, idempotency enforcement, and separation between Work completion and Situation resolution.
 
-- work_items RLS enabled and forced;
-- work_item_history RLS enabled and forced;
-- authenticated work access is limited to SELECT/INSERT/UPDATE on work_items and SELECT on work_item_history;
-- no authenticated DELETE grant or delete policy exists;
-- cross-tenant situation/assignee attempts were rejected;
-- suspended/revoked assignees were rejected;
-- direct history insertion was rejected;
-- tenant A could not see tenant B work;
-- duplicate organization/idempotency keys were rejected;
-- completed work left the Situation OPEN.
+**Work Item is frozen. Do not modify migrations 009–014 unless a concrete defect is discovered.**
 
-A privilege issue discovered during authenticated-path testing was corrected: the private security-definer RLS helper functions now have EXECUTE for authenticated policy evaluation while remaining non-public and non-anon. This is tracked in migration 012.
+### 7. Action / Execution Semantic Design
 
-The Supabase security advisor remains limited to the previously intentional public.create_organization(text) SECURITY DEFINER warning. Performance verification also added indexes for the Work Item foreign keys introduced by this gate; unrelated legacy/pre-existing index findings remain outside scope.
+Design-only gate completed in:
 
-## Next gate
+`docs/v2/V2-Action-Execution-Semantic-Design.md`
 
-**Action / Execution foundation.**
+No Action schema or implementation was created by this gate.
 
-Do not build Ellie, console/UI, WhatsApp/Telegram adapters, telemetry, verification, marketplace, PCU, wallets, clusters, settlement, or a generic workflow engine yet.
+The design establishes:
 
-Action is the next architectural boundary because it represents something actually executed in the operational world. It must therefore be designed separately from Work Item and separately from Verification.
+```
+Recommendation / Intent
+        ↓
+Authorization
+        ↓
+Action
+        ↓
+Execution Attempt(s)
+        ↓
+Execution Result
+        ↓
+Evidence
+        ↓
+Event
+        ↓
+Verification
+        ↓
+Work / Situation update
+```
 
-Target path:
+Core semantic decisions:
 
-Observation → Event → Situation → Work Item → Action / Execution → Evidence → Verification → Situation update
+- Action is the durable record of an authorized operational execution intent and lifecycle.
+- Every initial V2 Action belongs to exactly one Work Item.
+- Recommendation, authorization, Action, execution attempt, result, Evidence, Event, and Verification remain distinct.
+- Authorization is explicit; recommendation or work permissions do not imply `action.authorize`.
+- Requested, authorized, and executed actors are distinct concepts.
+- A first-class `action_attempts` concept is preferred so retries do not create duplicate logical Actions.
+- External execution must preserve provider references and distinguish failure from uncertain execution.
+- `EXECUTION_UNKNOWN` semantics are required for consequential operations where a timeout does not establish failure.
+- Execution may produce Evidence but does not directly assert operational resolution.
+- Action success does not equal Work completion; Work completion does not equal Situation resolution.
+- Ellie may recommend but cannot self-authorize, bypass authorization, or directly execute an Action.
+- Legacy command/workflow infrastructure is implementation reference only; legacy marketplace, PCU, wallet, settlement, staking, blockchain, and trading execution concepts do not define V2 Action semantics.
+- No generic workflow engine or autonomous execution framework is introduced.
 
-Stop for an architectural review after Action / Execution before implementing Verification.
+### Action design gate status
+
+**Design is ready for architectural review.**
+
+Migration 015 is **not** approved yet.
+
+The next decision is to review the Action semantic contract, invariants, and minimal schema before any database implementation is created.
+
+## Current domain position
+
+```
+Identity
+  → Organization
+  → Role / Permissions
+  → Membership
+  → Tenant Context
+  → Customer
+  → Site
+  → Asset
+  → Observation
+  → Event
+  → Situation
+  → Work Item
+  → Action / Execution
+  → Evidence
+  → Verification
+  → Situation / Work update
+```
+
+## Explicitly deferred
+
+Do not build yet:
+
+- Ellie;
+- configurable console/UI;
+- WhatsApp/Telegram adapters;
+- telemetry;
+- Verification;
+- marketplace;
+- PCU;
+- wallets;
+- clusters;
+- settlement;
+- generic workflow engine;
+- autonomous AI execution.
+
+The next implementation gate, after Action architectural review, is **Migration 015: Action / Execution foundation**. Its exact schema must be derived from the accepted semantic contract rather than assumed from this design document.
