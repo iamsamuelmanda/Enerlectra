@@ -171,14 +171,13 @@ if (!integrationEnabled) {
   });
 
   after(async () => {
-    // Remove dependent actors before auth.users so actor.auth_user_id FKs cannot
-    // leave orphaned Auth users behind. Tenant records are then removed with orgs.
+    // Tenant records and memberships depend on actors, so remove organizations
+    // first (cascading their memberships/tenant data), then actors, then Auth users.
+    for (const orgId of Object.values(orgs)) {
+      await admin.from('organizations').delete().eq('id', orgId);
+    }
     for (const label of Object.keys(users)) {
       await admin.from('actors').delete().eq('auth_user_id', users[label].id);
-    }
-    for (const orgId of Object.values(orgs)) {
-      await admin.from('memberships').delete().eq('organization_id', orgId);
-      await admin.from('organizations').delete().eq('id', orgId);
     }
     for (const label of Object.keys(users)) {
       await admin.auth.admin.deleteUser(users[label].id);
