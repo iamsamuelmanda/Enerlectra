@@ -37,25 +37,23 @@ if (!integrationEnabled) {
   }
 
   async function signIn(label) {
-    const client = createClient(url, serviceRoleKey, {
+    const authClient = createClient(url, serviceRoleKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     // Exchange credentials for a real authenticated JWT. The service-role key is never
     // used for the assertions below.
-    const { data, error } = await client.auth.signInWithPassword({
+    const { data, error } = await authClient.auth.signInWithPassword({
       email: users[label].email,
       password,
     });
     assert.ifError(error);
     assert.ok(data.session?.access_token);
-    return createClient(url, {
+    const scoped = createClient(url, {
       auth: { autoRefreshToken: false, persistSession: false },
-    }).auth.setSession(data.session).then(() => {
-      const scoped = createClient(url, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-      return scoped;
     });
+    const { error: sessionError } = await scoped.auth.setSession(data.session);
+    assert.ifError(sessionError);
+    return scoped;
   }
 
   async function querySingle(table, query) {
@@ -83,14 +81,12 @@ if (!integrationEnabled) {
       .single();
     assert.ifError(actorError);
 
-    const role = await querySingle('roles', 'id, key');
     const { data: roleRow, error: roleError } = await admin
       .from('roles')
       .select('id, key')
       .eq('key', roleKey)
       .single();
     assert.ifError(roleError);
-    assert.equal(role?.key ?? roleKey, roleKey);
 
     const { error: membershipError } = await admin.from('memberships').insert({
       organization_id: orgId,
