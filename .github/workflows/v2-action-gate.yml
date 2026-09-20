@@ -1,0 +1,41 @@
+name: V2 Authenticated Action Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'test/v2-action-integration.test.mjs'
+      - 'supabase/v2/migrations/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'server/src/platform/**'
+
+jobs:
+  action-gate:
+    runs-on: ubuntu-latest
+    env:
+      V2_SUPABASE_URL: https://mtyhzvkiuibigjximsix.supabase.co
+      V2_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.V2_SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Require V2 service-role secret
+        run: |
+          if [ -z "${V2_SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::error::Repository secret V2_SUPABASE_SERVICE_ROLE_KEY is not configured."
+            exit 1
+          fi
+
+      - name: Run authenticated V2 Action gate
+        run: npm run test:v2:action
