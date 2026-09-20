@@ -171,17 +171,17 @@ if (!integrationEnabled) {
   });
 
   after(async () => {
+    // Remove dependent actors before auth.users so actor.auth_user_id FKs cannot
+    // leave orphaned Auth users behind. Tenant records are then removed with orgs.
     for (const label of Object.keys(users)) {
-      await admin.auth.admin.deleteUser(users[label].id);
+      await admin.from('actors').delete().eq('auth_user_id', users[label].id);
     }
-    // Organizations cascade their tenant-owned test records. Actors reference auth.users
-    // and are removed by the explicit actor cleanup if still present.
     for (const orgId of Object.values(orgs)) {
       await admin.from('memberships').delete().eq('organization_id', orgId);
       await admin.from('organizations').delete().eq('id', orgId);
     }
     for (const label of Object.keys(users)) {
-      await admin.from('actors').delete().eq('auth_user_id', users[label].id);
+      await admin.auth.admin.deleteUser(users[label].id);
     }
   });
 
@@ -336,6 +336,53 @@ if (!integrationEnabled) {
     assert.notEqual(orgAChain.ownerActor, orgAChain.technicianActor);
   });
 
+
+  test('cross-tenant authorization and execution are both denied', async () => {
+    const { data: bAction, error: seedError } = await admin.from('actions').insert({
+      organization_id: orgBChain.orgId,
+      work_item_id: orgBChain.workItemId,
+      action_type: 'INSPECT_ASSET',
+      consequence_class: 'OBSERVATIONAL',
+      requested_by_actor_id: orgBChain.otherActor,
+      idempotency_key: `b-auth-exec-${runId}`,
+    }).select('id,status').single();
+    assert.ifError(seedError);
+    assert.equal(bAction.status, 'PROPOSED');
+
+    const { error: authError } = await operatorClient.from('actions')
+      .update({ status: 'AUTHORIZED', authorized_by_actor_id: orgAChain.ownerActor })
+      .eq('id', bAction.id);
+    assert.ok(authError);
+
+    const { error: execError } = await operatorClient.from('actions')
+      .update({ status: 'EXECUTING' })
+      .eq('id', bAction.id);
+    assert.ok(execError);
+  });
+
+  test('cross-tenant Action-to-Attempt relationship is rejected', async () => {
+    const { data: bAction, error: actionError } = await admin.from('actions').insert({
+      organization_id: orgBChain.orgId,
+      work_item_id: orgBChain.workItemId,
+      action_type: 'INSPECT_ASSET',
+      consequence_class: 'OBSERVATIONAL',
+      requested_by_actor_id: orgBChain.otherActor,
+      idempotency_key: `b-attempt-${runId}`,
+    }).select('id').single();
+    assert.ifError(actionError);
+
+    const { error: attemptError } = await operatorClient.from('action_attempts').insert({
+      organization_id: orgAChain.orgId,
+      action_id: bAction.id,
+      attempt_number: 1,
+      status: 'CREATED',
+      executor_type: 'HUMAN',
+      executor_actor_id: orgAChain.technicianActor,
+      execution_idempotency_key: `cross-attempt-${runId}`,
+    });
+    assert.ok(attemptError);
+  });
+
   test('Action and Attempt idempotency reject duplicate requests', async () => {
     const key = `idem-${runId}`;
     const payload = {
@@ -373,6 +420,50 @@ if (!integrationEnabled) {
     assert.ok(a2.error);
   });
 
+
+  test('authorized Action consequential fields and Attempt identity are immutable', async () => {
+    const { data: proposal, error: proposalError } = await operatorClient.from('actions').insert({
+      organization_id: orgAChain.orgId,
+      work_item_id: orgAChain.workItemId,
+      action_type: 'CONTACT_CUSTOMER',
+      consequence_class: 'COMMUNICATION',
+      requested_by_actor_id: orgAChain.operatorActor,
+      idempotency_key: `immutable-${runId}`,
+      target: { customer: 'test' },
+    }).select('id').single();
+    assert.ifError(proposalError);
+
+    const { error: authError } = await ownerClient.from('actions')
+      .update({ status: 'AUTHORIZED', authorized_by_actor_id: orgAChain.ownerActor })
+      .eq('id', proposal.id);
+    assert.ifError(authError);
+
+    const { error: actionMutation } = await ownerClient.from('actions')
+      .update({ action_type: 'RECONCILE_PAYMENT', target: { changed: true } })
+      .eq('id', proposal.id);
+    assert.ok(actionMutation);
+
+    const { error: startError } = await technicianClient.from('actions')
+      .update({ status: 'EXECUTING' }).eq('id', proposal.id);
+    assert.ifError(startError);
+
+    const { data: attempt, error: attemptError } = await technicianClient.from('action_attempts').insert({
+      organization_id: orgAChain.orgId,
+      action_id: proposal.id,
+      attempt_number: 1,
+      status: 'CREATED',
+      executor_type: 'HUMAN',
+      executor_actor_id: orgAChain.technicianActor,
+      execution_idempotency_key: `immutable-attempt-${runId}`,
+    }).select('id').single();
+    assert.ifError(attemptError);
+
+    const { error: attemptMutation } = await technicianClient.from('action_attempts')
+      .update({ executor_actor_id: orgAChain.ownerActor, attempt_number: 99 })
+      .eq('id', attempt.id);
+    assert.ok(attemptMutation);
+  });
+
   test('authenticated client cannot manufacture or delete Action history', async () => {
     const { data: history, error: readError } = await operatorClient.from('action_history')
       .select('event_type').eq('action_id', orgAChain.actionId);
@@ -390,6 +481,50 @@ if (!integrationEnabled) {
     const { error: deleteError } = await operatorClient.from('action_history')
       .delete().eq('action_id', orgAChain.actionId);
     assert.ok(deleteError);
+  });
+
+
+  test('system execution requires a trusted server claim and system principal', async () => {
+    const { data: proposal, error: proposalError } = await admin.from('actions').insert({
+      organization_id: orgAChain.orgId,
+      work_item_id: orgAChain.workItemId,
+      action_type: 'CONTACT_CUSTOMER',
+      consequence_class: 'COMMUNICATION',
+      requested_by_actor_id: orgAChain.operatorActor,
+      idempotency_key: `system-${runId}`,
+    }).select('id').single();
+    assert.ifError(proposalError);
+
+    const auth = await ownerClient.from('actions')
+      .update({ status: 'AUTHORIZED', authorized_by_actor_id: orgAChain.ownerActor })
+      .eq('id', proposal.id);
+    assert.ifError(auth.error);
+
+    const exec = await ownerClient.from('actions')
+      .update({ status: 'EXECUTING' }).eq('id', proposal.id);
+    assert.ifError(exec.error);
+
+    const forged = await ownerClient.from('action_attempts').insert({
+      organization_id: orgAChain.orgId,
+      action_id: proposal.id,
+      attempt_number: 1,
+      status: 'CREATED',
+      executor_type: 'SYSTEM',
+      execution_idempotency_key: `forged-system-${runId}`,
+      metadata: { system_principal: 'ellie' },
+    });
+    assert.ok(forged.error);
+
+    const trusted = await admin.from('action_attempts').insert({
+      organization_id: orgAChain.orgId,
+      action_id: proposal.id,
+      attempt_number: 1,
+      status: 'CREATED',
+      executor_type: 'SYSTEM',
+      execution_idempotency_key: `trusted-system-${runId}`,
+      metadata: { system_principal: 'action-executor' },
+    });
+    assert.ifError(trusted.error);
   });
 
   test('trusted server cannot authorize on behalf of Ellie without an actor', async () => {
