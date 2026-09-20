@@ -178,7 +178,7 @@ Core decisions:
 
 **FROZEN — approved for implementation.**
 
-Migration 015 is the next implementation gate. Its schema must be derived from the frozen Action security/state-machine contract, not from the earlier provisional schema.
+Action implementation is now applied to the V2 database through migrations 015–017. Migration 015 established the tables, RLS, permissions, transitions, and history; 016 corrected the trusted system-execution and Attempt lifecycle path; 017 corrected system-role detection inside SECURITY DEFINER trigger functions. The live database records all three migrations.
 
 ## Current domain position
 
