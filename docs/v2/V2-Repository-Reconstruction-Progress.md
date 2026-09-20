@@ -145,57 +145,40 @@ Security verification established forced RLS, permission-gated authenticated acc
 
 ### 7. Action / Execution Semantic Design
 
-Design-only gate completed in:
+The initial semantic design and architectural review are complete.
 
-`docs/v2/V2-Action-Execution-Semantic-Design.md`
+Documents:
 
-No Action schema or implementation was created by this gate.
+- `docs/v2/V2-Action-Execution-Semantic-Design.md`
+- `docs/v2/V2-Action-Execution-Architecture-Review.md`
+- `docs/v2/V2-Action-Security-and-State-Machine-Freeze.md`
 
-The design establishes:
+The Action security/state-machine gate is now frozen.
 
-```
-Recommendation / Intent
-        ↓
-Authorization
-        ↓
-Action
-        ↓
-Execution Attempt(s)
-        ↓
-Execution Result
-        ↓
-Evidence
-        ↓
-Event
-        ↓
-Verification
-        ↓
-Work / Situation update
-```
+Core decisions:
 
-Core semantic decisions:
-
-- Action is the durable record of an authorized operational execution intent and lifecycle.
-- Every initial V2 Action belongs to exactly one Work Item.
-- Recommendation, authorization, Action, execution attempt, result, Evidence, Event, and Verification remain distinct.
-- Authorization is explicit; recommendation or work permissions do not imply `action.authorize`.
-- Requested, authorized, and executed actors are distinct concepts.
-- A first-class `action_attempts` concept is preferred so retries do not create duplicate logical Actions.
-- External execution must preserve provider references and distinguish failure from uncertain execution.
-- `EXECUTION_UNKNOWN` semantics are required for consequential operations where a timeout does not establish failure.
-- Execution may produce Evidence but does not directly assert operational resolution.
-- Action success does not equal Work completion; Work completion does not equal Situation resolution.
-- Ellie may recommend but cannot self-authorize, bypass authorization, or directly execute an Action.
-- Legacy command/workflow infrastructure is implementation reference only; legacy marketplace, PCU, wallet, settlement, staking, blockchain, and trading execution concepts do not define V2 Action semantics.
+- Action creation, authorization, and execution are distinct authority boundaries.
+- `action.create` is separate from `action.authorize`.
+- Creating an Action always produces PROPOSED; it never authorizes.
+- Authorization is an auditable decision with consequential fields frozen afterward.
+- Action lifecycle is PROPOSED → AUTHORIZED → EXECUTING → SUCCEEDED / FAILED / EXECUTION_UNKNOWN, with explicit cancellation and controlled reconciliation from UNKNOWN.
+- Action Attempts are first-class and have their own lifecycle.
+- Retries create new Attempts under the same logical Action.
+- Action does not contain authoritative executor identity; executor identity belongs to Attempts.
+- HUMAN and SYSTEM executor types are distinct; system execution requires a trusted server-side execution principal.
+- Logical Action idempotency and Attempt execution idempotency are separate.
+- Action History is append-only and client-write-prohibited.
+- Execution results remain execution facts and do not directly establish domain recovery.
+- Ellie cannot self-authorize or directly execute.
+- Tenant isolation applies to Actions, Attempts, authorization, execution, history, AI context, jobs, webhooks, and external adapters.
+- Work Item migrations 009–014 remain frozen.
 - No generic workflow engine or autonomous execution framework is introduced.
 
 ### Action design gate status
 
-**Design is ready for architectural review.**
+**FROZEN — approved for implementation.**
 
-Migration 015 is **not** approved yet.
-
-The next decision is to review the Action semantic contract, invariants, and minimal schema before any database implementation is created.
+Migration 015 is the next implementation gate. Its schema must be derived from the frozen Action security/state-machine contract, not from the earlier provisional schema.
 
 ## Current domain position
 
@@ -235,4 +218,4 @@ Do not build yet:
 - generic workflow engine;
 - autonomous AI execution.
 
-The next implementation gate, after Action architectural review, is **Migration 015: Action / Execution foundation**. Its exact schema must be derived from the accepted semantic contract rather than assumed from this design document.
+The next implementation gate is **Migration 015: Action / Execution foundation**. It must include the frozen state machine, tenant/RLS boundaries, permission separation, idempotency, trusted system executor representation, append-only history, and authenticated tenant-boundary tests.
