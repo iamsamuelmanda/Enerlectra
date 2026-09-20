@@ -178,7 +178,7 @@ Core decisions:
 
 **FROZEN — approved for implementation.**
 
-Action implementation is now applied to the V2 database through migrations 015–017. Migration 015 established the tables, RLS, permissions, transitions, and history; 016 corrected the trusted system-execution and Attempt lifecycle path; 017 corrected system-role detection inside SECURITY DEFINER trigger functions. The live database records all three migrations.
+Action implementation is now applied to the V2 database through migrations 015–018. Migration 015 established the tables, RLS, permissions, transitions, and history; 016 corrected the trusted system-execution and Attempt lifecycle path; 017 corrected system-role detection inside SECURITY DEFINER trigger functions; 018 decoupled historical Action actor references from mutable membership rows. The live database records all four migrations.
 
 ## Current domain position
 
