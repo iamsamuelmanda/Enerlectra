@@ -12,6 +12,7 @@ function mockDb() {
         insert(payload) { state.payload = payload; inserts.push(state); return builder; },
         select() { return builder; },
         single: async () => ({ data: { id: state.table + '-id' }, error: null }),
+        maybeSingle: async () => ({ data: state.table === 'memberships' ? { id: 'membership-2' } : null, error: null }),
       };
       return builder;
     },
