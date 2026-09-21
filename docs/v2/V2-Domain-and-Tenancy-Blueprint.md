@@ -1,7 +1,7 @@
 # Enerlectra V2 — Domain & Tenancy Blueprint
 
-Status: Architecture contract for V2 planning
-Date: 2026-09-18
+Status: Architecture contract — operating-model revision
+Date: 2026-09-21
 Scope: Domain, tenancy, organization operating models, capabilities, authorization, operational intelligence, and pilot boundaries
 Database status: No V2 database or migration is defined by this document
 Legacy status: Enerlectra V1 remains frozen legacy/reference infrastructure
@@ -141,62 +141,166 @@ Channel identifiers are adapters/identifiers, not authorization boundaries.
 
 ## 5. Authorization model
 
-Authorization has two dimensions.
+Authorization is capability- and responsibility-oriented, not job-title-oriented.
 
 Tenant scope:
 
     Actor -> active Membership -> Organization
 
-Permission scope:
+Authorization scope:
 
-    Actor -> Role -> Permission/Capability -> Operation
+    Actor -> Membership -> Role assignment(s)
+                         -> Permission(s)
+                         -> Responsibility scope
+                         -> Organization capability/policy
+                         -> Operation
+
+A role is a reusable authorization profile, not a statement of someone's profession. A technician, finance officer, owner, field agent, or operations manager may hold overlapping operational functions depending on the organization's actual structure.
 
 Therefore an operation must consider:
 
-- Is the actor authorized?
-- Is the actor authorized in this organization?
-- Does the target resource belong to this organization?
-- Is the capability enabled?
+- Is the actor authenticated?
+- Is the actor an active member of this organization?
+- Does the actor's assigned role/profile grant the required permission?
+- Is the relevant organization capability enabled?
+- Is the actor responsible for or within scope for the target resource/work?
 - Does organization policy permit the operation?
+- Does the specific consequential action require explicit authorization?
 
-Initial roles:
+Do not make job titles such as TECHNICIAN, MANAGER, SUPPORT, or OWNER the fundamental authorization vocabulary. Human-readable job titles, if needed, should be organizational metadata mapped to platform permissions and responsibility scopes.
 
-- OWNER
-- OPERATOR
-- VIEWER
-
-Add TECHNICIAN, FINANCE, SUPPORT, or other roles only when pilot evidence requires them.
+The initial permission vocabulary remains the machine-enforceable primitive. Role names should remain small and platform-defined until pilot evidence establishes stable role bundles.
 
 ## 6. Organization operating model
 
 Business model is configuration/context, not tenant identity.
 
-An organization may combine multiple commercial and service models.
+The platform is designed for distributed-energy businesses in Lusaka first, with the data model capable of supporting broader operating models later. The immediate market is not one company archetype. Organizations may differ materially in commercial structure and day-to-day operations.
 
-Example:
+An organization therefore receives an Operating Profile, not a single permanent business-model type.
 
-    Solar installer
-       +
-    equipment distributor
-       +
-    maintenance provider
-       +
-    financing partnership
+    Organization
+        |
+        +-- Business activities
+        +-- Customer segments
+        +-- Asset/ownership model
+        +-- Service responsibilities
+        +-- Payment model
+        +-- Operational capabilities
+        +-- Operational structure/scope
+        +-- Policies
 
-Do not make a single field such as organization.type = PAYGO the master switch for the platform.
+Each dimension may contain multiple values. Mixed operating models are expected.
 
-An operating-model profile describes relevant characteristics:
+### 6.1 Business activities
 
-- primary business model
-- secondary business models
-- customer relationship model
-- asset ownership model
-- revenue model
-- payment model
-- service model
-- field-work model
-- enabled capabilities
-- organization policies
+Activities describe what the organization actually does.
+
+Initial reference vocabulary:
+
+- INSTALLATION
+- DISTRIBUTION
+- MAINTENANCE
+- FINANCING
+- ENERGY_GENERATION
+- ENERGY_SERVICE
+- CUSTOMER_SUPPORT
+
+Potential later activities include project development, engineering/procurement/construction, metering, billing, field collection, asset management, and energy trading. These should only become platform primitives when pilot evidence requires them.
+
+Activities are descriptive configuration. They do not grant permissions.
+
+### 6.2 Customer segments
+
+- RESIDENTIAL
+- SME
+- COMMERCIAL
+- INDUSTRIAL
+- INSTITUTIONAL
+- PUBLIC_SECTOR
+- OTHER
+
+An organization may serve several segments simultaneously.
+
+### 6.3 Asset and ownership model
+
+Initial reference values:
+
+- CUSTOMER_OWNED
+- ORGANIZATION_OWNED
+- FINANCED
+- THIRD_PARTY_OWNED
+
+Ownership does not imply who services, maintains, dispatches, or authorizes work on an asset.
+
+### 6.4 Service responsibilities
+
+Initial reference values:
+
+- INSTALLATION
+- WARRANTY
+- O_AND_M
+- CUSTOMER_SUPPORT
+- REMOTE_MONITORING
+- FIELD_SERVICE
+
+This is intentionally distinct from ownership.
+
+### 6.5 Payment model
+
+Initial reference values:
+
+- CASH
+- RECURRING
+- PAYGO
+- CONTRACT
+- MIXED
+
+Payment model is context, not a financial ledger. Financial entities are introduced only when a validated workflow requires them.
+
+### 6.6 Operational capabilities
+
+Capabilities answer: What can this organization actually do through Enerlectra?
+
+Examples:
+
+- CUSTOMER_MANAGEMENT
+- SITE_MANAGEMENT
+- ASSET_MANAGEMENT
+- PROJECT_DELIVERY
+- INSTALLATION
+- COMMISSIONING
+- WARRANTY
+- MAINTENANCE
+- FIELD_SERVICE
+- PAYMENT_RECONCILIATION
+- COLLECTIONS
+- CUSTOMER_SUPPORT
+- REMOTE_SERVICE
+- MONITORING
+- CONTRACT_MANAGEMENT
+- PORTFOLIO_REPORTING
+
+Capabilities determine which platform-supported operational surfaces are relevant. They never grant actor permission by themselves.
+
+### 6.7 Operational structure and responsibility scope
+
+Organizations may structure work by teams, branches, territories, portfolios, or other bounded operational scopes.
+
+Where required, Enerlectra needs to know:
+
+- who is responsible;
+- for which operational area;
+- for which customers/sites/assets/work;
+- under which organization policy.
+
+This is not an HR system. Do not model employment structure that has no operational consequence.
+
+### 6.8 Bounded workflow configuration
+
+Different organizations can use the same capabilities differently. Enerlectra may configure bounded behavior such as assignment, escalation, terminology, responsibility, and approval rules.
+
+It must not become a generic no-code workflow programming platform.
 
 These characteristics influence workflows, terminology, priorities, recommendations, and authorization without changing the core operational primitives.
 
@@ -1171,9 +1275,10 @@ Reason: V2 is an operational-intelligence product, not a settlement engine.
 
 ## 36. Unresolved decisions
 
-1. Exact representation of mixed business models.
-2. Whether operating-model configuration requires dedicated persisted entities or a smaller configuration structure.
-3. Exact role/permission granularity after pilot observation.
+1. Exact representation/versioning of operating profiles and mixed business activities.
+2. Exact persisted representation of customer segments, ownership, service responsibility, payment model, and operational structure.
+3. Exact role/permission/responsibility granularity after pilot observation.
+4. Which responsibility scopes require first-class persistence in the first Lusaka pilot.
 4. Exact Situation/Incident persistence model.
 5. Exact relationship between Work Item and Action.
 6. Which evidence sources are authoritative for each pilot.
