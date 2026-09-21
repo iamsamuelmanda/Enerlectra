@@ -18,7 +18,8 @@
     "test": "node --import tsx --test test/ci-smoke.test.mjs test/v2-boundary.test.mjs test/v2-tenant-context.test.mjs",
     "ci": "npm test && npm run typecheck:server && npm run typecheck:client && npm run build:client && npm run typecheck:telegram-bot",
     "clean": "rm -rf dist client/dist",
-    "test:v2:action": "node --import tsx --test test/v2-action-integration.test.mjs"
+    "test:v2:action": "node --import tsx --test test/v2-action-integration.test.mjs",
+    "test:customer-operational-issue": "node --import tsx --test test/customer-operational-issue.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
