@@ -261,3 +261,48 @@ Do not build yet:
 The next implementation gate is the **Market Operating Model / Responsibility review**. No new migration should be created until that review establishes which operating-profile and responsibility dimensions are actually required by the first Lusaka pilot.
 
 After that gate, implementation resumes with the minimum schema changes required by evidence, followed by authenticated integration tests and one real operational vertical slice.
+
+
+## 10. Customer Operational Issue workflow validated
+
+Added:
+
+- `docs/v2/V2-Customer-Operational-Issue-Workflow.md`
+
+The Solar Move Africa interview with Mary Lengwe Katebe supplied a real end-to-end customer incident involving a well pump: customer report, context identification, equipment mismatch, independent installation, subsequent failure, technician referral, inspection evidence, warranty/responsibility consideration, consequential replacement decision, and customer restoration.
+
+The interview also identifies fragmented customer-fault intake and routing as a recurring operational problem, while distinguishing that problem from technical monitoring.
+
+The workflow is therefore defined as:
+
+```
+SIGNAL / REPORT
+→ INTAKE
+→ IDENTIFY CONTEXT
+→ INVESTIGATE
+→ SITUATION
+→ DETERMINE RESPONSE
+→ WORK
+→ ACTION / INTERVENTION
+→ EVIDENCE
+→ VERIFY
+→ RESOLVED / ESCALATED / REOPENED
+```
+
+Cross-operator evidence remains compatible with the same kernel:
+
+```
+Observation → Event → Situation → Work Item → Action / Attempt → Evidence → Verification
+```
+
+The Solar Move evidence does not establish a recurring territory, customer-portfolio, asset-portfolio, branch, or service-region responsibility boundary. The first workflow can therefore use the existing `work_items.assigned_actor_id` as the concrete responsibility boundary.
+
+### Current gate decision
+
+**Do not create Migration 019 yet.**
+
+The next work is implementation validation of the existing Work Item and Action contracts against the Customer Operational Issue workflow, followed by authenticated integration testing and cross-operator validation. A detailed Lusaka incident should still be collected if it exposes a responsibility boundary that cannot be represented by direct work assignment.
+
+The principle remains:
+
+> Persist the smallest domain boundary required by a real operational workflow. Do not persist an abstraction merely because it may become useful at scale.
