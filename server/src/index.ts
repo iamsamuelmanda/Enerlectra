@@ -32,6 +32,7 @@ import stakingRoutes from './routes/staking.js';
 import ledgerRoutes from './routes/ledger.js';
 import marketplaceRoutes from './routes/marketplace.js';
 import settlementRoutes from './routes/settlement.js';
+import { createCustomerOperationalIssuesRouter } from './routes/customerOperationalIssues.js';
 
 // ──────────────────────────────────────────────────────────────
 // Import background jobs
@@ -428,6 +429,9 @@ app.use('/api/staking', stakingRoutes);
 app.use('/api/ledger', ledgerRoutes);
 app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/settlement', settlementRoutes);
+if (supabase) {
+  app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabase));
+}
 
 // ──────────────────────────────────────────────────────────────
 // Lenco webhook (correct signature & payload)
