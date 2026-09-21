@@ -175,11 +175,13 @@ Conceptual fields:
 - description
 - scope
 
-Initial role keys:
+Initial role keys remain a temporary platform vocabulary:
 
 - OWNER
 - OPERATOR
 - VIEWER
+
+These are not job titles. Do not replace them with TECHNICIAN, MANAGER, SUPPORT, or other profession-specific roles until the market operating-model review establishes stable role bundles. Permissions remain the machine-enforceable authorization primitive; responsibility scope is a separate concern.
 
 Do not encode EPC/PAYGo permissions into role names.
 
