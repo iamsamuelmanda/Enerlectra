@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TenantContext } from '../platform/tenant/context.js';
 
@@ -42,7 +43,7 @@ export async function createCustomerOperationalIssue(
   tenant: TenantContext,
   input: CustomerOperationalIssueInput,
 ): Promise<CustomerOperationalIssueResult> {
-  const correlationId = input.correlationId ?? crypto.randomUUID();
+  const correlationId = input.correlationId ?? randomUUID();
   const now = new Date().toISOString();
   const source = input.source ?? 'customer_report';
   const observationType = input.observationType ?? 'CUSTOMER_OPERATIONAL_ISSUE';
