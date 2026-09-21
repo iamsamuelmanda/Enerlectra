@@ -51,6 +51,23 @@ export async function createCustomerOperationalIssue(
   const priority = input.priority ?? 'NORMAL';
   const workType = input.workType ?? 'INVESTIGATE';
 
+  if (input.assignedActorId) {
+    const assignment = await db
+      .from('memberships')
+      .select('id')
+      .eq('organization_id', tenant.organizationId)
+      .eq('actor_id', input.assignedActorId)
+      .eq('status', 'ACTIVE')
+      .maybeSingle();
+
+    if (assignment.error) {
+      throw new Error(`Failed to validate work assignment: ${assignment.error.message}`);
+    }
+    if (!assignment.data) {
+      throw new Error('Assigned actor is not an active member of the tenant organization');
+    }
+  }
+
   const observation = await db
     .from('observations')
     .insert({
