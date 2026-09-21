@@ -201,6 +201,34 @@ Identity
   → Situation / Work update
 ```
 
+## 8. Market operating-model review gate
+
+The repository architecture has now been revised to treat organization operating model as a first-class V2 concern.
+
+Added:
+
+- `docs/v2/V2-Market-Operating-Model-and-Responsibility-Spec.md`
+- revised `docs/v2/V2-Domain-and-Tenancy-Blueprint.md`
+- revised `docs/v2/V2-Domain-to-Schema-Design.md`
+
+Resolved direction:
+
+- Enerlectra is Lusaka-first, not EPC-only.
+- The four previously interviewed organizations are discovery evidence, not the market definition.
+- Organizations may combine multiple business activities and operating models.
+- Business-model archetypes are classifications/context, not separate products or schemas.
+- Business activities, customer segments, ownership model, service responsibilities, payment model, capabilities, responsibility scope, and policies are separate dimensions.
+- Ownership is distinct from operational responsibility.
+- Capability is distinct from actor permission.
+- Role is not a job title; job titles must not become the authorization architecture.
+- Responsibility scope is a separate design concern from role/permission.
+- Bounded workflow configuration is allowed; a generic no-code workflow engine is not.
+- Current roles remain temporarily valid. No Migration 019 role rename is authorized yet.
+- Work Item migrations 009–014 remain frozen.
+- Action migrations 015–018 remain frozen unless a concrete defect is discovered.
+
+The next architecture gate is to validate this operating model against materially different distributed-energy operating patterns before further role/schema changes. The target patterns are installation/service, PAYGo/recurring service, C&I/portfolio operation, distributor/equipment service, and maintenance/field service.
+
 ## Explicitly deferred
 
 Do not build yet:
@@ -218,4 +246,6 @@ Do not build yet:
 - generic workflow engine;
 - autonomous AI execution.
 
-The next implementation gate is **Migration 015: Action / Execution foundation**. It must include the frozen state machine, tenant/RLS boundaries, permission separation, idempotency, trusted system executor representation, append-only history, and authenticated tenant-boundary tests.
+The next implementation gate is the **Market Operating Model / Responsibility review**. No new migration should be created until that review establishes which operating-profile and responsibility dimensions are actually required by the first Lusaka pilot.
+
+After that gate, implementation resumes with the minimum schema changes required by evidence, followed by authenticated integration tests and one real operational vertical slice.
