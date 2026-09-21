@@ -229,6 +229,18 @@ Resolved direction:
 
 The next architecture gate is to validate this operating model against materially different distributed-energy operating patterns before further role/schema changes. The target patterns are installation/service, PAYGo/recurring service, C&I/portfolio operation, distributor/equipment service, and maintenance/field service.
 
+
+
+## 9. Operating-model validation completed
+
+Added docs/v2/V2-Operating-Model-Validation-Matrix.md.
+
+The model was tested conceptually against five materially different operating patterns: installation/service, PAYGo/recurring service, C&I/portfolio operation, distributor/equipment service, and maintenance/field service.
+
+Result: no pattern requires a separate product or business-model-specific schema. The strongest unresolved structural dimension is operational responsibility scope: who is responsible for what, within which bounded scope.
+
+The next implementation gate is therefore the minimum persisted model for Operating Profile, capabilities, and responsibility scope. Role replacement remains deferred. Work Item migrations 009–014 and Action migrations 015–018 remain frozen.
+
 ## Explicitly deferred
 
 Do not build yet:
