@@ -299,10 +299,33 @@ The Solar Move evidence does not establish a recurring territory, customer-portf
 
 ### Current gate decision
 
-**Do not create Migration 019 yet.**
+The workflow boundary is now implemented as an application service and HTTP route. The first production requirement exposed by implementation was atomicity: the signal, observation, event, situation, and work item must commit or roll back together. That requirement is now represented by Migration 019; no new domain abstraction was introduced.
 
-The next work is implementation validation of the existing Work Item and Action contracts against the Customer Operational Issue workflow, followed by authenticated integration testing and cross-operator validation. A detailed Lusaka incident should still be collected if it exposes a responsibility boundary that cannot be represented by direct work assignment.
+The next work is authenticated integration testing and cross-operator validation. A detailed Lusaka incident should still be collected if it exposes a responsibility boundary that cannot be represented by direct work assignment.
 
 The principle remains:
 
 > Persist the smallest domain boundary required by a real operational workflow. Do not persist an abstraction merely because it may become useful at scale.
+
+
+## 11. Atomic Customer Operational Issue transaction implemented
+
+Migration 019_customer_operational_issue_transaction has been applied to the V2 database.
+
+Implementation:
+
+- create_customer_operational_issue owns the transaction boundary for the first operational slice.
+- The service now performs one RPC instead of four independent inserts.
+- Observation, Event, Situation, Situation-to-Event linkage, and Work Item are created in one database transaction.
+- Existing Work Item integrity/history triggers remain authoritative.
+- Organization and actor membership are validated inside the transaction.
+- situation.manage, work.execute, and conditional work.assign permissions are enforced.
+- Assigned actors must be active members of the same organization.
+- Organization-scoped Work Item idempotency returns the existing operational chain on retry.
+- The SECURITY DEFINER RPC is executable only by service_role; anon and authenticated cannot invoke it directly.
+- A transaction-local app.actor_id context preserves the existing actor-derived Work Item trigger semantics for trusted server execution.
+- No Action authorization or execution is performed by this workflow.
+
+The migration source is committed at supabase/migrations/20260922150000_019_customer_operational_issue_transaction.sql.
+
+Validation status: database migration applied and function grants verified. Full authenticated end-to-end execution remains pending because repository CI is currently blocked by the GitHub account billing/spending-limit condition; no CI pass is being claimed.
