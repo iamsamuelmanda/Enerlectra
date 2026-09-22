@@ -257,7 +257,8 @@ if (integrationEnabled) {
       idempotencyKey: `cross-assignee-${runId}`,
     });
 
-    assert.notEqual(result.status, 201);
+    assert.equal(result.status, 403);
+    assert.equal(result.body.code, 'ASSIGNED_ACTOR_NOT_ACTIVE_MEMBER');
   });
 
   test('malformed correlation header is normalized before persistence', async () => {
