@@ -33,6 +33,7 @@ import ledgerRoutes from './routes/ledger.js';
 import marketplaceRoutes from './routes/marketplace.js';
 import settlementRoutes from './routes/settlement.js';
 import { createCustomerOperationalIssuesRouter } from './routes/customerOperationalIssues.js';
+import { createActionsRouter } from './routes/actions.js';
 
 // ──────────────────────────────────────────────────────────────
 // Import background jobs
@@ -431,6 +432,16 @@ app.use('/api/marketplace', marketplaceRoutes);
 app.use('/api/settlement', settlementRoutes);
 if (supabase) {
   app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabase));
+}
+
+// V2 Action boundary uses the clean V2 Supabase project. It is intentionally
+// mounted separately from the legacy SUPABASE_* client during reconstruction.
+let v2Supabase: any = null;
+if (process.env.V2_SUPABASE_URL && process.env.V2_SUPABASE_SERVICE_ROLE_KEY) {
+  v2Supabase = createClient(process.env.V2_SUPABASE_URL, process.env.V2_SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  app.use('/api/v2/actions', createActionsRouter(v2Supabase));
 }
 
 // ──────────────────────────────────────────────────────────────
