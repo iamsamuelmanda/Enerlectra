@@ -3,31 +3,32 @@ import assert from 'node:assert/strict';
 import { createCustomerOperationalIssue } from '../server/src/services/customerOperationalIssues.js';
 
 function mockDb() {
-  const inserts = [];
-  const db = {
-    inserts,
-    from(table) {
-      const state = { table, payload: null };
-      const builder = {
-        insert(payload) { state.payload = payload; inserts.push(state); return builder; },
-        select() { return builder; },
-        single: async () => ({ data: { id: state.table + '-id' }, error: null }),
-        maybeSingle: async () => ({ data: state.table === 'memberships' ? { id: 'membership-2' } : null, error: null }),
+  const calls = [];
+  return {
+    calls,
+    rpc: async (name, args) => {
+      calls.push({ name, args });
+      return {
+        data: [{
+          observation_id: 'observation-1',
+          event_id: 'event-1',
+          situation_id: 'situation-1',
+          work_item_id: 'work-item-1',
+        }],
+        error: null,
       };
-      return builder;
     },
   };
-  return db;
 }
 
-test('customer operational issue orchestration preserves tenant boundary and evidence provenance', async () => {
+test('customer operational issue service delegates atomically to the tenant-scoped DB transaction', async () => {
   const db = mockDb();
   const tenant = {
     actorId: 'actor-1',
     organizationId: 'org-1',
     membershipId: 'membership-1',
     roles: ['OPERATOR'],
-    permissions: ['situation.manage', 'work.assign'],
+    permissions: ['situation.manage', 'work.execute', 'work.assign'],
     correlationId: 'corr-1',
     requestId: 'req-1',
     source: 'web',
@@ -45,17 +46,42 @@ test('customer operational issue orchestration preserves tenant boundary and evi
   });
 
   assert.deepEqual(result, {
-    observationId: 'observations-id',
-    eventId: 'events-id',
-    situationId: 'situations-id',
-    workItemId: 'work_items-id',
+    observationId: 'observation-1',
+    eventId: 'event-1',
+    situationId: 'situation-1',
+    workItemId: 'work-item-1',
   });
 
-  assert.equal(db.inserts.length, 4);
-  for (const item of db.inserts) {
-    assert.equal(item.payload.organization_id, 'org-1');
-  }
+  assert.equal(db.calls.length, 1);
+  assert.equal(db.calls[0].name, 'create_customer_operational_issue');
+  assert.equal(db.calls[0].args.p_organization_id, 'org-1');
+  assert.equal(db.calls[0].args.p_actor_id, 'actor-1');
+  assert.equal(db.calls[0].args.p_assigned_actor_id, 'actor-2');
+  assert.equal(db.calls[0].args.p_idempotency_key, 'issue-1');
+});
 
-  assert.equal(db.inserts[0].payload.provenance.verified, false);
-  assert.equal(db.inserts[3].payload.assigned_actor_id, 'actor-2');
+test('customer operational issue service rejects an invalid database transaction result', async () => {
+  const db = {
+    rpc: async () => ({
+      data: [{ observation_id: 'only-one-id' }],
+      error: null,
+    }),
+  };
+
+  await assert.rejects(
+    createCustomerOperationalIssue(db, {
+      actorId: 'actor-1',
+      organizationId: 'org-1',
+      membershipId: 'membership-1',
+      roles: ['OPERATOR'],
+      permissions: ['situation.manage', 'work.execute'],
+      correlationId: 'corr-1',
+      requestId: 'req-1',
+      source: 'web',
+    }, {
+      title: 'Invalid result test',
+      observationValue: { report: 'test' },
+    }),
+    /invalid result/,
+  );
 });
