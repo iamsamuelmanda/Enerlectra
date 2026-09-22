@@ -13,6 +13,7 @@ type RouteRequest = Request & {
 
 const ISSUE_PERMISSIONS = {
   create: 'situation.manage',
+  execute: 'work.execute',
   assign: 'work.assign',
 } as const;
 
@@ -46,11 +47,16 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
         source: 'api',
       });
 
-      if (\n        !tenant.permissions.includes(ISSUE_PERMISSIONS.create) ||\n        !tenant.permissions.includes(ISSUE_PERMISSIONS.execute)\n      ) {
+      if (
+        !tenant.permissions.includes(ISSUE_PERMISSIONS.create) ||
+        !tenant.permissions.includes(ISSUE_PERMISSIONS.execute)
+      ) {
         return res.status(403).json({
           error: 'Forbidden',
           code: 'MISSING_PERMISSION',
-          permission: ISSUE_PERMISSIONS.create,
+          permission: !tenant.permissions.includes(ISSUE_PERMISSIONS.create)
+            ? ISSUE_PERMISSIONS.create
+            : ISSUE_PERMISSIONS.execute,
         });
       }
 
