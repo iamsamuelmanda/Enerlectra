@@ -329,3 +329,15 @@ Implementation:
 The migration source is committed at supabase/v2/migrations/019_customer_operational_issue_transaction.sql.
 
 Validation status: database migration applied and function grants verified. Full authenticated end-to-end execution remains pending because repository CI is currently blocked by the GitHub account billing/spending-limit condition; no CI pass is being claimed.
+
+
+## 12. Database execution validation findings
+
+Live SQL validation of the new transaction exposed two implementation issues before authenticated end-to-end testing:
+
+- The existing observation/event/work-item correlation columns are UUID-based, while TenantContext correlation IDs are strings. Migration 020 normalizes valid UUID correlation IDs and generates a UUID when the external correlation value is not UUID-shaped.
+- Existing Work Item integrity triggers call private.has_org_permission(), which originally resolved authorization only through auth.uid(). Trusted server-side RPC execution has no end-user auth.uid(), so Migration 021 makes the existing helper honor the transaction-local app.actor_id established by the trusted operational-issue RPC, while retaining auth.uid() fallback for normal authenticated requests.
+
+After those fixes, a live database fixture test successfully exercised creation and idempotent retry of the full operational chain and verified exactly one observation, event, situation, and work item remained for the idempotency key. A separate rollback test also verified that an invalid Work Item operation leaves zero operational records for the attempted organization.
+
+These are database-level transaction tests, not authenticated HTTP integration tests. The latter remains the next gate.
