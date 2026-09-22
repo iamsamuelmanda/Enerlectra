@@ -20,7 +20,8 @@
     "clean": "rm -rf dist client/dist",
     "test:v2:action": "node --import tsx --test test/v2-action-integration.test.mjs",
     "test:customer-operational-issue": "node --import tsx --test test/customer-operational-issue.test.mjs",
-    "test:v2:customer-operational-issue": "node --import tsx --test test/v2-customer-operational-issue-integration.test.mjs"
+    "test:v2:customer-operational-issue": "node --import tsx --test test/v2-customer-operational-issue-integration.test.mjs",
+    "test:v2:action-http": "node --import tsx --test test/v2-action-http-integration.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
