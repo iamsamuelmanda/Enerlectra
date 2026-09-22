@@ -326,6 +326,6 @@ Implementation:
 - A transaction-local app.actor_id context preserves the existing actor-derived Work Item trigger semantics for trusted server execution.
 - No Action authorization or execution is performed by this workflow.
 
-The migration source is committed at supabase/migrations/20260922150000_019_customer_operational_issue_transaction.sql.
+The migration source is committed at supabase/migrations/20260922055545_019_customer_operational_issue_transaction.sql.
 
 Validation status: database migration applied and function grants verified. Full authenticated end-to-end execution remains pending because repository CI is currently blocked by the GitHub account billing/spending-limit condition; no CI pass is being claimed.
