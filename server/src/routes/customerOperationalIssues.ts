@@ -12,6 +12,7 @@ type RouteRequest = Request & {
 };
 
 const ISSUE_PERMISSIONS = {
+  //
   create: 'situation.manage',
   execute: 'work.execute',
   assign: 'work.assign',
@@ -40,7 +41,10 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
             ? req.headers['x-organization-id']
             : undefined,
         correlationId:
-          typeof req.headers['x-correlation-id'] === 'string'
+          typeof req.headers['x-correlation-id'] === 'string' &&
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            req.headers['x-correlation-id'],
+          )
             ? req.headers['x-correlation-id']
             : crypto.randomUUID(),
         requestId,
@@ -127,6 +131,23 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
         return res.status(status).json({
           error: error.message,
           code: error.code,
+        });
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      const authorizationCodes = [
+        'ACTOR_NOT_ACTIVE_MEMBER',
+        'SITUATION_MANAGE_PERMISSION_REQUIRED',
+        'WORK_EXECUTE_PERMISSION_REQUIRED',
+        'ASSIGNED_ACTOR_NOT_ACTIVE_MEMBER',
+        'WORK_ASSIGN_PERMISSION_REQUIRED',
+      ];
+      const matchedCode = authorizationCodes.find((code) => message.includes(code));
+
+      if (matchedCode) {
+        return res.status(403).json({
+          error: 'Forbidden',
+          code: matchedCode,
         });
       }
 
