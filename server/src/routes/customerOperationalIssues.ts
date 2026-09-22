@@ -46,7 +46,7 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
         source: 'api',
       });
 
-      if (!tenant.permissions.includes(ISSUE_PERMISSIONS.create)) {
+      if (\n        !tenant.permissions.includes(ISSUE_PERMISSIONS.create) ||\n        !tenant.permissions.includes(ISSUE_PERMISSIONS.execute)\n      ) {
         return res.status(403).json({
           error: 'Forbidden',
           code: 'MISSING_PERMISSION',
