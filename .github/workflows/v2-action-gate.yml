@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       V2_SUPABASE_URL: https://mtyhzvkiuibigjximsix.supabase.co
+      V2_SUPABASE_ANON_KEY: ${{ secrets.V2_SUPABASE_ANON_KEY }}
       V2_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.V2_SUPABASE_SERVICE_ROLE_KEY }}
 
     steps:
@@ -30,10 +31,10 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Require V2 service-role secret
+      - name: Require V2 integration secrets
         run: |
-          if [ -z "${V2_SUPABASE_SERVICE_ROLE_KEY}" ]; then
-            echo "::error::Repository secret V2_SUPABASE_SERVICE_ROLE_KEY is not configured."
+          if [ -z "${V2_SUPABASE_ANON_KEY}" ] || [ -z "${V2_SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::error::Repository secrets V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY are required."
             exit 1
           fi
 
