@@ -4,11 +4,12 @@ import { createClient } from '@supabase/supabase-js';
 
 const url = process.env.V2_SUPABASE_URL;
 const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
-const integrationEnabled = Boolean(url && serviceRoleKey);
+const anonKey = process.env.V2_SUPABASE_ANON_KEY;
+const integrationEnabled = Boolean(url && serviceRoleKey && anonKey);
 
 test('V2 Action authenticated integration gate is configured', () => {
   if (!integrationEnabled) {
-    assert.ok(true, 'Set V2_SUPABASE_URL and V2_SUPABASE_SERVICE_ROLE_KEY to run live authenticated Action tests.');
+    assert.ok(true, 'Set V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY to run live authenticated Action tests.');
   }
 });
 
@@ -48,7 +49,7 @@ if (!integrationEnabled) {
     });
     assert.ifError(error);
     assert.ok(data.session?.access_token);
-    const scoped = createClient(url, {
+    const scoped = createClient(url, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
     });
     const { error: sessionError } = await scoped.auth.setSession(data.session);
