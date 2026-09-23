@@ -341,3 +341,36 @@ Live SQL validation of the new transaction exposed two implementation issues bef
 After those fixes, a live database fixture test successfully exercised creation and idempotent retry of the full operational chain and verified exactly one observation, event, situation, and work item remained for the idempotency key. A separate rollback test also verified that an invalid Work Item operation leaves zero operational records for the attempted organization.
 
 These are database-level transaction tests, not authenticated HTTP integration tests. The latter remains the next gate.
+
+
+## 13. Repository reconciliation gate
+
+The next priority has been deliberately changed from fighting repository CI to reconciling the actual codebase.
+
+Added:
+
+- `docs/v2/V2-Repository-Reconciliation-Matrix.md`
+
+The repository X-ray confirmed that the active server is still a legacy Enerlectra composition root with V2 routes attached. In particular, `server/src/index.ts` still imports legacy staking, ledger, marketplace, settlement, matching, payout, PCU, and cluster-settlement components, while the primary runtime Supabase client still uses the legacy `SUPABASE_*` boundary.
+
+The X-ray also confirmed that the existing `enerlectra-core` kernel is not yet a V2 kernel. `create-kernel.ts` still registers PCU balance, redemption, token, legacy meter-reading, and support command handlers. The WhatsApp path also contains an active `default-org` fallback in the server event-processing path, which violates the V2 tenant invariant.
+
+Therefore the repository-reconciliation gate now precedes authenticated CI validation:
+
+```
+RECONCILE ACTIVE COMPOSITION ROOT
+→ ESTABLISH V2 RUNTIME BOUNDARY
+→ REBUILD CHANNEL / ELLIE PATH ON TENANT CONTEXT
+→ REMOVE LEGACY RUNTIME IMPORTS
+→ VERIFY DEPENDENCY REACHABILITY
+→ DELETE UNREACHABLE LEGACY DOMAIN
+→ COMPLETE V2 OPERATIONAL LOOP
+→ AUTHENTICATED CI / INTEGRATION VALIDATION
+→ CUTOVER
+```
+
+No new V2 feature work should be added to the legacy-contaminated composition root merely to satisfy CI.
+
+The Work Item migrations 009–014 and Action migrations 015–018 remain frozen. The operational issue migrations 019–021 remain valid; their database transaction behavior has already been validated live.
+
+The immediate implementation target is therefore the active runtime/composition boundary, not another migration.
