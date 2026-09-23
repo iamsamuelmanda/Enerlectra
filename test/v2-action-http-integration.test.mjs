@@ -110,6 +110,13 @@ if (enabled) {
     assert.equal(result.body.action.status, 'PROPOSED');
     assert.equal(result.body.action.organization_id, orgId);
     assert.equal(result.body.action.requested_by_actor_id, actorIds.operator);
+
+    const replay = await request(token, 'POST', '/api/v2/actions', {
+      workItemId, actionType: 'INSPECT_ASSET', consequenceClass: 'OBSERVATIONAL',
+      idempotencyKey: `http-proposal-${runId}`,
+    });
+    assert.equal(replay.status, 201);
+    assert.equal(replay.body.action.id, result.body.action.id);
   });
 
   test('Owner can authorize, while forged authorization identity is impossible at the route', async () => {
