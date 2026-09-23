@@ -36,7 +36,19 @@ export async function createAction(
     .select('id,status,organization_id,work_item_id,requested_by_actor_id,created_at')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === '23505' && input.idempotencyKey) {
+      const existing = await db
+        .from('actions')
+        .select('id,status,organization_id,work_item_id,requested_by_actor_id,created_at')
+        .eq('organization_id', tenant.organizationId)
+        .eq('idempotency_key', input.idempotencyKey)
+        .maybeSingle();
+      if (existing.error || !existing.data) throw new Error(error.message);
+      return existing.data;
+    }
+    throw new Error(error.message);
+  }
   return data;
 }
 
@@ -101,7 +113,20 @@ export async function createHumanAttempt(
     .select('id,status,attempt_number,executor_type,executor_actor_id,created_at')
     .single();
 
-  if (error) throw new Error(error.message);
+  if (error) {
+    if (error.code === '23505') {
+      const existing = await db
+        .from('action_attempts')
+        .select('id,status,attempt_number,executor_type,executor_actor_id,created_at')
+        .eq('organization_id', tenant.organizationId)
+        .eq('action_id', input.actionId)
+        .eq('execution_idempotency_key', input.executionIdempotencyKey)
+        .maybeSingle();
+      if (existing.error || !existing.data) throw new Error(error.message);
+      return existing.data;
+    }
+    throw new Error(error.message);
+  }
   return data;
 }
 
