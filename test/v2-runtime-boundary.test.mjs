@@ -53,3 +53,18 @@ test('legacy command factory fails closed without actor and organization context
   assert.match(source, /TRUSTED_TENANT_CONTEXT_REQUIRED/);
   assert.equal(source.includes("'default-org'"), false);
 });
+
+test('active client router no longer exposes legacy protocol pages', async () => {
+  const source = await read('../client/src/routes/router.tsx');
+  for (const retired of [
+    'ClusterDetailPage',
+    'LaunchClusterPage',
+    'EnergyWalletPage',
+    'TradingPage',
+    'TransactionsPage',
+    'PilotDashboard',
+  ]) {
+    assert.equal(source.includes(retired), false, `legacy client route remains: ${retired}`);
+  }
+  assert.match(source, /V2Home/);
+});
