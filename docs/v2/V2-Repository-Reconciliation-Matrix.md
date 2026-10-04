@@ -841,7 +841,7 @@ This section is authoritative where it conflicts with earlier inventory or X-ray
 
 ### Server and tenant boundary
 
-- `server/src/index.ts` is the active V2 composition root. It requires `V2_SUPABASE_URL` and `V2_SUPABASE_SERVICE_ROLE_KEY`, mounts only the Customer Operational Issue and Action domain routers, checks the V2 `organizations` table for readiness, and returns 503 for WhatsApp.
+- `server/src/index.ts` is the active V2 composition root. It requires `V2_SUPABASE_URL`, `V2_SUPABASE_ANON_KEY`, and `V2_SUPABASE_SERVICE_ROLE_KEY` at startup, mounts only the Customer Operational Issue and Action domain routers, checks the V2 `organizations` table for readiness, and returns 503 for WhatsApp.
 - The legacy route/job/service files remain in the repository. They are not mounted by this entrypoint. Whole-repository import tracing and external deployment/script references are still required before deletion.
 - Bearer-token tenant resolution verifies the Supabase user, resolves an active Actor, requires exactly one active Membership unless an organization is explicitly selected, checks the Organization state, and derives permissions from the Membership role.
 - A separate `resolveChannelTenantContext` exists for WhatsApp/Telegram. It maps a channel identity to Actor → active Membership → Organization → role permissions. It is not wired to an active inbound webhook.
