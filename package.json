@@ -15,14 +15,15 @@
     "typecheck:server": "tsc -p tsconfig.ci-server.json",
     "typecheck:client": "cd client && npx tsc --noEmit",
     "typecheck:telegram-bot": "cd integrations/telegram-bot && npx tsc --noEmit",
-    "test": "node --import tsx --test test/ci-smoke.test.mjs test/v2-boundary.test.mjs test/v2-tenant-context.test.mjs && npm run test:v2:command-tenant-context",
+    "test": "node --import tsx --test test/ci-smoke.test.mjs test/v2-boundary.test.mjs test/v2-tenant-context.test.mjs && npm run test:v2:command-tenant-context && npm run test:v2:runtime-boundary",
     "ci": "npm test && npm run typecheck:server && npm run typecheck:client && npm run build:client && npm run typecheck:telegram-bot",
     "clean": "rm -rf dist client/dist",
     "test:v2:action": "node --import tsx --test test/v2-action-integration.test.mjs",
     "test:customer-operational-issue": "node --import tsx --test test/customer-operational-issue.test.mjs",
     "test:v2:customer-operational-issue": "node --import tsx --test test/v2-customer-operational-issue-integration.test.mjs",
     "test:v2:action-http": "node --import tsx --test test/v2-action-http-integration.test.mjs",
-    "test:v2:command-tenant-context": "node --import tsx --test test/v2-command-tenant-context.test.mjs"
+    "test:v2:command-tenant-context": "node --import tsx --test test/v2-command-tenant-context.test.mjs",
+    "test:v2:runtime-boundary": "node --import tsx --test test/v2-runtime-boundary.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
