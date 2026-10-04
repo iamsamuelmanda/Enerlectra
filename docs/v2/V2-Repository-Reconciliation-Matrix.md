@@ -866,15 +866,16 @@ This section is authoritative where it conflicts with earlier inventory or X-ray
 Target project: `enerlectra-v2` (`mtyhzvkiuibigjximsix`), region `eu-west-2`, status `ACTIVE_HEALTHY`.
 
 Live project inspection on 2026-10-04 confirmed:
-- Migration history contains `001_foundation` through `022_actor_and_channel_identity_write_hardening`.
+- Migration history contains `001_foundation` through `023_trusted_actor_provisioning_only`.
 - 20 public base tables exist; all 20 have RLS enabled.
 - 13 operational/domain tables have FORCE ROW LEVEL SECURITY. The remaining identity, organization and reference tables have RLS enabled but not FORCE; their policies/grants require continued review.
 - `public.create_customer_operational_issue` exists and is SECURITY DEFINER.
-- Authenticated role cannot update the `actors` table generally or the `actors.status` column; it can update the explicitly granted profile field `actors.display_name`.
+- Authenticated role cannot INSERT into `actors` or update the `actors` table generally; it can update only explicitly granted profile fields (`display_name`, `email`, `phone`), not lifecycle columns such as `status`.
 - Authenticated role has no INSERT, UPDATE or DELETE privilege on `channel_identities`.
-- The policy catalog currently contains 50 public policies.
+- Migration 023 also drops the obsolete `actors_insert_self` policy and all three channel-identity self-write policies. Live checks confirm zero actor INSERT policies and zero channel identity write policies.
+- The policy catalog was verified after migration 023; its exact current count is captured in the database review rather than treated as a security metric.
 
-Migration 022 is present in live migration history and its SQL:
+Migrations 022 and 023 are present in live migration history. Migration 022's SQL:
 - revokes table-level UPDATE on `actors` from `authenticated`;
 - grants UPDATE only on `display_name`, `email`, and `phone`;
 - revokes INSERT/UPDATE/DELETE on `channel_identities` from `authenticated`;
