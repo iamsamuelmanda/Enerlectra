@@ -160,20 +160,15 @@ The server composition root is no longer the legacy-runtime blocker. The remaini
 
 ## 6. Background jobs
 
-The following are currently imported directly by `server/src/index.ts`, making them active runtime dependencies rather than dead files:
+The active `server/src/index.ts` inspected on 2026-10-04 does **not** import or schedule the legacy settlement, matching, or payout jobs. They are not active server-entrypoint dependencies.
 
-| Job | Disposition | Reason |
+| Job | Current runtime status | Disposition |
 |---|---|---|
-| `settlementCron.ts` | DELETE | Old settlement product loop |
-| `matchingCron.ts` | DELETE | Old marketplace matching loop |
-| `payoutProcessorCron.ts` | QUARANTINE | Financial capability not part of current V2 kernel |
+| `settlementCron.ts` | Not imported by active server entrypoint | QUARANTINE pending whole-repository import/reachability trace |
+| `matchingCron.ts` | Not imported by active server entrypoint | QUARANTINE pending whole-repository import/reachability trace |
+| `payoutProcessorCron.ts` | Not imported by active server entrypoint | QUARANTINE pending bounded financial capability decision |
 
-The safe order is:
-
-1. replace the active runtime path;
-2. remove entrypoint imports;
-3. verify no other runtime imports;
-4. only then delete the files.
+Do not delete these files solely because they are absent from the server entrypoint. Trace all imports, scripts, integrations, and deployment entrypoints first.
 
 ---
 
@@ -204,28 +199,19 @@ The core package is **not currently a clean V2 kernel**.
 | `adapters/whatsapp` | Reusable channel boundary | ADAPT |
 | `adapters/telegram` | Not required for current V2 | QUARANTINE |
 
-### Confirmed legacy kernel registrations
+### Current kernel registration state (verified 2026-10-04)
 
-`create-kernel.ts` currently registers:
+`create-kernel.ts` currently creates the ServiceRegistry, CommandBus, MessageRouter, and WorkflowEngine but registers **no command handlers**. Its comments explicitly state that legacy PCU, cluster, token, and redemption handlers are not registered. Channel senders are also not globally registered.
 
-- `SHOW_BALANCE`
-- `START_REDEMPTION_FLOW`
-- `SHOW_HISTORY`
-- `START_SUPPORT_SESSION`
-- `GENERATE_TOKEN`
-- `PROCESS_METER_READING_IMAGE`
-- `GENERIC_QUERY`
+The old handler source files still exist. Examples inspected include:
 
-Several of these still depend on the old product.
+- `balance.handler.ts`: legacy PCU balance reads.
+- `history.handler.ts`: legacy meter-reading/export-earnings history.
+- `redeem.handler.ts`: legacy Telegram, cluster, and PCU redemption dependencies.
+- `token.handler.ts`: legacy Telegram/transaction dependencies.
+- `process-meter-reading-image.handler.ts`: image/OCR intake coupled to legacy cluster/PCU behavior.
 
-Examples:
-
-- `ShowBalanceHandler` queries `pcu_balances` and imports PCU wallet backfill.
-- `StartRedemptionHandler` queries `telegram_users`, `cluster_members`, and `clusters`, and creates PCU redemption state.
-- `GenerateTokenHandler` queries legacy `transactions`.
-- `ProcessMeterReadingImageHandler` resolves a cluster and mints PCU.
-
-These are not V2 domain handlers.
+These files are **not evidence of active kernel registration**. They remain quarantine/reachability work until every import, integration entrypoint, script, and deployment reference is traced. The old WhatsApp handler is particularly unsafe: it writes the legacy `communication_messages` table and continues after failed identity resolution with empty actor/organization context. It is not mounted by the active server entrypoint; keep it quarantined.
 
 ### Required kernel direction
 
