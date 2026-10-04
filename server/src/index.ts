@@ -37,13 +37,19 @@ const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 // ──────────────────────────────────────────────────────────────
 // V2 Supabase client
 // ──────────────────────────────────────────────────────────────
-let supabase: any = null;
-if (process.env.V2_SUPABASE_URL && process.env.V2_SUPABASE_SERVICE_ROLE_KEY) {
-  supabase = createClient(process.env.V2_SUPABASE_URL, process.env.V2_SUPABASE_SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  logger.info('V2 Supabase connected');
+const v2SupabaseUrl = process.env.V2_SUPABASE_URL;
+const v2ServiceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
+
+if (!v2SupabaseUrl || !v2ServiceRoleKey) {
+  throw new Error(
+    'V2_SUPABASE_URL and V2_SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the V2 database boundary.',
+  );
 }
+
+const supabase = createClient(v2SupabaseUrl, v2ServiceRoleKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+logger.info('V2 Supabase connected');
 
 // ──────────────────────────────────────────────────────────────
 // Prometheus metrics
@@ -211,13 +217,11 @@ app.get('/api/docs', (req, res) => {
 // ──────────────────────────────────────────────────────────────
 // Mount route modules
 // ──────────────────────────────────────────────────────────────
-if (supabase) {
-  app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabase));
-}
+app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabase));
 
 // V2 Action boundary uses the clean V2 Supabase project. It is intentionally
 // mounted separately from the legacy SUPABASE_* client during reconstruction.
-if (supabase) app.use('/api/v2/actions', createActionsRouter(supabase));
+app.use('/api/v2/actions', createActionsRouter(supabase));
 
 // V2 WhatsApp adapter is intentionally fail-closed until canonical
 // channel identity → Actor → Membership → Organization resolution is wired.
