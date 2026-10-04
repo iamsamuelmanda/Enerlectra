@@ -1,42 +1,19 @@
-import { Routes, Route, Outlet } from "react-router-dom";
-import { MainLayout } from "@/components/layout/MainLayout";
-import Dashboard from "@/pages/Dashboard";
-import ClusterDetailPage from "@/pages/ClusterDetailPage";
-import LaunchClusterPage from "@/pages/LaunchClusterPage";
-import EnergyWalletPage from "@/pages/EnergyWalletPage";
-import TradingPage from "@/pages/TradingPage";
-import Admin from "@/pages/Admin";
-import SignIn from "@/pages/SignIn";
-import SignUp from "@/pages/SignUp";
-import ForgotPassword from "@/pages/ForgotPassword";
-import ResetPassword from "@/pages/ResetPassword";
-import PilotDashboard from "@/features/admin/pages/PilotDashboard";
-import TransactionsPage from "@/pages/TransactionsPage";
-import ProtectedRoute from "@/components/ProtectedRoute";
+import { Navigate, Route, Routes } from 'react-router-dom';
+import V2Home from '@/pages/V2Home';
+import SignIn from '@/pages/SignIn';
+import SignUp from '@/pages/SignUp';
+import ForgotPassword from '@/pages/ForgotPassword';
+import ResetPassword from '@/pages/ResetPassword';
 
 export default function Router() {
   return (
     <Routes>
-      <Route element={<MainLayout><Outlet /></MainLayout>}>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/clusters/new" element={<LaunchClusterPage />} />
-        <Route path="/clusters/:id" element={<ClusterDetailPage />} />
-      </Route>
-
-      <Route element={<ProtectedRoute />}>
-        <Route element={<MainLayout><Outlet /></MainLayout>}>
-          <Route path="/wallet" element={<EnergyWalletPage />} />
-          <Route path="/transactions" element={<TransactionsPage />} />
-          <Route path="/trading" element={<TradingPage />} />
-          <Route path="/admin" element={<Admin />} />
-          <Route path="/admin/pilot" element={<PilotDashboard />} />
-        </Route>
-      </Route>
-
+      <Route path="/" element={<V2Home />} />
       <Route path="/signin" element={<SignIn />} />
       <Route path="/signup" element={<SignUp />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
