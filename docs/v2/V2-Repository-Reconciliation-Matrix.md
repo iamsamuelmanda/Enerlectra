@@ -832,3 +832,71 @@ These are recorded for a deliberate database hardening pass. Do not perform oppo
 8. Only then mark PR #35 ready for review and merge to `main`.
 
 **Current conclusion:** the active backend and active client route graph have been substantially isolated from the old protocol product, and the new Supabase database has been queried and exercised directly. Reconstruction is not complete because authentication/onboarding, channel activation, Ellie adaptation/quarantine verification, full dependency audit, UI and automated validation remain open.
+
+---
+
+## 22. Reconciliation follow-up — live branch and database audit (2026-10-04)
+
+This section is authoritative where it conflicts with earlier inventory or X-ray sections. The earlier sections preserve the original forensic findings; they must not be read as the current runtime state.
+
+### Server and tenant boundary
+
+- `server/src/index.ts` is the active V2 composition root. It requires `V2_SUPABASE_URL` and `V2_SUPABASE_SERVICE_ROLE_KEY`, mounts only the Customer Operational Issue and Action domain routers, checks the V2 `organizations` table for readiness, and returns 503 for WhatsApp.
+- The legacy route/job/service files remain in the repository. They are not mounted by this entrypoint. Whole-repository import tracing and external deployment/script references are still required before deletion.
+- Bearer-token tenant resolution verifies the Supabase user, resolves an active Actor, requires exactly one active Membership unless an organization is explicitly selected, checks the Organization state, and derives permissions from the Membership role.
+- A separate `resolveChannelTenantContext` exists for WhatsApp/Telegram. It maps a channel identity to Actor → active Membership → Organization → role permissions. It is not wired to an active inbound webhook.
+- The old WhatsApp handler was changed in commit `7bf4da728d66e46e32c92bc4d015bc0e8d5a0b62` into a fail-closed compatibility stub. It no longer writes `communication_messages`, resolves phone numbers into actors, or forwards messages to the legacy WorkflowEngine. A runtime-boundary regression test was added in commit `69a861979dce703f0efdeaa0c1c31616bebd26ca`.
+- The public WhatsApp route remains 503. Channel identity writes are intentionally restricted until provider ownership verification is implemented. Do not enable WhatsApp merely because a resolver exists.
+
+### Core and Ellie
+
+- `create-kernel.ts` constructs the legacy command bus/workflow scaffolding with an empty handler registry. No V2 channel commands are registered.
+- The legacy WorkflowEngine and command catalogue still encode PCU, redemption and token concepts. They are not part of the active V2 server composition root and remain quarantined; do not present them as the V2 operational kernel.
+- Ellie and its context builder remain quarantined. The legacy context builder reads V1 transactions/alerts and must not be reconnected until replaced with tenant-scoped V2 context. No Ellie feature is currently active in the V2 runtime.
+
+### Client
+
+- `client/src/routes/router.tsx` exposes only `V2Home`. Legacy protocol/authentication routes are unreachable from the active router.
+- `V2Home` is an informational landing page, not an authenticated workspace.
+- `client/src/lib/supabase-v2.ts` uses only V2 browser publishable credentials. It is not yet connected to a sign-in/onboarding flow.
+- Browser sign-in, trusted Actor provisioning, Organization onboarding/selection, and customer/site/asset/situation/work screens remain unimplemented. No self-service Actor lifecycle or channel identity provisioning should be added without a trusted invitation/admin boundary.
+
+### Live Supabase verification
+
+Target project: `enerlectra-v2` (`mtyhzvkiuibigjximsix`), region `eu-west-2`, status `ACTIVE_HEALTHY`.
+
+Live project inspection on 2026-10-04 confirmed:
+- Migration history contains `001_foundation` through `022_actor_and_channel_identity_write_hardening`.
+- 20 public base tables exist; all 20 have RLS enabled.
+- 13 operational/domain tables have FORCE ROW LEVEL SECURITY. The remaining identity, organization and reference tables have RLS enabled but not FORCE; their policies/grants require continued review.
+- `public.create_customer_operational_issue` exists and is SECURITY DEFINER.
+- Authenticated role cannot update the `actors` table generally or the `actors.status` column; it can update the explicitly granted profile field `actors.display_name`.
+- Authenticated role has no INSERT, UPDATE or DELETE privilege on `channel_identities`.
+- The policy catalog currently contains 50 public policies.
+
+Migration 022 is present in live migration history and its SQL:
+- revokes table-level UPDATE on `actors` from `authenticated`;
+- grants UPDATE only on `display_name`, `email`, and `phone`;
+- revokes INSERT/UPDATE/DELETE on `channel_identities` from `authenticated`;
+- grants SELECT on `channel_identities`.
+
+Earlier database-level rollback and idempotency checks for the operational-issue RPC remain valid. The current SQL checks do not constitute authenticated HTTP end-to-end tests. Do not claim the Action or issue HTTP suites have passed until they are actually run against this project.
+
+### PR and validation
+
+- Review surface: [PR #35 — V2 reconstruction](https://github.com/iamsamuelmanda/Enerlectra/pull/35). It remains a draft and is not approved for merge.
+- GitHub Actions startup failure is attributable to the repository/account billing restriction and zero jobs were created. No CI pass is claimed. This is not a reason to keep retrying Actions while billing remains disabled.
+- The repository's package scripts define local test, typecheck and client-build gates. Those commands still need to be run in an environment with the project dependencies installed and V2 test credentials available for authenticated integration tests.
+- No production Render cutover has been performed. The legacy production project/configuration remains untouched.
+
+### Remaining engineering gates
+
+1. Complete the trusted browser onboarding contract: invitation/admin provisioning of Actor, Organization membership and role; then sign-in, membership selection and a minimum authenticated issue/work workspace.
+2. Add and run integration tests for channel identity resolution, including unlinked/disabled identity, inactive Actor, no membership, ambiguous memberships, inactive Organization and permission derivation. Keep WhatsApp 503 until this path is wired and provider webhook authenticity is verified.
+3. Replace Ellie’s V1 context builder with a V2 TenantContext-scoped read model, or formally remove/quarantine all entrypoints and dependencies. It must not query legacy transactions/alerts from a V2 request.
+4. Finish import/reachability analysis across core, server routes/services/jobs, Telegram integration, client hooks/components, database clients, environment variables, Docker/Render/Vercel and other deployment definitions. Delete legacy files only after the complete consumer graph is known.
+5. Run local unit/runtime tests, server/client typechecks and client production build. Run authenticated Action and issue HTTP suites against `enerlectra-v2` when secrets are available.
+6. Review remaining security/performance advisor findings and verify every identity/reference table policy before enabling browser onboarding.
+7. Keep PR #35 in Draft and keep production on its existing database until these gates pass.
+
+**Decision:** the backend V2 boundary and live database hardening are materially in place, but this is not a complete user-facing V2 product and is not merge-ready. The safe WhatsApp compatibility path has now been neutralized and regression-guarded; authenticated onboarding/workspace, Ellie adaptation, complete dependency retirement and runnable validation remain outstanding.
