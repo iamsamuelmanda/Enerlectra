@@ -17,6 +17,15 @@ export class CommandFactory {
     const callback = String(event.metadata?.callbackData ?? '').trim().toLowerCase();
     const correlationId = crypto.randomUUID();
 
+    // This legacy command pipeline is not an authorization boundary. A channel
+    // adapter must establish canonical Actor + active Membership + Organization
+    // context before constructing an event for this factory.
+    const actorId = event.sender.id?.trim();
+    const organizationId = event.sender.organizationId?.trim();
+    if (!actorId || !organizationId) {
+      throw new Error('TRUSTED_TENANT_CONTEXT_REQUIRED');
+    }
+
     const type: CommandType = this.mapIntentToCommandType(intent);
 
     return {
@@ -33,8 +42,8 @@ export class CommandFactory {
       },
       timestamp: new Date().toISOString(),
       context: {
-        actorId: event.sender.id,
-        organizationId: event.sender.organizationId ?? 'default-org',
+        actorId,
+        organizationId,
         correlationId,
         source: event.channel as 'telegram' | 'whatsapp' | 'sms' | 'api' | 'system' | 'excel',
         initiatedBy: 'user',
