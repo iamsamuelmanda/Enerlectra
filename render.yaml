@@ -7,15 +7,9 @@ services:
     buildCommand: "npm ci && npm run build"
     startCommand: "npm start"
     healthCheckPath: /
-    autoDeploy: false # V2 cutover is manual; do not replace the live V1 runtime on merge.
+    autoDeploy: true
     branch: main
     envVars:
-      - key: V2_SUPABASE_URL
-        value: https://mtyhzvkiuibigjximsix.supabase.co
-      - key: V2_SUPABASE_ANON_KEY
-        sync: false
-      - key: V2_SUPABASE_SERVICE_ROLE_KEY
-        sync: false
       - key: NODE_ENV
         value: production
       - key: PORT
@@ -38,6 +32,12 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://enerlectra-frontend-c406365od-samuel-mandas-projects.vercel.app,http://localhost:3000
+      - key: V2_SUPABASE_URL
+        value: https://mtyhzvkiuibigjximsix.supabase.co
+      - key: V2_SUPABASE_ANON_KEY
+        sync: false
+      - key: V2_SUPABASE_SERVICE_ROLE_KEY
+        sync: false
     healthCheckPath: /api/health
-    autoDeploy: true
+    autoDeploy: false # V2 cutover is manual; do not replace the live V1 runtime on merge.
     branch: main
