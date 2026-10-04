@@ -49,6 +49,9 @@ jobs:
             exit 1
           fi
 
+      - name: Run V2 platform and runtime boundary tests
+        run: npm test
+
       - name: Run authenticated V2 Action gate
         run: npm run test:v2:action
 
