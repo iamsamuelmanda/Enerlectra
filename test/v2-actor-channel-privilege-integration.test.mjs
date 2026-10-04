@@ -71,6 +71,13 @@ if (enabled) {
       .eq('id', actorId);
     assert.ifError(profileError);
 
+    const { error: actorInsertError } = await scoped.from('actors').insert({
+      auth_user_id: sessionData.user.id,
+      actor_type: 'HUMAN',
+      status: 'ACTIVE',
+    });
+    assert.ok(actorInsertError, 'authenticated user must not self-provision an Actor');
+
     const { error: statusError } = await scoped
       .from('actors')
       .update({ status: 'DISABLED' })
@@ -106,5 +113,17 @@ if (enabled) {
       status: 'ACTIVE',
     });
     assert.ok(insertError, 'authenticated actor must not self-assert an external channel identity');
+
+    const { error: updateError } = await scoped
+      .from('channel_identities')
+      .update({ status: 'DISABLED' })
+      .eq('actor_id', actorId);
+    assert.ok(updateError, 'authenticated actor must not modify channel identity links');
+
+    const { error: deleteError } = await scoped
+      .from('channel_identities')
+      .delete()
+      .eq('actor_id', actorId);
+    assert.ok(deleteError, 'authenticated actor must not delete channel identity links');
   });
 }
