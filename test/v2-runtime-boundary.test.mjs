@@ -12,7 +12,9 @@ test('active server composition root does not mount retired protocol runtime', a
     'clusterSettlementEngine',
   ]) assert.equal(source.includes(retired), false, `legacy runtime reference remains: ${retired}`);
   assert.match(source, /V2_SUPABASE_URL/);
-  assert.match(source, /refusing to start without the V2 database boundary/);
+  assert.match(source, /V2_SUPABASE_ANON_KEY/);
+  assert.match(source, /V2_SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(source, /complete V2 database boundary/);
   assert.match(source, /createCustomerOperationalIssuesRouter/);
   assert.match(source, /createActionsRouter/);
   assert.match(source, /Enerlectra V2 API/);
