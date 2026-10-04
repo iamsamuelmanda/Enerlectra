@@ -23,7 +23,8 @@
     "test:v2:customer-operational-issue": "node --import tsx --test test/v2-customer-operational-issue-integration.test.mjs",
     "test:v2:action-http": "node --import tsx --test test/v2-action-http-integration.test.mjs",
     "test:v2:command-tenant-context": "node --import tsx --test test/v2-command-tenant-context.test.mjs",
-    "test:v2:runtime-boundary": "node --import tsx --test test/v2-runtime-boundary.test.mjs"
+    "test:v2:runtime-boundary": "node --import tsx --test test/v2-runtime-boundary.test.mjs",
+    "provision:v2:actor": "node scripts/provision-v2-actor.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
