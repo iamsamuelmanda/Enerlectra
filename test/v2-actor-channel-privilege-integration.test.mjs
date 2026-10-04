@@ -65,6 +65,11 @@ if (enabled) {
       global: { headers: { Authorization: `Bearer ${sessionData.session.access_token}` } },
     });
 
+    const { error: organizationCreateError } = await scoped.rpc('create_organization', {
+      p_name: 'Must be server-provisioned',
+    });
+    assert.ok(organizationCreateError, 'authenticated browser users must not invoke organization provisioning');
+
     const { error: profileError } = await scoped
       .from('actors')
       .update({ display_name: 'V2 security test' })
