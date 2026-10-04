@@ -81,7 +81,6 @@ test('missing active membership is rejected', async () => {
 });
 
 test('ambiguous active memberships are rejected rather than guessing an organization', async () => {
-  const first = fixture().from;
   const rows = [
     { id: 'membership-1', actor_id: 'actor-1', organization_id: 'org-1', role_id: 'role-1', status: 'ACTIVE', organizations: { id: 'org-1', status: 'ACTIVE' }, roles: { key: 'OPERATOR' } },
     { id: 'membership-2', actor_id: 'actor-1', organization_id: 'org-2', role_id: 'role-1', status: 'ACTIVE', organizations: { id: 'org-2', status: 'ACTIVE' }, roles: { key: 'OPERATOR' } },
