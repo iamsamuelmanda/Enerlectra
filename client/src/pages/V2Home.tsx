@@ -7,7 +7,7 @@ export default function V2Home() {
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <Zap className="text-amber-400" size={22} />
           <span className="font-semibold tracking-wide">ENERLECTRA</span>
-          <span className="rounded-full border border-amber-400/30 px-2 py-1 text-[10px] uppercase tracking-widest text-amber-300">V2 workspace</span>
+          <span className="rounded-full border border-amber-400/30 px-2 py-1 text-[10px] uppercase tracking-widest text-amber-300">V2 preview</span>
         </div>
       </header>
       <section className="mx-auto max-w-6xl px-6 py-20">
@@ -37,8 +37,8 @@ export default function V2Home() {
           </article>
         </div>
         <div className="mt-12 border-t border-white/10 pt-6 text-sm text-slate-500">
-          The V2 API and database foundation are active. Organization onboarding, authentication
-          screens and the authenticated operational workspace are not yet enabled.
+          The V2 API and database foundation are implemented in this reconstruction. Organization
+          onboarding, authentication screens and the authenticated operational workspace are not yet enabled.
         </div>
       </section>
     </main>
