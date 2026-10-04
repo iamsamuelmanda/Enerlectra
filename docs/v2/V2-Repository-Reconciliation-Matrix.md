@@ -866,16 +866,16 @@ This section is authoritative where it conflicts with earlier inventory or X-ray
 Target project: `enerlectra-v2` (`mtyhzvkiuibigjximsix`), region `eu-west-2`, status `ACTIVE_HEALTHY`.
 
 Live project inspection on 2026-10-04 confirmed:
-- Migration history contains `001_foundation` through `023_trusted_actor_provisioning_only`.
+- Migration history contains `001_foundation` through `027_remove_duplicate_tenant_indexes`.
 - 20 public base tables exist; all 20 have RLS enabled.
 - 13 operational/domain tables have FORCE ROW LEVEL SECURITY. The remaining identity, organization and reference tables have RLS enabled but not FORCE; their policies/grants require continued review.
 - `public.create_customer_operational_issue` exists and is SECURITY DEFINER.
 - Authenticated role cannot INSERT into `actors` or update the `actors` table generally; it can update only explicitly granted profile fields (`display_name`, `email`, `phone`), not lifecycle columns such as `status`.
 - Authenticated role has no INSERT, UPDATE or DELETE privilege on `channel_identities`.
 - Migration 023 also drops the obsolete `actors_insert_self` policy and all three channel-identity self-write policies. Live checks confirm zero actor INSERT policies and zero channel identity write policies.
-- The policy catalog was verified after migration 023; its exact current count is captured in the database review rather than treated as a security metric.
+- The policy catalog was verified after migration 023; its exact current count is captured in the database review rather than treated as a security metric. Migration 024 revokes authenticated execution of `public.create_organization(text)` and fixes its SECURITY DEFINER search path to empty; the function remains executable only by `service_role`.
 
-Migrations 022 and 023 are present in live migration history. Migration 022's SQL:
+Migrations 022–027 are present in live migration history. Migration 022's SQL:
 - revokes table-level UPDATE on `actors` from `authenticated`;
 - grants UPDATE only on `display_name`, `email`, and `phone`;
 - revokes INSERT/UPDATE/DELETE on `channel_identities` from `authenticated`;
@@ -902,6 +902,12 @@ Earlier database-level rollback and idempotency checks for the operational-issue
 
 **Decision:** the backend V2 boundary and live database hardening are materially in place, but this is not a complete user-facing V2 product and is not merge-ready. The safe WhatsApp compatibility path has now been neutralized and regression-guarded; authenticated onboarding/workspace, Ellie adaptation, complete dependency retirement and runnable validation remain outstanding.
 
+### Database advisor follow-up
+
+- Live security advisor now reports no findings after migration 024.
+- Live performance advisor no longer reports unindexed foreign keys, RLS initplan warnings, or duplicate-index warnings after migrations 025–027.
+- The remaining performance notices are INFO-level unused-index observations on a new, low-traffic database (42 findings, including newly added indexes); no indexes were removed on the basis of usage counters.
+
 ### Deployment safeguards added after the audit
 
 - `Dockerfile` now targets Node 24, installs the root/local-core workspace together, builds the client assets, and starts the root V2 server with `npm start`. The obsolete Node 18 / `dist/index.js` / port-5000 health-check assumptions were removed.
@@ -909,3 +915,7 @@ Earlier database-level rollback and idempotency checks for the operational-issue
 - `render.yaml` now configures the backend with the V2 project URL and explicit manual secret placeholders for the anon and service-role keys. The backend build also creates `client/dist`, which the server serves.
 - Backend Render `autoDeploy` is disabled so merging this reconstruction branch cannot automatically replace the existing production runtime before the V2 secrets and cutover have been deliberately configured. The separate Telegram bot service remains on its existing deployment configuration and is still legacy/quarantine scope.
 - No Render deployment or production database switch was performed. The Vercel client build configuration remains separate and has not been certified for a V2 authenticated client.
+
+
+- Applied migrations 024–027: organization creation RPC is now service-role-only with an empty SECURITY DEFINER search path; Actor RLS uses statement-level auth.uid() evaluation; 17 advisor-identified FK indexes were added; two confirmed duplicate non-constraint indexes were removed.
+- Re-ran Supabase advisors: security advisor is clean; performance advisor no longer reports unindexed FKs, auth RLS initplan warnings, or duplicate indexes. Remaining notices are INFO-level unused indexes on a new low-traffic project; none were dropped based on usage counters.
