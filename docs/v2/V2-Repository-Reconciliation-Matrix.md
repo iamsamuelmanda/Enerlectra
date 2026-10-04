@@ -901,3 +901,11 @@ Earlier database-level rollback and idempotency checks for the operational-issue
 7. Keep PR #35 in Draft and keep production on its existing database until these gates pass.
 
 **Decision:** the backend V2 boundary and live database hardening are materially in place, but this is not a complete user-facing V2 product and is not merge-ready. The safe WhatsApp compatibility path has now been neutralized and regression-guarded; authenticated onboarding/workspace, Ellie adaptation, complete dependency retirement and runnable validation remain outstanding.
+
+### Deployment safeguards added after the audit
+
+- `Dockerfile` now targets Node 24, installs the root/local-core workspace together, builds the client assets, and starts the root V2 server with `npm start`. The obsolete Node 18 / `dist/index.js` / port-5000 health-check assumptions were removed.
+- `.env.example` now documents `V2_SUPABASE_ANON_KEY` as a required server setting.
+- `render.yaml` now configures the backend with the V2 project URL and explicit manual secret placeholders for the anon and service-role keys. The backend build also creates `client/dist`, which the server serves.
+- Backend Render `autoDeploy` is disabled so merging this reconstruction branch cannot automatically replace the existing production runtime before the V2 secrets and cutover have been deliberately configured. The separate Telegram bot service remains on its existing deployment configuration and is still legacy/quarantine scope.
+- No Render deployment or production database switch was performed. The Vercel client build configuration remains separate and has not been certified for a V2 authenticated client.
