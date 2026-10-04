@@ -37,11 +37,12 @@ const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 // V2 Supabase client
 // ──────────────────────────────────────────────────────────────
 const v2SupabaseUrl = process.env.V2_SUPABASE_URL;
+const v2AnonKey = process.env.V2_SUPABASE_ANON_KEY;
 const v2ServiceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
 
-if (!v2SupabaseUrl || !v2ServiceRoleKey) {
+if (!v2SupabaseUrl || !v2AnonKey || !v2ServiceRoleKey) {
   throw new Error(
-    'V2_SUPABASE_URL and V2_SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the V2 database boundary.',
+    'V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the complete V2 database boundary.',
   );
 }
 
