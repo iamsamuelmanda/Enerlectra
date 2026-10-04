@@ -7,9 +7,15 @@ services:
     buildCommand: "npm ci && npm run build"
     startCommand: "npm start"
     healthCheckPath: /
-    autoDeploy: true
+    autoDeploy: false # V2 cutover is manual; do not replace the live V1 runtime on merge.
     branch: main
     envVars:
+      - key: V2_SUPABASE_URL
+        value: https://mtyhzvkiuibigjximsix.supabase.co
+      - key: V2_SUPABASE_ANON_KEY
+        sync: false
+      - key: V2_SUPABASE_SERVICE_ROLE_KEY
+        sync: false
       - key: NODE_ENV
         value: production
       - key: PORT
