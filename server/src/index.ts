@@ -139,18 +139,30 @@ app.get('/api/info', (req, res) => {
   });
 });
 
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'healthy',
+app.get('/api/health', async (_req, res) => {
+  // Readiness must verify the V2 database, not merely that a client object exists.
+  const databaseCheck = await supabase
+    .from('organizations')
+    .select('id')
+    .limit(1);
+
+  const databaseHealthy = !databaseCheck.error;
+  const statusCode = databaseHealthy ? 200 : 503;
+
+  res.status(statusCode).json({
+    status: databaseHealthy ? 'healthy' : 'unhealthy',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     services: {
-      supabase: !!supabase,
+      supabase: databaseHealthy,
       exchangeRate: !!process.env.EXCHANGE_RATE_API_KEY,
       prometheus: true,
       posthog: true,
     },
+    ...(databaseCheck.error
+      ? { databaseError: 'V2 database health check failed' }
+      : {}),
   });
 });
 
