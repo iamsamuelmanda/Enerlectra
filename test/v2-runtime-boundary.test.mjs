@@ -20,8 +20,12 @@ test('active server composition root does not mount retired protocol runtime', a
     assert.equal(source.includes(retired), false, `legacy runtime reference remains: ${retired}`);
   }
   assert.match(source, /V2_SUPABASE_URL/);
+  assert.match(source, /refusing to start without the V2 database boundary/);
+  assert.equal(source.includes('stakingRoutes'), false);
   assert.match(source, /createCustomerOperationalIssuesRouter/);
   assert.match(source, /createActionsRouter/);
+  assert.match(source, /Enerlectra V2 API/);
+  assert.equal(source.includes('GET \/api\/clusters'), false);
 });
 
 test('core kernel does not register legacy PCU and cluster handlers', async () => {
