@@ -54,3 +54,12 @@ test('V2 landing does not link users into the legacy authentication client', asy
   assert.equal(source.includes('/signin'), false);
   assert.equal(source.includes('Legacy sign-in'), false);
 });
+
+test('legacy WhatsApp handler is a no-op until canonical V2 channel identity exists', async () => {
+  const source = await read('../enerlectra-core/src/adapters/whatsapp/webhook-handler.ts');
+  for (const retired of [
+    'communication_messages', 'resolveWhatsAppUserId',
+    'processIncomingMessage', 'default-org',
+  ]) assert.equal(source.includes(retired), false, `unsafe WhatsApp dependency remains: ${retired}`);
+  assert.match(source, /WHATSAPP_V2_IDENTITY_ADAPTER_NOT_CONFIGURED/);
+});
