@@ -74,66 +74,38 @@ LEARN
 
 ---
 
-## 3. Active server entrypoint — highest priority reconciliation
+## 3. Active server entrypoint — live branch correction
 
 ### `server/src/index.ts`
 
-Current state: **BLOCKER**
+Current state: **ADAPTED V2 COMPOSITION ROOT — PRODUCT CUTOVER INCOMPLETE**
 
-The entrypoint still identifies itself as a “Full Marketplace + Settlement Engine” and directly imports legacy runtime components.
+Live inspection of `reconstruction/platform-identity-boundary` at the 2026-10-04 audit found that the earlier description in this matrix is stale. The active entrypoint now:
 
-### Direct legacy imports
+- Creates its database client only from `V2_SUPABASE_URL` and `V2_SUPABASE_SERVICE_ROLE_KEY`.
+- Fails startup if either V2 credential is missing; it does not fall back to legacy `SUPABASE_URL` or `SUPABASE_SERVICE_KEY`.
+- Mounts the V2 Customer Operational Issue and Action routers.
+- Does not import or mount the legacy cluster, staking, ledger, marketplace, settlement routes, or settlement/matching/payout cron jobs.
+- Checks actual V2 database connectivity through `public.organizations` in `/api/health`.
+- Keeps the WhatsApp webhook fail-closed with HTTP 503 pending a safe V2 channel adapter.
 
-| Component | Current role | V2 relationship | Disposition |
-|---|---|---|---|
-| `routes/staking.ts` | PCU staking API | No V2 primitive | DELETE |
-| `routes/ledger.ts` | Legacy economic ledger | Not the V2 authoritative-state model | DELETE / QUARANTINE |
-| `routes/marketplace.ts` | Energy trading marketplace | No current V2 requirement | DELETE |
-| `routes/settlement.ts` | Legacy settlement/payout API | Future bounded financial capability only | QUARANTINE |
-| `jobs/settlementCron.ts` | Background settlement | Old product runtime | DELETE |
-| `jobs/matchingCron.ts` | Marketplace matching | Old product runtime | DELETE |
-| `jobs/payoutProcessorCron.ts` | Legacy payout processing | Future bounded financial capability only | QUARANTINE |
-| `services/settlement.ts` | Settlement implementation | Old financial domain | QUARANTINE |
-| `services/staking.ts` | PCU staking | No V2 primitive | DELETE |
-| `services/pcuMinting.ts` | PCU creation | No V2 primitive | DELETE |
-| `services/clusterSettlementEngine.ts` | Cluster settlement | No V2 primitive | DELETE |
-| `services/tariffSync.ts` | Tariff integration | Potential future bounded capability | QUARANTINE |
-| `routes/readings.ts` | Legacy meter-reading workflow | Potential evidence/observation source | ADAPT |
-| `routes/simulation.ts` | Legacy simulation | Not part of current operational kernel | QUARANTINE |
-| `routes/protocol.ts` | Legacy protocol/dashboard surface | Must be replaced by V2 operational surfaces | DELETE / ADAPT |
-| `routes/payments.ts` | Legacy payment flow | Payment may become bounded capability | QUARANTINE / ADAPT |
-| `routes/webhooks.ts` | Provider webhooks | Adapter infrastructure may be reusable | ADAPT |
+The previous claims that this entrypoint directly imports the legacy runtime and uses the legacy Supabase credentials are superseded for this branch.
 
-### Current direct V2 imports
+### Core and channel boundary
 
-| Component | V2 relationship | Disposition |
-|---|---|---|
-| `routes/customerOperationalIssues.ts` | Customer issue operational slice | KEEP |
-| `routes/actions.ts` | Authorized action boundary | KEEP |
-| `platform/tenant/*` | Actor/membership/org authorization | KEEP |
-| V2 Supabase client created in entrypoint | Target database boundary | ADAPT → KEEP once centralized |
+- `enerlectra-core/src/bootstrap/create-kernel.ts` no longer registers PCU, cluster, token, or redemption handlers. Its command registry remains empty pending bounded V2 channel commands.
+- `server/src/index.ts` does not mount the old WhatsApp handler.
+- The old `enerlectra-core/src/adapters/whatsapp/webhook-handler.ts` still contains legacy writes to `communication_messages`, phone-number identity resolution, and a path that continues after identity-resolution failure with empty actor/organization context. It must remain quarantined.
+- `command-factory.ts` rejects missing actor and organization values and no longer supplies `default-org`; however, the message contract itself does not prove those values were established by a trusted identity adapter.
+- The legacy bot-state helper still queries `telegram_users` and is not a V2 identity primitive.
 
-### Critical finding
+### Client boundary
 
-The entrypoint still creates its primary Supabase client from:
+The active client router exposes only `V2Home`; legacy protocol and legacy authentication pages are no longer reachable. This is currently an informational landing page, not an authenticated operational workspace. V2 browser sign-in, actor provisioning, organization onboarding, multi-organization selection, and the operational customer/site/asset/situation/work UI remain incomplete.
 
-```text
-SUPABASE_URL
-SUPABASE_SERVICE_KEY
-```
+### Current reconciliation blocker
 
-while V2 uses:
-
-```text
-V2_SUPABASE_URL
-V2_SUPABASE_SERVICE_ROLE_KEY
-```
-
-Therefore the active runtime is still fundamentally the legacy application with V2 routes attached to it.
-
-This is the central repository-reconciliation blocker.
-
----
+The server composition root is no longer the legacy-runtime blocker. The remaining cutover blockers are authenticated browser onboarding/workspace, safe channel identity integration, legacy dependency reachability/quarantine, and repeatable passing CI/build evidence. Production Render must remain on its existing configuration until those gates pass.
 
 ## 4. Server route inventory
 
