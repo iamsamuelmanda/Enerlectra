@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import { Activity, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
 
 export default function V2Home() {
@@ -38,9 +37,8 @@ export default function V2Home() {
           </article>
         </div>
         <div className="mt-12 border-t border-white/10 pt-6 text-sm text-slate-500">
-          The V2 operational API is being brought online. Organization onboarding and the authenticated
-          workspace UI are not yet enabled.
-          <div className="mt-4"><Link className="text-amber-300 hover:text-amber-200" to="/signin">Legacy sign-in (temporary)</Link></div>
+          The V2 API and database foundation are active. Organization onboarding, authentication
+          screens and the authenticated operational workspace are not yet enabled.
         </div>
       </section>
     </main>
