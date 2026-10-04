@@ -5,10 +5,20 @@ on:
     branches: [ main ]
     paths:
       - 'test/v2-action-integration.test.mjs'
+      - 'test/v2-action-http-integration.test.mjs'
+      - 'test/v2-actor-channel-privilege-integration.test.mjs'
+      - 'test/v2-customer-operational-issue-integration.test.mjs'
+      - 'test/customer-operational-issue.test.mjs'
       - 'supabase/v2/migrations/**'
       - 'package.json'
       - 'package-lock.json'
       - 'server/src/platform/**'
+      - 'server/src/routes/**'
+      - 'server/src/services/**'
+      - 'server/src/index.ts'
+      - 'enerlectra-core/src/**'
+      - 'client/src/**'
+      - '.github/workflows/**'
 
 jobs:
   action-gate:
@@ -40,3 +50,9 @@ jobs:
 
       - name: Run authenticated V2 Action gate
         run: npm run test:v2:action
+
+      - name: Run V2 Action HTTP gate
+        run: npm run test:v2:action-http
+
+      - name: Run V2 Customer Operational Issue gate
+        run: npm run test:v2:customer-operational-issue
