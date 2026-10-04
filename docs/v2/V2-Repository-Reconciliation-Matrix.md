@@ -779,3 +779,98 @@ REPLACE THE ACTIVE COMPOSITION ROOT
 ```
 
 This is the repository-reconciliation gate for the reconstruction branch.
+
+
+---
+
+## 21. Verified runtime reconciliation update — 2026-10-04
+
+This section supersedes the earlier Phase 1 status and dependency graph above where they conflict. The earlier sections document the initial X-ray; this section records the branch state after the first runtime cleanup.
+
+### Active server composition root
+
+**Status: ADAPTED.**
+
+The current `server/src/index.ts`:
+- imports only the V2 Customer Operational Issue and Action routers as domain routes;
+- requires `V2_SUPABASE_URL` and `V2_SUPABASE_SERVICE_ROLE_KEY` and throws on missing configuration;
+- no longer imports the legacy cluster, staking, ledger, marketplace, settlement, PCU or matching jobs/services;
+- mounts `POST /api/operational-issues` and the `/api/v2/actions` route group;
+- returns HTTP 503 for inbound WhatsApp until V2 channel processing is connected;
+- retains health, metrics, exchange-rate and stub MTN/Airtel endpoints.
+
+The legacy server modules still exist in the repository. Their complete transitive reachability and external deployment use have not yet been audited.
+
+### Core kernel and channel boundary
+
+**Core kernel: ADAPTED / not active in the V2 server composition root.**
+- Legacy PCU/cluster/token/redemption handlers are no longer registered.
+- The command factory requires trusted actor and organization context and no longer supplies `default-org`.
+- `server/src/platform/tenant/channel-resolver.ts` resolves channel identity → actor → active membership → organization → role permissions.
+- That resolver is not yet wired to an operational WhatsApp conversation flow. The public webhook remains fail-closed with 503; do not describe WhatsApp as operational.
+
+### Ellie
+
+**Status: QUARANTINE.**
+- The legacy Ellie context builder still queries V1 `transactions` and `alerts`.
+- Ellie is not mounted in the active V2 server runtime.
+- Do not reconnect the legacy worker until it is replaced with tenant-scoped V2 customer/site/asset/observation/event/situation/work context.
+
+### Client
+
+**Status: ACTIVE ROUTE GRAPH REDUCED TO V2 LANDING PAGE.**
+- `client/src/routes/router.tsx` now exposes only `V2Home`.
+- Legacy cluster, wallet, trading, transaction and legacy authentication routes are not active.
+- `client/src/lib/supabase-v2.ts` exists and uses browser publishable credentials only, but is not yet connected to an authentication/onboarding UI.
+- Sign-in, actor provisioning, organization creation/onboarding and authenticated operational screens remain unimplemented.
+- The old client files and old Supabase client remain in the repository and require dependency tracing before deletion.
+
+### Live target database verification
+
+Target: `enerlectra-v2`, project ref `mtyhzvkiuibigjximsix`.
+
+Direct queries on 2026-10-04 confirmed:
+- migrations 001–021 are recorded;
+- 20 public base tables exist and all 20 have RLS enabled;
+- `public.create_customer_operational_issue(...)` exists;
+- function EXECUTE is false for `anon` and `authenticated`, true for `service_role`;
+- a live call created the observation/event/situation/work chain;
+- replaying the same idempotency key returned the original IDs and left one work item;
+- temporary verification organization and actor were deleted after the test.
+
+This verifies the database schema and RPC. It does **not** prove that Render or another deployed server is already connected to this project. Production cutover remains explicitly deferred.
+
+### Advisor findings
+
+Security advisor:
+- one warning for authenticated execution of SECURITY DEFINER `public.create_organization(text)`. This was intentional in the initial organization-creation flow, but must be reviewed before enabling browser onboarding.
+
+Performance advisor:
+- unindexed foreign keys;
+- RLS initplan notices on actor policies;
+- unused-index notices (expected on a low-traffic/new database, not a reason to drop indexes now);
+- duplicate indexes on customer/site organization IDs.
+
+These are recorded for a deliberate database hardening pass. Do not perform opportunistic destructive index cleanup during runtime reconciliation.
+
+### Pull request and validation
+
+- Existing review surface: [PR #35 — V2 reconstruction](https://github.com/iamsamuelmanda/Enerlectra/pull/35).
+- PR remains **Draft** and is not approved for merge.
+- Latest GitHub Actions runs reported `startup_failure` with zero jobs created; therefore no test job actually ran.
+- Vercel status is failing, but Vercel is not the production cutover gate for this branch.
+- CodeRabbit status is successful.
+- A local clone/test run could not be started in this execution environment because outbound DNS/network access to GitHub is unavailable.
+
+### Remaining merge gates
+
+1. Wire V2 browser authentication and actor/organization onboarding; remove legacy browser Supabase dependency from any reachable route.
+2. Decide whether WhatsApp is part of the initial merge scope. If yes, wire and integration-test the channel resolver and a V2 operational interaction; otherwise keep it explicitly disabled.
+3. Replace or permanently quarantine legacy Ellie context and trace all legacy worker, cron, webhook, payment and database consumers.
+4. Finish import/dependency reachability and environment-variable audits across server, core, client, integrations and deployment config.
+5. Implement the minimum authenticated operational UI for customer/site/asset issues and work visibility.
+6. Run runtime-boundary tests, authenticated integration tests, server/client typechecks and production client build successfully.
+7. Review security advisor finding and test onboarding authorization.
+8. Only then mark PR #35 ready for review and merge to `main`.
+
+**Current conclusion:** the active backend and active client route graph have been substantially isolated from the old protocol product, and the new Supabase database has been queried and exercised directly. Reconstruction is not complete because authentication/onboarding, channel activation, Ellie adaptation/quarantine verification, full dependency audit, UI and automated validation remain open.
