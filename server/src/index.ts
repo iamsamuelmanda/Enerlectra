@@ -9,7 +9,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'node:crypto';
-import rateLimit from 'express-rate-limit';
 import prometheus from 'prom-client';
 import pino from 'pino';
 import { posthog } from './services/posthog.js';
@@ -92,36 +91,7 @@ app.use((req, res, next) => {
   next();
 });
 
-const sensitiveLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
 
-// ──────────────────────────────────────────────────────────────
-// Authentication middleware (Supabase JWT – for frontend)
-// ──────────────────────────────────────────────────────────────
-async function authenticate(req: any, res: any, next: any) {
-  const token = req.headers.authorization?.replace('Bearer ', '');
-  if (!token) {
-    return res.status(401).json({ error: 'Unauthorized: No token provided' });
-  }
-  if (!supabase) {
-    return res.status(503).json({ error: 'Database not available' });
-  }
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-  }
-  req.user = user;
-
-  // Scopes all telemetry operations happening inside this request frame to the user's explicit UUID
-  posthog.withContext({ distinctId: user.id }, () => {
-    next();
-  });
-}
 
 // ──────────────────────────────────────────────────────────────
 // Exchange rate helper (used across endpoints)
@@ -177,8 +147,6 @@ app.get('/api/health', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     services: {
       supabase: !!supabase,
-      lenco: !!process.env.LENCO_SECRET_KEY,
-      anthropic: !!process.env.ANTHROPIC_API_KEY,
       exchangeRate: !!process.env.EXCHANGE_RATE_API_KEY,
       prometheus: true,
       posthog: true,
@@ -210,8 +178,21 @@ app.get('/api/exchange-rate/:from/:to', async (req, res) => {
 // ──────────────────────────────────────────────────────────────
 // OpenAPI docs stub
 // ──────────────────────────────────────────────────────────────
-app.get('/api/docs', (req, res) => {
-  res.send(`<!DOCTYPE html><html><head><title>Enerlectra API v3.1.0</title></head><body style="font-family:system-ui;max-width:800px;margin:2rem auto;background:#0f172a;color:#e2e8f0;"><h1>⚡ Enerlectra API v3.1.0</h1><p>Full production endpoints available.</p><h2>Core Endpoints</h2><ul><li>GET /api/health</li><li>GET /api/protocol/global-state</li><li>GET /api/clusters</li><li>GET /api/settlement/by-user/:userId</li><li>GET /api/wallet/:userId</li><li>POST /api/payments/redeem</li><li>POST /api/marketplace/listings</li><li>POST /api/marketplace/requests</li><li>POST /api/marketplace/match</li><li>POST /api/stake</li><li>POST /api/disputes</li><li>GET /metrics</li></ul><p>Authenticated endpoints require Bearer token.</p></body></html>`);
+app.get('/api/docs', (_req, res) => {
+  res.json({
+    name: 'Enerlectra V2 API',
+    endpoints: [
+      'GET /api/health',
+      'POST /api/operational-issues',
+      'POST /api/v2/actions',
+      'POST /api/v2/actions/:id/authorize',
+      'POST /api/v2/actions/:id/transition',
+      'POST /api/v2/actions/:id/attempts',
+      'POST /api/v2/actions/:id/attempts/:attemptId/transition',
+      'GET /metrics',
+    ],
+    note: 'All operational endpoints require authenticated V2 tenant context.',
+  });
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -240,8 +221,8 @@ app.post('/api/webhooks/airtel', async (req, res) => {
   res.status(200).json({ message: 'received' });
 });
 
-app.get('/api/webhooks/status', async (req, res) => {
-  res.json({ status: 'ok', endpoints: { lenco: process.env.BASE_URL + '/api/webhooks/lenco' } });
+app.get('/api/webhooks/status', (_req, res) => {
+  res.json({ status: 'ok', enabled: ['whatsapp-v2-pending-identity'] });
 });
 
 // ──────────────────────────────────────────────────────────────
