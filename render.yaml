@@ -21,7 +21,7 @@ services:
     name: enerlectra-backend
     env: node
     plan: free
-    buildCommand: "npm ci"
+    buildCommand: "npm ci && npm run build:client"
     startCommand: "npm start"
     envVars:
       - key: NODE_ENV
