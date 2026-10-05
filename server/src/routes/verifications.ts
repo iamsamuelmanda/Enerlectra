@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
+import { recordAudit } from '../services/audit.js';
 
 const VERIFICATION_TYPES = [
   'OPERATOR_CONFIRMATION',
@@ -67,6 +68,17 @@ export function createVerificationsRouter(db: SupabaseClient): Router {
       }
 
       const verification = Array.isArray(data) ? data[0] : data;
+      await recordAudit(db, {
+        organizationId: tenant.organizationId,
+        actorId: tenant.actorId,
+        action: 'OPERATIONAL_VERIFICATION_RECORDED',
+        resourceType: verification?.situation_id ? 'SITUATION' : 'VERIFICATION',
+        resourceId: verification?.situation_id ?? verification?.verification_id ?? null,
+        outcome: 'SUCCESS',
+        correlationId: tenant.correlationId,
+        metadata: { verificationId: verification?.verification_id, status: verification?.verification_status, verificationType: b.verificationType },
+      });
+
       return res.status(201).json({
         success: true,
         verification,
