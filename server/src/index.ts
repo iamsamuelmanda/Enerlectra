@@ -26,6 +26,7 @@ import { createCustomerOperationalIssuesRouter } from './routes/customerOperatio
 import { createActionsRouter } from './routes/actions.js';
 import { createVerificationsRouter } from './routes/verifications.js';
 import { createOperationsRouter } from './routes/operations.js';
+import { createOrganizationContextRouter } from './routes/organizationContext.js';
 
 // ──────────────────────────────────────────────────────────────
 // Express app setup
@@ -204,6 +205,8 @@ app.get('/api/docs', (_req, res) => {
       'POST /api/actions/:id/attempts',
       'POST /api/actions/:id/attempts/:attemptId/transition',
       'GET /api/operations/queue',
+      'GET /api/organization/context',
+      'PUT /api/organization/context',
       'POST /api/verifications',
       'GET /metrics',
     ],
@@ -220,6 +223,7 @@ app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabas
 // remain quarantined until their capabilities are adapted to the tenant model.
 app.use('/api/actions', createActionsRouter(supabase));
 app.use('/api/operations', createOperationsRouter(supabase));
+app.use('/api/organization/context', createOrganizationContextRouter(supabase));
 app.use('/api/verifications', createVerificationsRouter(supabase));
 
 // WhatsApp adapter is intentionally fail-closed until canonical
