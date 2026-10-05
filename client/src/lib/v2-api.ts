@@ -95,3 +95,39 @@ export async function createVerification(input: {
     body: JSON.stringify(input),
   });
 }
+
+
+export type OrganizationOperatingContext = {
+  profileId: string | null;
+  profileName: string | null;
+  profileConfiguration: Record<string, unknown>;
+  businessModels: string[];
+  capabilities: string[];
+  capabilityConfiguration: Record<string, Record<string, unknown>>;
+  policies: Record<string, unknown>;
+};
+
+export async function getOrganizationContext(): Promise<{
+  organizationId: string;
+  canManage: boolean;
+  operatingContext: OrganizationOperatingContext;
+}> {
+  return authorizedFetch('/api/organization/context');
+}
+
+export async function updateOrganizationContext(input: {
+  profileName?: string;
+  profileConfiguration?: Record<string, unknown>;
+  businessModels?: string[];
+  capabilities?: Array<{
+    key: string;
+    status?: 'ENABLED' | 'DISABLED' | 'CONFIGURED';
+    configuration?: Record<string, unknown>;
+  }>;
+  policies?: Array<{ key: string; value: Record<string, unknown> }>;
+}) {
+  return authorizedFetch('/api/organization/context', {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  });
+}
