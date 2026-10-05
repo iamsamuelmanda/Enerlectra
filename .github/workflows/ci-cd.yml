@@ -105,24 +105,5 @@ jobs:
       - run: npm ci
       - run: npm run typecheck:server
 
-  smoke-production:
-    name: Production smoke test
-    runs-on: ubuntu-latest
-    needs: [client, telegram-bot, root, security, server-typecheck]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-
-    steps:
-      - name: Backend health check
-        run: |
-          for i in 1 2 3 4 5; do
-            if curl -fsS "https://enerlectra-backend.onrender.com/api/health"; then
-              exit 0
-            fi
-            echo "Attempt $i failed, retrying in 15s..."
-            sleep 15
-          done
-          echo "Backend health check failed after 5 attempts"
-          exit 1
-
-      - name: Frontend reachability
-        run: curl -fsSI "https://enerlectra-frontend-c406365od-samuel-mandas-projects.vercel.app" | head -n 1
+  # Production smoke tests stay disabled until the canonical Render service is cut over.
+  # The previous job targeted the retired runtime; reintroduce this gate after cutover.
