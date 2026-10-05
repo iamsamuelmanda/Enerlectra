@@ -919,3 +919,75 @@ Earlier database-level rollback and idempotency checks for the operational-issue
 
 - Applied migrations 024–027: organization creation RPC is now service-role-only with an empty SECURITY DEFINER search path; Actor RLS uses statement-level auth.uid() evaluation; 17 advisor-identified FK indexes were added; two confirmed duplicate non-constraint indexes were removed.
 - Re-ran Supabase advisors: security advisor is clean; performance advisor no longer reports unindexed FKs, auth RLS initplan warnings, or duplicate indexes. Remaining notices are INFO-level unused indexes on a new low-traffic project; none were dropped based on usage counters.
+
+## 23. Reconciliation closure audit — 2026-10-05
+
+This section is the current reconciliation verdict for the reconstruction branch. Earlier sections remain forensic history and are superseded where they describe the pre-cleanup active runtime.
+
+### Active application boundary — VERIFIED
+
+The repository now has one active web application composition root for the reconstruction branch:
+
+- server/src/index.ts requires V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY, and V2_SUPABASE_SERVICE_ROLE_KEY and refuses startup without the complete V2 boundary.
+- The active server mounts only the V2 Customer Operational Issue and Action domain routes.
+- The active server performs its readiness query against V2 organizations.
+- Legacy cluster/staking/ledger/marketplace/settlement routes and legacy settlement/matching/payout jobs are not mounted or scheduled by the active composition root.
+- WhatsApp remains explicitly disabled with HTTP 503 rather than falling back to an unsafe identity path.
+- client/src/routes/router.tsx exposes only V2Home; the legacy protocol/authentication route graph is unreachable from the active router.
+- create-kernel.ts no longer registers the legacy PCU/cluster/token/redemption handlers.
+
+### Quarantine boundary — VERIFIED
+
+The legacy source tree has not been falsely treated as active merely because the files remain in Git. The core package root still exports legacy services because the separate Telegram integration depends on that package; therefore those exports are quarantined rather than silently deleted. The V2 server does not import the legacy package root as part of its active composition root.
+
+The following remain intentionally quarantined until a separate consumer/deployment audit authorizes deletion:
+
+- legacy core ledger/settlement/marketplace/PCU modules;
+- legacy Telegram integration;
+- legacy payment/settlement providers;
+- legacy database clients and table consumers;
+- legacy client components/hooks not reachable from the active router;
+- legacy scheduled jobs not reachable from the active server entrypoint;
+- Ellie V1 context construction.
+
+This is the correct state for a safe reconstruction: one active V2 runtime, legacy code isolated, no accidental V1 fallback. Deleting quarantined code without tracing its separate consumers would be premature.
+
+### Identity boundary — VERIFIED
+
+The HTTP tenant resolver establishes:
+
+Supabase access token → Auth user → active Actor → active Membership → active Organization → role permissions.
+
+The channel resolver establishes:
+
+channel identity → active Actor → active Membership → active Organization → role permissions.
+
+It rejects missing/disabled channel identities, inactive actors, missing membership, ambiguous memberships and inactive organizations. The channel resolver is covered by unit tests but is not yet connected to the public WhatsApp endpoint; that endpoint therefore remains fail-closed.
+
+No default-org fallback exists in the V2 command-factory path or active WhatsApp compatibility stub.
+
+### Live database boundary — VERIFIED
+
+Live target: enerlectra-v2 (mtyhzvkiuibigjximsix), eu-west-2, ACTIVE_HEALTHY.
+
+- Migration history is complete through 027_remove_duplicate_tenant_indexes.
+- 20 public base tables are present and all 20 have RLS enabled.
+- 13 operational/domain tables have FORCE ROW LEVEL SECURITY.
+- create_customer_operational_issue and create_organization are executable only by service_role; anon and authenticated execution is denied.
+- The database security advisor currently returns no findings.
+- The performance advisor currently reports only INFO-level unused-index observations on this low-traffic project; the prior unindexed-FK, RLS-initplan and duplicate-index findings have been addressed.
+
+Earlier rollback/idempotency RPC checks remain valid. They are database-level checks, not authenticated HTTP E2E proof.
+
+### What this reconciliation establishes
+
+The reconstruction branch has crossed the repository runtime-boundary gate: the old protocol product is no longer the active server/client application path. The remaining work is product/runtime completion rather than another round of architectural reshuffling:
+
+1. trusted browser authentication/onboarding and the minimum operational workspace;
+2. safe decision and implementation for channel activation (or continued explicit disablement);
+3. V2 tenant-scoped Ellie context, or permanent quarantine/removal of its V1 path;
+4. deletion of quarantined legacy code only after external consumer/deployment tracing;
+5. local test/typecheck/build execution and authenticated HTTP integration execution in an environment with dependencies/secrets;
+6. deliberate V2 staging/cutover and only then merge/production migration.
+
+Reconciliation status: COMPLETE for the active-runtime boundary; repository cleanup/cutover remains deliberately gated.
