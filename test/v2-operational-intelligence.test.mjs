@@ -1,6 +1,11 @@
 import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
+import http from 'node:http';
+import crypto from 'node:crypto';
+import express from 'express';
 import { createClient } from '@supabase/supabase-js';
+import { createCustomerOperationalIssuesRouter } from '../server/src/routes/customerOperationalIssues.js';
+import { createVerificationsRouter } from '../server/src/routes/verifications.js';
 
 const url = process.env.V2_SUPABASE_URL;
 const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
@@ -17,10 +22,35 @@ if (enabled) {
   });
   const runId = Date.now().toString(36);
   const password = `Operational_Gate_${runId}_Secure!123`;
+  const email = `operational-gate-${runId}@example.invalid`;
   const state = { userId: '', actorId: '', orgId: '' };
+  let server;
+  let baseUrl;
 
-  async function createUser() {
-    const email = `operational-gate-${runId}@example.invalid`;
+  async function signIn() {
+    const client = createClient(url, anonKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    assert.ifError(error);
+    assert.ok(data.session?.access_token);
+    return data.session.access_token;
+  }
+
+  async function request(path, token, body, organizationId = state.orgId) {
+    const response = await fetch(`${baseUrl}${path}`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+        'x-organization-id': organizationId,
+      },
+      body: JSON.stringify(body),
+    });
+    return { status: response.status, body: await response.json() };
+  }
+
+  before(async () => {
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
@@ -29,26 +59,14 @@ if (enabled) {
     });
     assert.ifError(error);
     state.userId = data.user.id;
-    return { id: data.user.id, email };
-  }
 
-  async function signIn(user) {
-    const client = createClient(url, anonKey, {
+    const token = await signIn();
+    const authClient = createClient(url, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
     });
-    const { data, error } = await client.auth.signInWithPassword({
-      email: user.email,
-      password,
-    });
-    assert.ifError(error);
-    assert.ok(data.session?.access_token);
-    return client;
-  }
 
-  before(async () => {
-    const user = await createUser();
-    const client = await signIn(user);
-    const { data: org, error: orgError } = await client.rpc('create_organization', {
+    const { data: org, error: orgError } = await authClient.rpc('create_organization', {
       p_name: `Operational Gate ${runId}`,
       p_creator_intent: 'OWNER',
     });
@@ -58,82 +76,148 @@ if (enabled) {
     const { data: actor, error: actorError } = await admin
       .from('actors')
       .select('id')
-      .eq('auth_user_id', user.id)
+      .eq('auth_user_id', state.userId)
       .single();
     assert.ifError(actorError);
     state.actorId = actor.id;
+
+    const { data: profile, error: profileError } = await admin
+      .from('operating_model_profiles')
+      .select('id')
+      .eq('organization_id', state.orgId)
+      .single();
+    assert.ifError(profileError);
+
+    const { error: modelError } = await admin.from('operating_model_business_models').insert([
+      { organization_id: state.orgId, operating_model_profile_id: profile.id, business_model_key: 'EPC', is_primary: true },
+      { organization_id: state.orgId, operating_model_profile_id: profile.id, business_model_key: 'ENERGY_AS_A_SERVICE', is_primary: false },
+    ]);
+    assert.ifError(modelError);
+
+    const { error: capabilityError } = await admin.from('organization_capabilities').insert([
+      { organization_id: state.orgId, capability_key: 'FIELD_SERVICE', status: 'ENABLED', configuration: { dispatch_window_hours: 24 } },
+      { organization_id: state.orgId, capability_key: 'CUSTOMER_SUPPORT', status: 'ENABLED', configuration: {} },
+    ]);
+    assert.ifError(capabilityError);
+
+    const app = express();
+    app.use(express.json());
+    app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(admin));
+    app.use('/api/verifications', createVerificationsRouter(admin));
+
+    server = http.createServer(app);
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+    baseUrl = `http://127.0.0.1:${address.port}`;
   });
 
   after(async () => {
+    if (server) {
+      await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+    }
     if (state.orgId) await admin.from('organizations').delete().eq('id', state.orgId);
     if (state.actorId) await admin.from('actors').delete().eq('id', state.actorId);
     if (state.userId) await admin.auth.admin.deleteUser(state.userId);
   });
 
-  test('issue intake creates situation, recommendation and work in one tenant', async () => {
-    const user = { email: `operational-gate-${runId}@example.invalid` };
-    const client = await signIn(user);
-
-    const { data, error } = await client.rpc('create_customer_operational_issue', {
-      p_organization_id: state.orgId,
-      p_actor_id: state.actorId,
-      p_title: 'Gate test: reported site issue',
-      p_summary: 'The operator reported an operational exception requiring investigation.',
-      p_observation_type: 'CUSTOMER_REPORT',
-      p_observation_value: { test: true, symptom: 'site_issue' },
-      p_source: 'WEB',
-      p_work_type: 'INVESTIGATE',
-      p_priority: 'HIGH',
-      p_correlation_id: `operational-gate-${runId}`,
+  test('issue intake works for a mixed operating-model organization', async () => {
+    const token = await signIn();
+    const result = await request('/api/operational-issues', token, {
+      title: 'Mixed-model asset issue',
+      summary: 'An operational exception is reported for a customer asset.',
+      severity: 'HIGH',
+      priority: 'HIGH',
+      workType: 'VISIT_SITE',
+      observationType: 'CUSTOMER_REPORT',
+      observationValue: { symptom: 'asset not operating' },
+      source: 'WEB',
+      idempotencyKey: `mixed-${runId}`,
     });
-    assert.ifError(error);
-    assert.ok(data?.[0]?.situation_id);
-    assert.ok(data?.[0]?.work_item_id);
 
-    const { data: recommendations, error: recError } = await client
+    assert.equal(result.status, 201);
+    assert.equal(result.body.success, true);
+    assert.ok(result.body.situationId);
+    assert.ok(result.body.workItemId);
+  });
+
+  test('recommendation reflects capabilities rather than an EPC/PAYGo branch', async () => {
+    const token = await signIn();
+    const result = await request('/api/operational-issues', token, {
+      title: 'Field investigation required',
+      summary: 'The organization needs a field response to a reported condition.',
+      severity: 'HIGH',
+      priority: 'HIGH',
+      workType: 'VISIT_SITE',
+      observationType: 'CUSTOMER_REPORT',
+      observationValue: { symptom: 'field_investigation_required' },
+      source: 'WEB',
+      idempotencyKey: `recommendation-${runId}`,
+    });
+
+    assert.equal(result.status, 201);
+
+    const { data: recommendation, error } = await admin
       .from('recommendations')
-      .select('situation_id,status,recommendation_type,summary,generated_by')
+      .select('recommendation_type,summary,confidence,context_snapshot')
       .eq('organization_id', state.orgId)
-      .eq('situation_id', data[0].situation_id);
-    assert.ifError(recError);
-    assert.equal(recommendations.length, 1);
-    assert.equal(recommendations[0].status, 'PROPOSED');
-    assert.equal(recommendations[0].generated_by, 'RULE_ENGINE');
-
-    const { data: work, error: workError } = await client
-      .from('work_items')
-      .select('id,status,work_type,priority')
-      .eq('organization_id', state.orgId)
-      .eq('id', data[0].work_item_id)
+      .eq('situation_id', result.body.situationId)
       .single();
-    assert.ifError(workError);
-    assert.equal(work.work_type, 'INVESTIGATE');
 
-    const { data: verification, error: verificationError } = await client.rpc(
-      'record_operational_verification',
-      {
-        p_organization_id: state.orgId,
-        p_actor_id: state.actorId,
-        p_situation_id: data[0].situation_id,
-        p_work_item_id: data[0].work_item_id,
-        p_verification_type: 'OPERATOR_CONFIRMATION',
-        p_status: 'VERIFIED',
-        p_result: { summary: 'Outcome confirmed by operational gate.' },
-      },
-    );
-    assert.ifError(verificationError);
-    assert.equal(verification[0].verification_status, 'VERIFIED');
-    assert.equal(verification[0].situation_status, 'RESOLVED');
+    assert.ifError(error);
+    assert.equal(recommendation.recommendation_type, 'FIELD_INVESTIGATION');
+    assert.ok(recommendation.summary.includes('field responsibility'));
+    assert.deepEqual(recommendation.context_snapshot.capabilities, ['FIELD_SERVICE', 'CUSTOMER_SUPPORT']);
+    assert.deepEqual(recommendation.context_snapshot.businessModels, ['EPC', 'ENERGY_AS_A_SERVICE']);
+  });
 
-    const { data: situation, error: situationError } = await client
+  test('verification closes the situation through the authenticated HTTP boundary', async () => {
+    const token = await signIn();
+    const result = await request('/api/operational-issues', token, {
+      title: 'Verification loop test',
+      summary: 'A situation that should be closed through verified evidence.',
+      severity: 'MEDIUM',
+      priority: 'NORMAL',
+      workType: 'INVESTIGATE',
+      observationType: 'CUSTOMER_REPORT',
+      observationValue: { symptom: 'verification_loop' },
+      source: 'WEB',
+      idempotencyKey: `verification-${runId}`,
+    });
+
+    assert.equal(result.status, 201);
+
+    const verification = await request('/api/verifications', token, {
+      situationId: result.body.situationId,
+      workItemId: result.body.workItemId,
+      verificationType: 'OPERATOR_CONFIRMATION',
+      status: 'VERIFIED',
+      result: { summary: 'Outcome confirmed by operational gate.' },
+    });
+
+    assert.equal(verification.status, 201);
+    assert.equal(verification.body.success, true);
+    assert.equal(verification.body.verification.verification_status, 'VERIFIED');
+    assert.equal(verification.body.verification.situation_status, 'RESOLVED');
+
+    const { data: situation, error } = await admin
       .from('situations')
       .select('status,resolved_at,resolution_summary')
       .eq('organization_id', state.orgId)
-      .eq('id', data[0].situation_id)
+      .eq('id', result.body.situationId)
       .single();
-    assert.ifError(situationError);
+    assert.ifError(error);
     assert.equal(situation.status, 'RESOLVED');
     assert.ok(situation.resolved_at);
+  });
 
+  test('forged organization header is denied by tenant resolution', async () => {
+    const token = await signIn();
+    const result = await request('/api/operational-issues', token, {
+      title: 'Cross-tenant test',
+      observationValue: { test: true },
+      idempotencyKey: `forged-${runId}`,
+    }, crypto.randomUUID());
+    assert.equal(result.status, 403);
   });
 }
