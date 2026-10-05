@@ -57,6 +57,7 @@ export default function V2Onboarding() {
         if (invitationError) throw invitationError;
 
         const token = invitation.token as string;
+        if (!token) throw new Error('Owner claim invitation was created without a token.');
         setInviteLink(`${window.location.origin}/onboarding?invite=${encodeURIComponent(token)}`);
         toast.success('Workspace created. Owner claim invitation is ready.');
         return;
