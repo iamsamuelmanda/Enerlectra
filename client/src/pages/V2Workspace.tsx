@@ -10,7 +10,7 @@ export default function V2Workspace() {
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
   const [severity, setSeverity] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL'>('MEDIUM');
-  const [priority, setPriority] = useState<'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'>('MEDIUM');
+  const [priority, setPriority] = useState<'LOW' | 'NORMAL' | 'HIGH' | 'URGENT'>('NORMAL');
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
@@ -77,7 +77,7 @@ export default function V2Workspace() {
             </label>
             <label className="text-sm text-slate-300">Priority
               <select value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3">
-                <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>URGENT</option>
+                <option>LOW</option><option>NORMAL</option><option>HIGH</option><option>URGENT</option>
               </select>
             </label>
           </div>
