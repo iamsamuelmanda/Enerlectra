@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install --legacy-peer-deps --include=dev",
+  "installCommand": "npm install --legacy-peer-deps --include=dev && npm --prefix client install --legacy-peer-deps --include=dev",
   "buildCommand": "npm run build:client",
   "outputDirectory": "client/dist",
   "headers": [
