@@ -758,3 +758,54 @@ This is intentional scope control, not loss of the codebase.
 6. Only then graduate legacy capabilities that repeatedly solve real customer problems.
 
 The architecture is therefore broad by **configuration and extension points**, not broad by the number of modules shipped on day one.
+
+
+---
+
+# 25. Current implementation checkpoint
+
+The ICP-first review changed the implementation sequence.
+
+## Deferred
+
+The exploratory meter-reading capability was not accepted as first-slice product scope.
+
+- Migration 034 introduced it temporarily.
+- Migration 035 removed it from the active canonical database.
+- Legacy reading/OCR/validation code remains reference IP.
+- It will return only when an active customer workflow establishes a need.
+
+## Implemented next
+
+The shared operational kernel was strengthened instead:
+
+- Migration 036: recommendations + verifications.
+- Migration 037: operational issue transaction now records a bounded rule-based recommendation before creating work, and issue intake no longer requires work execution authority.
+- Migration 038: verification is an atomic domain operation; authenticated table INSERT is revoked and server-side verification must use the validated RPC.
+- `GET /api/operations/queue`: tenant-scoped operational picture of open/investigating situations, recommendations and work.
+- `POST /api/verifications`: tenant/permission-checked verification entry point.
+- Client workspace now projects the operational queue and recommended next step instead of functioning only as an issue-capture form.
+
+## Product meaning
+
+The current implementation therefore demonstrates a useful cross-model primitive without assuming a particular energy technology:
+
+```
+Signal / Evidence
+      ↓
+Situation
+      ↓
+Recommended next step
+      ↓
+Work
+      ↓
+Verified outcome
+```
+
+EPC interpretation can be installation/fault/service work.
+
+PAYGo interpretation can be payment/service exception work.
+
+The kernel stays unchanged.
+
+The next capability should be selected from real ICP workflow evidence rather than from the legacy code inventory.
