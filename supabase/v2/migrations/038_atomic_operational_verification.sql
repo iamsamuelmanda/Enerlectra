@@ -59,10 +59,18 @@ begin
   ) then raise exception 'SITUATION_NOT_FOUND'; end if;
 
   if v_work_item_id is not null then
-    select w.situation_id into v_situation_id
-    from public.work_items w
-    where w.id = v_work_item_id and w.organization_id = p_organization_id;
-    if v_situation_id is null then raise exception 'WORK_ITEM_NOT_FOUND'; end if;
+    declare
+      work_situation_id uuid;
+    begin
+      select w.situation_id into work_situation_id
+      from public.work_items w
+      where w.id = v_work_item_id and w.organization_id = p_organization_id;
+      if work_situation_id is null then raise exception 'WORK_ITEM_NOT_FOUND'; end if;
+      if v_situation_id is not null and v_situation_id <> work_situation_id then
+        raise exception 'WORK_SITUATION_TARGET_MISMATCH';
+      end if;
+      v_situation_id := work_situation_id;
+    end;
   end if;
 
   if v_action_id is not null then
