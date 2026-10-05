@@ -125,19 +125,29 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
         throw new TenantContextError('ROLE_NOT_FOUND', 'Membership role could not be resolved');
       }
 
-      const permissionResult = await client
-        .from('role_permissions')
-        .select('permissions!inner(key)')
-        .eq('role_id', membership.role_id);
+      const [permissionResult, profileResult, capabilityResult, policyResult] = await Promise.all([
+        client.from('role_permissions').select('permissions!inner(key)').eq('role_id', membership.role_id),
+        client.from('operating_model_profiles').select('id,name,configuration').eq('organization_id', membership.organization_id).eq('status','ACTIVE').maybeSingle(),
+        client.from('organization_capabilities').select('capability_key,status,configuration').eq('organization_id', membership.organization_id),
+        client.from('organization_policies').select('policy_key,value,status,effective_from,effective_to').eq('organization_id', membership.organization_id).eq('status','ACTIVE').is('effective_to', null),
+      ]);
 
-      if (permissionResult.error) {
-        throw new Error(`Tenant permission lookup failed: ${permissionResult.error.message}`);
-      }
+      if (permissionResult.error) throw new Error(`Tenant permission lookup failed: ${permissionResult.error.message}`);
+      if (profileResult.error) throw new Error(`Tenant operating profile lookup failed: ${profileResult.error.message}`);
+      if (capabilityResult.error) throw new Error(`Tenant capability lookup failed: ${capabilityResult.error.message}`);
+      if (policyResult.error) throw new Error(`Tenant policy lookup failed: ${policyResult.error.message}`);
 
       const permissionRows = (permissionResult.data ?? []) as PermissionRow[];
-      const permissions = permissionRows
-        .map((row) => row.permissions?.key)
-        .filter((key): key is string => Boolean(key));
+      const permissions = permissionRows.map((row) => row.permissions?.key).filter((key): key is string => Boolean(key));
+
+      const profile = profileResult.data as { id: string; name: string; configuration: Record<string, unknown> } | null;
+      const capabilityRows = (capabilityResult.data ?? []) as Array<{ capability_key: string; status: string; configuration: Record<string, unknown> }>;
+      const policyRows = (policyResult.data ?? []) as Array<{ policy_key: string; value: unknown }>;
+
+      const { data: businessModels, error: businessModelError } = profile
+        ? await client.from('operating_model_business_models').select('business_model_key').eq('operating_model_profile_id', profile.id)
+        : { data: [], error: null };
+      if (businessModelError) throw new Error(`Tenant business-model lookup failed: ${businessModelError.message}`);
 
       return {
         actorId: actor.id,
@@ -145,6 +155,19 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
         membershipId: membership.id,
         roles: [membership.roles.key],
         permissions: [...new Set(permissions)],
+        operatingContext: {
+          profileId: profile?.id ?? null,
+          profileName: profile?.name ?? null,
+          profileConfiguration: profile?.configuration ?? {},
+          businessModels: [...new Set((businessModels ?? []).map((row: any) => row.business_model_key))],
+          capabilities: [...new Set(capabilityRows.filter((row) => row.status !== 'DISABLED').map((row) => row.capability_key))],
+          capabilityConfiguration: Object.fromEntries(
+            capabilityRows
+              .filter((row) => row.status !== 'DISABLED')
+              .map((row) => [row.capability_key, row.configuration ?? {}])
+          ),
+          policies: Object.fromEntries(policyRows.map((row) => [row.policy_key, row.value])),
+        },
         correlationId: input.correlationId,
         requestId: input.requestId,
         source: input.source,
