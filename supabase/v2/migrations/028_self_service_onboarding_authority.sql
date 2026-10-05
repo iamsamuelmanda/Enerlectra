@@ -254,6 +254,7 @@ $$;
 
 revoke all on function public.create_organization(text,text)
 from public, anon;
+drop function if exists public.create_organization(text);
 grant execute on function public.create_organization(text,text)
 to authenticated;
 
@@ -539,7 +540,7 @@ after insert or update or delete on public.membership_roles
 deferrable initially deferred
 for each row execute function private.assert_membership_owner_state();
 
-revoke execute on function private.ensure_current_actor() from public, anon, authenticated;
+revoke execute on function public.ensure_current_actor() from public, anon;
 revoke execute on function private.sync_primary_membership_role() from public, anon, authenticated;
 revoke execute on function private.assert_organization_has_owner(uuid) from public, anon, authenticated;
 revoke execute on function private.assert_membership_owner_state() from public, anon, authenticated;
