@@ -1,6 +1,6 @@
--- 040: organization operating model, capability and policy configuration.
--- Generic platform configuration for diverse and mixed energy businesses.
--- No fixed business-model enum is used as product authorization.
+-- 040: adaptable organization operating context.
+-- Business models are descriptors. Capabilities and policies are configuration.
+-- None of these concepts grants actor authority.
 
 create table if not exists public.operating_model_profiles (
   id uuid primary key default gen_random_uuid(),
@@ -59,42 +59,41 @@ alter table public.operating_model_business_models enable row level security;
 alter table public.organization_capabilities enable row level security;
 alter table public.organization_policies enable row level security;
 
+drop policy if exists operating_model_profiles_member_select on public.operating_model_profiles;
 create policy operating_model_profiles_member_select on public.operating_model_profiles
-for select to authenticated
-using (private.is_active_member(organization_id));
+for select to authenticated using (private.is_active_member(organization_id));
+
+drop policy if exists operating_model_profiles_manage on public.operating_model_profiles;
 create policy operating_model_profiles_manage on public.operating_model_profiles
 for all to authenticated
 using (private.has_org_permission(organization_id,'organization.manage'))
 with check (private.has_org_permission(organization_id,'organization.manage'));
 
+drop policy if exists operating_model_business_models_member_select on public.operating_model_business_models;
 create policy operating_model_business_models_member_select on public.operating_model_business_models
-for select to authenticated
-using (exists (
-  select 1 from public.operating_model_profiles p
-  where p.id=operating_model_profile_id and private.is_active_member(p.organization_id)
-));
+for select to authenticated using (private.is_active_member(organization_id));
+
+drop policy if exists operating_model_business_models_manage on public.operating_model_business_models;
 create policy operating_model_business_models_manage on public.operating_model_business_models
 for all to authenticated
-using (exists (
-  select 1 from public.operating_model_profiles p
-  where p.id=operating_model_profile_id and private.has_org_permission(p.organization_id,'organization.manage')
-))
-with check (exists (
-  select 1 from public.operating_model_profiles p
-  where p.id=operating_model_profile_id and private.has_org_permission(p.organization_id,'organization.manage')
-));
+using (private.has_org_permission(organization_id,'organization.manage'))
+with check (private.has_org_permission(organization_id,'organization.manage'));
 
+drop policy if exists organization_capabilities_member_select on public.organization_capabilities;
 create policy organization_capabilities_member_select on public.organization_capabilities
-for select to authenticated
-using (private.is_active_member(organization_id));
+for select to authenticated using (private.is_active_member(organization_id));
+
+drop policy if exists organization_capabilities_manage on public.organization_capabilities;
 create policy organization_capabilities_manage on public.organization_capabilities
 for all to authenticated
 using (private.has_org_permission(organization_id,'organization.manage'))
 with check (private.has_org_permission(organization_id,'organization.manage'));
 
+drop policy if exists organization_policies_member_select on public.organization_policies;
 create policy organization_policies_member_select on public.organization_policies
-for select to authenticated
-using (private.is_active_member(organization_id));
+for select to authenticated using (private.is_active_member(organization_id));
+
+drop policy if exists organization_policies_manage on public.organization_policies;
 create policy organization_policies_manage on public.organization_policies
 for all to authenticated
 using (private.has_org_permission(organization_id,'organization.manage'))
@@ -106,14 +105,12 @@ grant select, insert, update, delete on public.operating_model_profiles,
   public.operating_model_business_models, public.organization_capabilities,
   public.organization_policies to authenticated;
 
--- Backfill an empty, non-prescriptive operating profile for existing organizations.
 insert into public.operating_model_profiles (organization_id,name,status,configuration)
 select o.id,'Default operating profile','ACTIVE','{}'::jsonb
 from public.organizations o
 left join public.operating_model_profiles p on p.organization_id=o.id
 where p.id is null;
 
--- New organizations receive the same neutral empty profile during creation.
 create or replace function public.create_organization(
   p_name text,
   p_creator_intent text default 'OWNER'
@@ -149,9 +146,13 @@ begin
   insert into public.operating_model_profiles(organization_id,name,status,configuration)
   values (v_org.id,'Default operating profile','ACTIVE','{}'::jsonb);
 
-  select id into v_role_id from public.roles
+  select id into v_role_id
+  from public.roles
   where key=case when p_creator_intent='OWNER' then 'OWNER' else 'OPERATOR' end;
-  if v_role_id is null then raise exception 'ONBOARDING_ROLE_MISSING'; end if;
+
+  if v_role_id is null then
+    raise exception 'ONBOARDING_ROLE_MISSING';
+  end if;
 
   insert into public.memberships(organization_id,actor_id,role_id,status)
   values (v_org.id,v_actor_id,v_role_id,'ACTIVE');
