@@ -72,8 +72,21 @@ export default function V2SignIn() {
 export function V2AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'loading' | 'signed-in' | 'signed-out'>('loading');
 
-  React.useEffect(() => {
-    supabaseV2.auth.getSession().then(({ data }) => setState(data.session ? 'signed-in' : 'signed-out'));
+  useEffect(() => {
+    let mounted = true;
+
+    supabaseV2.auth.getSession().then(({ data }) => {
+      if (mounted) setState(data.session ? 'signed-in' : 'signed-out');
+    });
+
+    const { data: subscription } = supabaseV2.auth.onAuthStateChange((_event, session) => {
+      if (mounted) setState(session ? 'signed-in' : 'signed-out');
+    });
+
+    return () => {
+      mounted = false;
+      subscription.subscription.unsubscribe();
+    };
   }, []);
 
   if (state === 'loading') return <main className="min-h-screen bg-[#020205]" />;
