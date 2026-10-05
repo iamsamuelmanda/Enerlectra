@@ -27,6 +27,7 @@ import { createActionsRouter } from './routes/actions.js';
 import { createVerificationsRouter } from './routes/verifications.js';
 import { createOperationsRouter } from './routes/operations.js';
 import { createOrganizationContextRouter } from './routes/organizationContext.js';
+import { createResourcesRouter } from './routes/resources.js';
 
 // ──────────────────────────────────────────────────────────────
 // Express app setup
@@ -207,6 +208,12 @@ app.get('/api/docs', (_req, res) => {
       'GET /api/operations/queue',
       'GET /api/organization/context',
       'PUT /api/organization/context',
+      'GET /api/resources/customers',
+      'POST /api/resources/customers',
+      'GET /api/resources/sites',
+      'POST /api/resources/sites',
+      'GET /api/resources/assets',
+      'POST /api/resources/assets',
       'POST /api/verifications',
       'GET /metrics',
     ],
@@ -224,6 +231,7 @@ app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabas
 app.use('/api/actions', createActionsRouter(supabase));
 app.use('/api/operations', createOperationsRouter(supabase));
 app.use('/api/organization/context', createOrganizationContextRouter(supabase));
+app.use('/api/resources', createResourcesRouter(supabase));
 app.use('/api/verifications', createVerificationsRouter(supabase));
 
 // WhatsApp adapter is intentionally fail-closed until canonical
