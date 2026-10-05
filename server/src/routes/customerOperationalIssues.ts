@@ -132,7 +132,6 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
       const authorizationCodes = [
         'ACTOR_NOT_ACTIVE_MEMBER',
         'SITUATION_MANAGE_PERMISSION_REQUIRED',
-        'WORK_EXECUTE_PERMISSION_REQUIRED',
         'ASSIGNED_ACTOR_NOT_ACTIVE_MEMBER',
         'WORK_ASSIGN_PERMISSION_REQUIRED',
       ];
