@@ -131,3 +131,66 @@ export async function updateOrganizationContext(input: {
     body: JSON.stringify(input),
   });
 }
+
+
+export type Customer = {
+  id: string;
+  organization_id: string;
+  name: string;
+  external_ref: string | null;
+  phone: string | null;
+  email: string | null;
+  status: string;
+};
+
+export type Site = {
+  id: string;
+  organization_id: string;
+  customer_id: string | null;
+  name: string;
+  address: string | null;
+  status: string;
+};
+
+export type Asset = {
+  id: string;
+  organization_id: string;
+  site_id: string | null;
+  customer_id: string | null;
+  asset_type: string;
+  manufacturer: string | null;
+  model: string | null;
+  serial_number: string | null;
+  status: string;
+};
+
+export async function listCustomers() {
+  return authorizedFetch('/api/resources/customers');
+}
+
+export async function listSites() {
+  return authorizedFetch('/api/resources/sites');
+}
+
+export async function listAssets() {
+  return authorizedFetch('/api/resources/assets');
+}
+
+export async function createCustomer(input: { name: string; externalRef?: string; phone?: string; email?: string }) {
+  return authorizedFetch('/api/resources/customers', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function createSite(input: { name: string; customerId?: string; address?: string }) {
+  return authorizedFetch('/api/resources/sites', { method: 'POST', body: JSON.stringify(input) });
+}
+
+export async function createAsset(input: {
+  assetType: string;
+  customerId?: string;
+  siteId?: string;
+  manufacturer?: string;
+  model?: string;
+  serialNumber?: string;
+}) {
+  return authorizedFetch('/api/resources/assets', { method: 'POST', body: JSON.stringify(input) });
+}
