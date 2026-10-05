@@ -17,6 +17,7 @@ export default function V2Workspace() {
   const [queueBusy, setQueueBusy] = useState(true);
   const [queue, setQueue] = useState<OperationalQueueItem[]>([]);
   const [result, setResult] = useState<string | null>(null);
+  const [contextSelection, setContextSelection] = useState<{ customerId?: string; siteId?: string; assetId?: string }>({});
 
   const loadQueue = async () => {
     setQueueBusy(true);
@@ -53,11 +54,15 @@ export default function V2Workspace() {
         observationType: 'CUSTOMER_REPORT',
         observationValue: { summary, source: 'web_workspace' },
         source: 'WEB',
+        customerId: contextSelection.customerId,
+        siteId: contextSelection.siteId,
+        assetId: contextSelection.assetId,
         idempotencyKey: crypto.randomUUID(),
       });
       setResult(`Situation created; work item is now visible in the operational queue. Situation ${response.situationId}.`);
       setTitle('');
       setSummary('');
+      setContextSelection({});
       toast.success('Operational issue created');
       await loadQueue();
     } catch (error) {
@@ -99,7 +104,7 @@ export default function V2Workspace() {
 
       <section className="mx-auto max-w-6xl px-6 py-10">
         <OperatingContextPanel />
-        <ResourceContextPanel />
+        <ResourceContextPanel onContextChange={(next) => setContextSelection((current) => ({ ...current, ...next }))} />
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Operational intelligence</p>
