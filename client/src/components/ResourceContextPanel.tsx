@@ -3,7 +3,7 @@ import { Database, Plus, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createAsset, createCustomer, createSite, listAssets, listCustomers, listSites, type Asset, type Customer, type Site } from '@/lib/v2-api';
 
-export default function ResourceContextPanel() {
+export default function ResourceContextPanel({ onContextChange }: { onContextChange: (context: { customerId?: string; siteId?: string; assetId?: string }) => void }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [sites, setSites] = useState<Site[]>([]);
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -79,6 +79,21 @@ export default function ResourceContextPanel() {
         <div className="rounded-xl border border-white/10 bg-black/20 p-3"><div className="text-2xl font-semibold">{customers.length}</div><div className="text-xs text-slate-500">Customers</div></div>
         <div className="rounded-xl border border-white/10 bg-black/20 p-3"><div className="text-2xl font-semibold">{sites.length}</div><div className="text-xs text-slate-500">Sites</div></div>
         <div className="rounded-xl border border-white/10 bg-black/20 p-3"><div className="text-2xl font-semibold">{assets.length}</div><div className="text-xs text-slate-500">Assets</div></div>
+      </div>
+
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <select onChange={(e) => onContextChange({ customerId: e.target.value || undefined })} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-300">
+          <option value="">Attach customer to next issue</option>
+          {customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}
+        </select>
+        <select onChange={(e) => onContextChange({ siteId: e.target.value || undefined })} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-300">
+          <option value="">Attach site to next issue</option>
+          {sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
+        </select>
+        <select onChange={(e) => onContextChange({ assetId: e.target.value || undefined })} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-300">
+          <option value="">Attach asset to next issue</option>
+          {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_type}{asset.model ? ` · ${asset.model}` : ''}</option>)}
+        </select>
       </div>
 
       {open && (
