@@ -590,3 +590,79 @@ The highest-value next implementation is the reading capability because it conne
 The second is payments because it connects the operational layer to real financial execution.
 
 Only after those two are reconciled should the older economic/protocol subsystems be allowed back into the active runtime.
+
+
+---
+
+# 23. X-ray execution update — canonical readings slice
+
+The first capability has now moved from analysis into implementation.
+
+### Committed
+
+- `supabase/v2/migrations/034_canonical_meter_readings.sql`
+- `server/src/routes/readings.ts`
+- `enerlectra-core/src/core/services/validation.ts`
+- `server/src/index.ts`
+
+### Live database
+
+Migration 034 is applied to the canonical Supabase project.
+
+The live database now contains:
+
+- `meter_readings`
+- `fraud_signals`
+- `fraud_alerts`
+
+All three are tenant-scoped by `organization_id`.
+
+`meter_readings` also links directly to:
+
+- actor
+- customer
+- site
+- asset
+- canonical observation
+
+The old `user_id`, `cluster_id`, and `cluster_members` boundary is absent.
+
+### Runtime flow
+
+The canonical reading endpoint now follows:
+
+```
+Bearer identity
+    ↓
+TenantContextResolver
+    ↓
+active actor + membership + organization
+    ↓
+organization-scoped asset lookup
+    ↓
+organization/asset/meter history
+    ↓
+existing Enerlectra validation algorithm
+    ↓
+fraud evidence (tenant-scoped)
+    ↓
+canonical Observation
+    ↓
+canonical meter_reading capability record
+```
+
+The validation algorithm was not duplicated. It was extended so canonical callers can provide tenant/resource-scoped history and a fraud-signal sink. Legacy callers can still compile while they are being retired, but the active canonical route does not query the legacy schema.
+
+### Important remaining correctness gate
+
+The current implementation inserts the Observation and meter capability record as two writes. Before this capability is treated as production-complete, those writes should be made atomic through a database transaction/RPC, and the canonical reading route needs an authenticated integration test covering:
+
+1. authenticated member can write to an asset in their organization;
+2. member cannot write to an asset in another organization;
+3. inactive asset is rejected;
+4. duplicate `reading_key` is idempotent;
+5. validation uses only the target asset's history;
+6. fraud signals remain tenant-scoped;
+7. Observation and reading record cannot diverge.
+
+PCU minting is intentionally **not** reconnected yet. The reading capability must first be proven independently of the old PCU wallet model.
