@@ -48,7 +48,7 @@ test('active client router exposes only V2 landing and no legacy auth or protoco
     'TradingPage', 'TransactionsPage', 'PilotDashboard',
     'SignIn', 'SignUp', 'ForgotPassword', 'ResetPassword',
   ]) assert.equal(source.includes(retired), false, `legacy client route remains: ${retired}`);
-  assert.match(source, /V2Home/);
+  assert.match(source, /V2Home/);\n  assert.match(source, /V2SignIn/);\n  assert.match(source, /V2Workspace/);\n  assert.match(source, /V2AuthGate/);
 });
 
 test('V2 landing does not link users into the legacy authentication client', async () => {
