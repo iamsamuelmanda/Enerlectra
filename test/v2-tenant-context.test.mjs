@@ -13,7 +13,7 @@ function chain(data, error = null) {
   return value;
 }
 
-function makeClient({ user, actor, memberships, permissions }) {
+function makeClient({ user, actor, memberships, permissions, profile = null, businessModels = [], capabilities = [], policies = [] }) {
   return {
     auth: {
       async getUser(token) {
@@ -28,16 +28,16 @@ function makeClient({ user, actor, memberships, permissions }) {
         return chain(permissions.map((key) => ({ permissions: { key } })));
       }
       if (table === 'operating_model_profiles') {
-        return chain(null);
+        return chain(profile);
       }
       if (table === 'operating_model_business_models') {
-        return chain([]);
+        return chain(businessModels);
       }
       if (table === 'organization_capabilities') {
-        return chain([]);
+        return chain(capabilities);
       }
       if (table === 'organization_policies') {
-        return chain([]); 
+        return chain(policies);
       }
       throw new Error(`unexpected table: ${table}`);
     },
@@ -159,4 +159,49 @@ test('rejects ambiguous organization context', async () => {
     }),
     (error) => error instanceof TenantContextError && error.code === 'AMBIGUOUS_ORGANIZATION'
   );
+});
+
+
+test('resolves mixed operating context without changing the authorization model', async () => {
+  const resolver = createTenantContextResolver(
+    makeClient({
+      user: baseUser,
+      actor: baseActor,
+      memberships: [baseMembership],
+      permissions: ['organization.read', 'situation.manage'],
+      profile: {
+        id: 'profile-1',
+        name: 'Mixed energy operator',
+        configuration: {
+          business_activities: ['INSTALLATION', 'MAINTENANCE', 'ENERGY_SERVICE'],
+          customer_segments: ['SME', 'COMMERCIAL'],
+        },
+      },
+      businessModels: [
+        { business_model_key: 'EPC', is_primary: true },
+        { business_model_key: 'ENERGY_AS_A_SERVICE', is_primary: false },
+      ],
+      capabilities: [
+        { capability_key: 'INSTALLATION', status: 'ENABLED', configuration: {} },
+        { capability_key: 'FIELD_SERVICE', status: 'ENABLED', configuration: { dispatch_window_hours: 24 } },
+        { capability_key: 'PAYMENT_RECONCILIATION', status: 'DISABLED', configuration: {} },
+      ],
+      policies: [
+        { policy_key: 'fault_escalation_hours', value: 24 },
+      ],
+    }),
+  );
+
+  const context = await resolver.resolve({
+    accessToken: 'valid-token',
+    organizationId: 'org-1',
+    correlationId: 'corr-mixed',
+    requestId: 'req-mixed',
+    source: 'api',
+  });
+
+  assert.deepEqual(context.operatingContext.businessModels, ['EPC', 'ENERGY_AS_A_SERVICE']);
+  assert.deepEqual(context.operatingContext.capabilities, ['INSTALLATION', 'FIELD_SERVICE']);
+  assert.deepEqual(context.operatingContext.capabilityConfiguration.FIELD_SERVICE, { dispatch_window_hours: 24 });
+  assert.deepEqual(context.operatingContext.policies, { fault_escalation_hours: 24 });
 });
