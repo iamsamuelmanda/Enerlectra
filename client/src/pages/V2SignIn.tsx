@@ -1,4 +1,4 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { LogIn, Loader2, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -69,7 +69,7 @@ export default function V2SignIn() {
   );
 }
 
-export function V2AuthGate({ children }: { children: React.ReactNode }) {
+export function V2AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'loading' | 'signed-in' | 'signed-out'>('loading');
 
   React.useEffect(() => {
