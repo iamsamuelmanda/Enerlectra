@@ -14,10 +14,10 @@ test('active server composition root does not mount retired protocol runtime', a
   assert.match(source, /V2_SUPABASE_URL/);
   assert.match(source, /V2_SUPABASE_ANON_KEY/);
   assert.match(source, /V2_SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(source, /complete V2 database boundary/);
+  assert.match(source, /canonical database boundary/);
   assert.match(source, /createCustomerOperationalIssuesRouter/);
   assert.match(source, /createActionsRouter/);
-  assert.match(source, /Enerlectra V2 API/);
+  assert.match(source, /Enerlectra API/);
   assert.equal(source.includes('GET \/api\/clusters'), false);
 });
 
