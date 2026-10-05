@@ -445,10 +445,11 @@ These are the areas where the X-ray has found architectural debt rather than mer
 
 # 20. The dependency/convergence order
 
-The correct sequence is now:
+The convergence order is now governed by **adaptability over vertical duplication**.
 
-### Phase A — Canonical foundation
-Already substantially completed.
+### Layer 1 — Canonical platform foundation
+
+Keep one shared platform for:
 
 - identity
 - actor
@@ -456,463 +457,321 @@ Already substantially completed.
 - organization
 - tenant isolation
 - permissions
-- onboarding
-- work/action boundaries
-
-### Phase B — Highest-value operational capability
-
-**1. Readings**
-
-Preserve:
-
-- OCR
-- validation
-- duplicate detection
-- rollover
-- fraud scoring
-- image fingerprints
-- energy calculations
-
-Replace:
-
-- user/cluster authorization
-- legacy meter persistence
-- direct cluster lookup
-
-Target:
-
-`observation → event → situation/work where operationally relevant`
-
-### Phase C — Money
-
-**2. Lenco / payments**
-
-Preserve:
-
-- provider adapter
-- signatures
-- idempotency
-- payout state
-- webhook processing
-
-Replace:
-
-- user/cluster wallet ownership
-- tenant boundary
-- transaction authorization
-
-### Phase D — Channels
-
-**3. WhatsApp**
-
-Preserve:
-
-- provider integration
-- templates
-- inbound/outbound handling
-
-Replace:
-
-- phone-as-authority
-- legacy user resolution
-
-### Phase E — Financial/economic subsystems
-
-**4. Ledger**
-
-Extract the valid accounting primitives.
-
-**5. Settlement**
-
-Extract the valid calculation/reconciliation logic.
-
-**6. PCU**
-
-Decide whether it is a core Enerlectra product primitive or an experimental economic layer.
-
-### Phase F — Secondary capabilities
-
-- suppliers
-- marketplace
-- simulation
-- protocol/staking
-- distribution
-- legacy cluster UI
-
-Only graduate them when their role in the canonical product is proven.
-
----
-
-# 21. What must NOT happen
-
-Do not create:
-
-- `server/v2`
-- `server/legacy`
-- `server/new`
-- `client/v2`
-- `client/legacy`
-- duplicate reading services
-- duplicate payment services
-- duplicate ledger implementations
-
-The final system must have one implementation of each capability.
-
-Historical reconstruction documents may retain the word V2 because they document the reconstruction process. Runtime/product naming should not.
-
----
-
-# 22. Current X-ray conclusion
-
-Enerlectra is not a small application with a new login system attached.
-
-It is a substantial prototype/platform containing:
-
-- operational workflows
-- energy measurement
-- OCR
-- fraud detection
-- mobile-money integration
-- financial primitives
-- settlement
-- token/economic experiments
-- marketplace/matching
-- supplier workflows
-- channel integrations
-- analytics/telemetry
-
-The architectural reconstruction therefore has the correct objective:
-
-**preserve the valuable domain IP while replacing the unsafe boundaries around it.**
-
-The highest-value next implementation is the reading capability because it connects the existing energy-measurement IP directly to the new canonical Observation/Event/Situation/Work model.
-
-The second is payments because it connects the operational layer to real financial execution.
-
-Only after those two are reconciled should the older economic/protocol subsystems be allowed back into the active runtime.
-
-
----
-
-# 23. X-ray execution update — canonical readings slice
-
-The first capability has now moved from analysis into implementation.
-
-### Committed
-
-- `supabase/v2/migrations/034_canonical_meter_readings.sql`
-- `server/src/routes/readings.ts`
-- `enerlectra-core/src/core/services/validation.ts`
-- `server/src/index.ts`
-
-### Live database
-
-Migration 034 is applied to the canonical Supabase project.
-
-The live database now contains:
-
-- `meter_readings`
-- `fraud_signals`
-- `fraud_alerts`
-
-All three are tenant-scoped by `organization_id`.
-
-`meter_readings` also links directly to:
-
-- actor
-- customer
-- site
-- asset
-- canonical observation
-
-The old `user_id`, `cluster_id`, and `cluster_members` boundary is absent.
-
-### Runtime flow
-
-The canonical reading endpoint now follows:
-
-```
-Bearer identity
-    ↓
-TenantContextResolver
-    ↓
-active actor + membership + organization
-    ↓
-organization-scoped asset lookup
-    ↓
-organization/asset/meter history
-    ↓
-existing Enerlectra validation algorithm
-    ↓
-fraud evidence (tenant-scoped)
-    ↓
-canonical Observation
-    ↓
-canonical meter_reading capability record
-```
-
-The validation algorithm was not duplicated. It was extended so canonical callers can provide tenant/resource-scoped history and a fraud-signal sink. Legacy callers can still compile while they are being retired, but the active canonical route does not query the legacy schema.
-
-### Important remaining correctness gate
-
-The current implementation inserts the Observation and meter capability record as two writes. Before this capability is treated as production-complete, those writes should be made atomic through a database transaction/RPC, and the canonical reading route needs an authenticated integration test covering:
-
-1. authenticated member can write to an asset in their organization;
-2. member cannot write to an asset in another organization;
-3. inactive asset is rejected;
-4. duplicate `reading_key` is idempotent;
-5. validation uses only the target asset's history;
-6. fraud signals remain tenant-scoped;
-7. Observation and reading record cannot diverge.
-
-PCU minting is intentionally **not** reconnected yet. The reading capability must first be proven independently of the old PCU wallet model.
-
-
----
-
-# 24. ICP-first correction
-
-The repository X-ray is now governed by an additional test:
-
-> Existing code does not earn a place in the active product merely because it is sophisticated or already implemented.
-
-The first implementation subset is the smallest shared operational kernel proven by the EPC and PAYGo validation slices. The documentation explicitly excludes PCU, wallets, P2P trading, marketplace, staking, blockchain settlement, universal financial ledger, and telemetry dependency from that first slice.
-
-## Active product kernel
-
-The current product value proposition is operational intelligence for energy-facing businesses:
-
-**observe → understand → prioritize → recommend → authorize → work → verify**
-
-The shared primitives are:
-
-- Organization
-- Actor / Membership
-- Customer
-- Site
-- Asset
-- Observation / Evidence
-- Event
-- Situation
-- Recommendation
-- Work
-- Action
-- Verification
-- Communication
-- Audit
-
-## Capability decision rules
-
-A capability should enter the active product only when:
-
-1. a target energy-business workflow needs it;
-2. the workflow creates measurable operational value;
-3. it can operate safely inside the organization boundary;
-4. its behavior can vary through capability/policy configuration rather than creating a separate product;
-5. the pilot/ICP evidence is strong enough to justify the implementation cost.
-
-## Current capability posture
-
-| Capability | Current product posture | Reason |
-|---|---|---|
-| Customer/site/asset context | CORE | Common context across operating models |
-| Observations/evidence | CORE | Common input language |
-| Situations | CORE | Converts signals into operational problems/conditions |
-| Recommendations | CORE | Converts context into explainable next steps |
-| Work | CORE | Turns intelligence into execution |
-| Verification | CORE | Establishes whether outcomes actually occurred |
-| Actions/authorization | CORE | Controls consequential operations |
-| Communication | CORE | Evidence and workflow channel |
-| Audit | CORE | Trust/provenance |
-| Installation/project delivery | OPTIONAL CAPABILITY | Strong EPC fit |
-| Warranty/service | OPTIONAL CAPABILITY | Strong service/O&M fit |
-| Maintenance/field service | OPTIONAL CAPABILITY | Common but should be driven by actual workflow evidence |
-| Payment evidence/reconciliation | OPTIONAL CAPABILITY | Strong PAYGo fit; payment evidence is not full accounting |
-| Collections | OPTIONAL CAPABILITY | PAYGo-specific |
-| Monitoring/telemetry | OPTIONAL CAPABILITY | Useful where organizations actually operate monitoring |
-| Meter readings/OCR | DEFERRED CAPABILITY | Can be an evidence source; not required for first EPC/PAYGo slice |
-| Lenco/provider adapters | DEFERRED CAPABILITY | Reuse when an ICP workflow proves a payment/provider need |
-| Full accounting/ledger | DEFERRED | Not required for first operational slice |
-| Settlement/treasury | DEFERRED | Requires independent financial workflow validation |
-| PCU/wallets | ISOLATE | Historical product/economic thesis, explicitly outside first operational slice |
-| P2P marketplace/matching | ISOLATE | Historical economic product; no first-slice ICP requirement |
-| Staking/blockchain | ISOLATE | Historical protocol layer |
-| Cluster governance/ownership economics | ISOLATE | Historical operating model, not the tenant boundary |
-| Universal ERP/no-code workflows | EXCLUDE | Would dilute the operational intelligence wedge |
-
-## Reading capability correction
-
-The exploratory canonical meter-reading migration was applied and immediately retired through migration 035. No meter-reading tables remain in the active canonical database.
-
-The old reading/OCR/validation implementation remains valuable reference IP and should be reconsidered only when an active ICP workflow establishes the need for it.
-
-This is intentional scope control, not loss of the codebase.
-
-## Current build priority
-
-1. Finish the shared operational kernel.
-2. Prove EPC and PAYGo can traverse the same kernel.
-3. Measure operational outcomes.
-4. Introduce the smallest capability required by the first real organization.
-5. Repeat across different operating models without changing the kernel.
-6. Only then graduate legacy capabilities that repeatedly solve real customer problems.
-
-The architecture is therefore broad by **configuration and extension points**, not broad by the number of modules shipped on day one.
-
-
----
-
-# 25. Current implementation checkpoint
-
-The ICP-first review changed the implementation sequence.
-
-## Deferred
-
-The exploratory meter-reading capability was not accepted as first-slice product scope.
-
-- Migration 034 introduced it temporarily.
-- Migration 035 removed it from the active canonical database.
-- Legacy reading/OCR/validation code remains reference IP.
-- It will return only when an active customer workflow establishes a need.
-
-## Implemented next
-
-The shared operational kernel was strengthened instead:
-
-- Migration 036: recommendations + verifications.
-- Migration 037: operational issue transaction now records a bounded rule-based recommendation before creating work, and issue intake no longer requires work execution authority.
-- Migration 038: verification is an atomic domain operation; authenticated table INSERT is revoked and server-side verification must use the validated RPC.
-- `GET /api/operations/queue`: tenant-scoped operational picture of open/investigating situations, recommendations and work.
-- `POST /api/verifications`: tenant/permission-checked verification entry point.
-- Client workspace now projects the operational queue and recommended next step instead of functioning only as an issue-capture form.
-
-## Product meaning
-
-The current implementation therefore demonstrates a useful cross-model primitive without assuming a particular energy technology:
-
-```
-Signal / Evidence
-      ↓
+- operating context
+- capabilities
+- policies
+- communication adapters
+- audit/evidence
+- observability
+
+This layer must remain independent of any particular energy business model.
+
+### Layer 2 — Shared operational kernel
+
+The kernel is:
+
+\`\`\`
+Customer / Site / Asset context
+          ↓
+Observation / Evidence
+          ↓
+Event
+          ↓
 Situation
-      ↓
-Recommended next step
-      ↓
-Work
-      ↓
-Verified outcome
-```
+          ↓
+Recommendation
+          ↓
+Authorized Work
+          ↓
+Action / Attempt
+          ↓
+Verification
+          ↓
+Audit
+\`\`\`
 
-EPC interpretation can be installation/fault/service work.
+This is the reusable operational language across energy-facing businesses.
 
-PAYGo interpretation can be payment/service exception work.
+### Layer 3 — Configurable organization behaviour
 
-The kernel stays unchanged.
+Organization-specific behaviour belongs in:
 
-The next capability should be selected from real ICP workflow evidence rather than from the legacy code inventory.
+- operating profiles;
+- business-model descriptors;
+- enabled capabilities;
+- capability configuration;
+- policies;
+- responsibility scope;
+- bounded workflow configuration;
+- terminology and escalation rules.
 
+Do not create separate EPC, PAYGo, mini-grid, maintenance, distributor, or energy-trader products.
+
+Mixed operating models are expected.
+
+### Layer 4 — Optional capabilities
+
+Capabilities such as:
+
+- monitoring;
+- meter readings;
+- OCR;
+- installation;
+- commissioning;
+- warranty;
+- maintenance;
+- field service;
+- payment reconciliation;
+- collections;
+- remote service;
+- contract management;
+- portfolio reporting
+
+should be added when a real organization workflow requires them.
+
+Their presence must not alter the canonical tenant or operational primitives.
+
+### Layer 5 — Historical/experimental systems
+
+Keep legacy economic and protocol capabilities isolated:
+
+- PCU;
+- wallets;
+- P2P trading;
+- marketplace;
+- staking;
+- cluster economics;
+- blockchain settlement;
+- universal financial ledger.
+
+Preserve valuable algorithms and provider integrations where useful, but do not let historical architecture determine the new platform boundary.
 
 ---
 
-# 26. Adaptability-first operational slice checkpoint
+# 21. Adaptability-first ICP test
 
-The implementation has been corrected to reflect the broader Enerlectra market.
+The product must be evaluated using this sequence:
 
-EPC and PAYGo are validation examples only. They are not the product boundary and are not modeled as separate products or schemas.
+\`\`\`
+Real organization problem
+        ↓
+Operational job
+        ↓
+Evidence required
+        ↓
+Interpretation / Situation
+        ↓
+Decision or recommendation
+        ↓
+Work
+        ↓
+Outcome verification
+        ↓
+Measurable operational improvement
+\`\`\`
 
-The active kernel now has three layers:
+A capability earns active-product status only when it:
 
-1. **Tenant and operating context**
-   - identity → actor → membership → organization
-   - operating profile
-   - business-model descriptors
-   - organization capabilities
-   - organization policies
+1. solves a real workflow for an energy-facing organization;
+2. creates measurable operational value;
+3. respects organization and resource boundaries;
+4. can operate alongside different operating models;
+5. does not require duplicating the canonical domain;
+6. has enough evidence to justify its implementation cost.
 
-2. **Operational context**
-   - customer
-   - site
-   - asset
-   - observation/evidence
-   - event
-   - situation
-   - recommendation
-   - work
-   - verification
-   - audit
+EPC and PAYGo are **validation cases**, not product boundaries.
 
-3. **Bounded capability surfaces**
-   - capabilities are enabled per organization
-   - optional capabilities are not loaded merely because legacy code exists
-   - capability context is available to intelligence and future workflows
-   - no capability grants actor authority
+The architecture must also support organizations that combine multiple activities or commercial models.
 
-## Product discipline
+---
 
-The current active product does not attempt to implement the full energy-business software stack.
+# 22. Current canonical implementation
 
-It instead establishes the smallest useful operational language that can be reused across energy-facing businesses:
+The branch now contains a materially broader operational foundation than the earlier X-ray checkpoint.
 
-    evidence
-       ↓
-    operational understanding
-       ↓
-    next best step
-       ↓
-    accountable work
-       ↓
-    verified outcome
+### Tenant operating context
 
-Different organizations may express that loop through different capabilities, responsibilities, data sources, policies, terminology, and integrations.
+The tenant resolver now loads, within the authenticated organization boundary:
 
-The repository should therefore be evaluated on:
+- operating profile;
+- business-model descriptors;
+- enabled capabilities;
+- capability configuration;
+- active policies.
 
-- usefulness to the organization;
-- operational outcome improvement;
-- adaptability to mixed operating models;
-- safety of tenant/authorization boundaries;
-- evidence and provenance;
-- implementation cost.
+Business-model descriptors are informational context. They do not grant authority.
 
-Not on the number of modules shipped.
+### Customer / Site / Asset context
 
-## Current capability decisions
+The canonical workspace and APIs now expose organization-scoped customer, site and asset context without introducing a new vertical-specific hierarchy.
 
-### Active
-- identity/tenancy
-- organization configuration
-- customer/site/asset context
-- observations/events
-- situations
-- recommendations
-- work
-- actions/authorization
-- verification
-- audit
-- operational queue
+### Operational intelligence
 
-### Deferred / conditional
-- meter readings
-- OCR
-- telemetry
-- payment provider integration
-- payment reconciliation
-- collections
-- remote service
-- installation-specific workflows
-- maintenance-specific workflows
-- warranty-specific workflows
-- other energy-business capabilities
+Operational issue intake now traverses:
 
-A deferred capability can graduate when a real organization workflow proves the need.
+\`\`\`
+Observation
+   ↓
+Event
+   ↓
+Situation
+   ↓
+Recommendation
+   ↓
+Work
+\`\`\`
 
-### Isolated historical product eras
-- PCU
-- wallet
-- P2P trading
-- marketplace
-- staking
-- clusters/cluster economics
-- blockchain settlement
-- universal financial ledger
+Recommendations receive the organization's operating context so the same operational pattern can produce different next-step guidance without branching into separate products.
 
-These are not being migrated into the first operational kernel merely because they existed in earlier Enerlectra eras.
+### Verification
+
+Verification is a canonical outcome boundary. It establishes whether the intended work/action produced the expected operational result and can resolve the associated situation.
+
+### Audit
+
+Tenant-scoped audit records provide a separate governance trail from operational evidence.
+
+Evidence answers:
+
+> What happened in the operational world?
+
+Audit answers:
+
+> What did Enerlectra or an authorized actor do about it?
+
+These remain separate concepts.
+
+### Extensible work types
+
+Work types are intentionally stored as organization-specific text rather than a fixed EPC/PAYGo enumeration.
+
+Lifecycle semantics remain platform-defined; the operational category can vary by organization.
+
+This is an important adaptability invariant.
+
+---
+
+# 23. Recommendation architecture
+
+Recommendations are derived data.
+
+They may use:
+
+- organization operating profile;
+- business-model descriptors;
+- enabled capabilities;
+- capability configuration;
+- policies;
+- customer/site/asset context;
+- evidence;
+- requested work category.
+
+They must not directly mutate authoritative state.
+
+The current rule-based recommendation implementation is deliberately bounded. It demonstrates the intelligence boundary without prematurely implementing an opaque AI engine.
+
+The next evolution should make recommendation selection increasingly configuration/context-aware while preserving:
+
+\`\`\`
+Evidence
+ + organization context
+ + policy/capability context
+        ↓
+Explainable recommendation
+        ↓
+Authorized operation
+\`\`\`
+
+Business-model-specific logic must not become a giant switch statement.
+
+---
+
+# 24. Capability disposition
+
+| Capability | Current posture | Rationale |
+|---|---|---|
+| Identity / tenancy | CORE | Platform invariant |
+| Operating context | CORE | Enables organizational variation |
+| Customer / Site / Asset | CORE | Shared operational context |
+| Evidence / Events | CORE | Common evidence language |
+| Situations | CORE | Shared operational interpretation |
+| Recommendations | CORE | Shared intelligence boundary |
+| Work | CORE | Shared execution abstraction |
+| Actions / Authorization | CORE | Consequential operation control |
+| Verification | CORE | Outcome accountability |
+| Audit | CORE | Governance/provenance |
+| Communication | CORE | Operational interaction boundary |
+| Installation / commissioning | OPTIONAL | Organization capability |
+| Warranty / maintenance | OPTIONAL | Organization capability |
+| Field service | OPTIONAL | Organization capability |
+| Monitoring / telemetry | OPTIONAL | Evidence source where required |
+| Meter readings / OCR | OPTIONAL | Evidence capability, not universal product definition |
+| Payment evidence / reconciliation | OPTIONAL | Needed where operating model requires it |
+| Collections | OPTIONAL | Capability for relevant organizations |
+| Lenco / provider adapters | OPTIONAL | Integration capability, not universal financial model |
+| Full ledger / accounting | DEFERRED | Requires validated financial workflow |
+| Settlement / treasury | DEFERRED | Requires validated financial workflow |
+| PCU / wallets | ISOLATED | Historical economic subsystem |
+| Marketplace / P2P | ISOLATED | Historical economic subsystem |
+| Staking / blockchain | ISOLATED | Historical protocol subsystem |
+| Cluster economics | ISOLATED | Historical architecture, not tenant boundary |
+| Generic no-code workflow engine | EXCLUDED | Conflicts with bounded configuration principle |
+
+---
+
+# 25. Legacy code relationship
+
+The repository contains substantial reusable IP.
+
+The correct question is no longer:
+
+> “Is this old code or new code?”
+
+It is:
+
+> “Does this capability solve a current operational problem, and can its valuable logic operate inside the canonical boundary?”
+
+Therefore:
+
+- valuable algorithms are preserved;
+- provider integrations are preserved;
+- proven validation logic is preserved;
+- historical schemas are not automatically promoted;
+- cluster/user authorization assumptions are not preserved;
+- duplicated runtime implementations are not allowed;
+- experimental capabilities remain isolated until justified.
+
+The final system must converge toward **one Enerlectra runtime**, not a V1/V2 split.
+
+---
+
+# 26. Current implementation checkpoint
+
+At the current branch head:
+
+\`5fb964161c40f233e8d689547bbb779580ce2029\`
+
+the adaptability work includes:
+
+- customer/site/asset operational context;
+- organization operating profiles;
+- business-model descriptors;
+- organization capabilities and policies;
+- context-aware recommendations;
+- verification boundary;
+- tenant-scoped operational audit;
+- organization-specific extensible work types;
+- HTTP-level operational-intelligence tests;
+- cross-tenant rejection coverage.
+
+The exploratory meter-reading migration remains present in repository history but is explicitly deferred from the active canonical product path by migration 035. No active meter-reading table is present in the live canonical database.
+
+The latest Vercel deployment for the branch head reports **successful deployment**. CodeRabbit reports success only in the sense that the PR is draft and review was skipped; it is not evidence of a completed code review.
+
+The next implementation decision must therefore come from the next highest-value cross-model workflow supported by customer evidence, not from the existence of another legacy subsystem.
+
+## Architectural invariant
+
+**Enerlectra is broad because its operational kernel and capability boundary are adaptable — not because every energy-business capability is implemented at once.**
+
+That distinction is now the governing rule for the X-ray.
