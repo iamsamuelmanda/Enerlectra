@@ -14,7 +14,8 @@ export type CustomerOperationalIssueInput = {
   observationType?: string;
   observationValue: Record<string, unknown>;
   source?: string;
-  workType?: 'INVESTIGATE' | 'CONTACT_CUSTOMER' | 'VISIT_SITE' | 'RECONCILE_PAYMENT' | 'ESCALATE_EXTERNAL';
+  /** Organization-specific operational category; lifecycle semantics stay platform-defined. */
+  workType?: string;
   priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
   assignedActorId?: string;
   idempotencyKey?: string;
