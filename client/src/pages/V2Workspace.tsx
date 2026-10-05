@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabaseV2 } from '@/lib/supabase-v2';
 import { createOperationalIssue, createVerification, getOperationalQueue, type OperationalQueueItem } from '@/lib/v2-api';
 import OperatingContextPanel from '@/components/OperatingContextPanel';
+import ResourceContextPanel from '@/components/ResourceContextPanel';
 
 export default function V2Workspace() {
   const navigate = useNavigate();
@@ -98,6 +99,7 @@ export default function V2Workspace() {
 
       <section className="mx-auto max-w-6xl px-6 py-10">
         <OperatingContextPanel />
+        <ResourceContextPanel />
         <div className="flex items-end justify-between gap-4">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Operational intelligence</p>
