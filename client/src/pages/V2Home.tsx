@@ -1,4 +1,5 @@
 import { Activity, ArrowRight, ShieldCheck, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function V2Home() {
   return (
@@ -36,8 +37,11 @@ export default function V2Home() {
             <p className="mt-2 text-sm leading-6 text-slate-400">Recommendations, authorization, execution and verification remain distinct steps.</p>
           </article>
         </div>
+        <div className="mt-10 flex gap-3">
+          <Link to="/signin" className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-medium text-black">Pilot sign in</Link>
+        </div>
         <div className="mt-12 border-t border-white/10 pt-6 text-sm text-slate-500">
-          The V2 API and database foundation are implemented in this reconstruction. Organization
+          The V2 API, tenant boundary and minimum authenticated operational workspace are implemented in this reconstruction. Organization
           onboarding, authentication screens and the authenticated operational workspace are not yet enabled.
         </div>
       </section>
