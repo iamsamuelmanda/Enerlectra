@@ -28,6 +28,10 @@ set search_path = ''
 as $$
 begin
   if tg_op = 'UPDATE' and new.role_id is distinct from old.role_id then
+    delete from public.membership_roles
+    where membership_id = new.id
+      and role_id = old.role_id;
+
     update public.membership_roles
     set is_primary = false
     where membership_id = new.id
