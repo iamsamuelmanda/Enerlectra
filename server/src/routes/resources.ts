@@ -32,7 +32,7 @@ export function createResourcesRouter(db: SupabaseClient): Router {
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return res.json({ customers: data ?? [], organizationId: t.organizationId });
+      return res.json({ customers: data ?? [], organizationId: t.organizationId, canWrite: t.permissions.includes('customer.write') });
     } catch (error) {
       if (error instanceof TenantContextError) return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
       return res.status(500).json({ error: 'Failed to load customers' });
@@ -72,7 +72,7 @@ export function createResourcesRouter(db: SupabaseClient): Router {
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return res.json({ sites: data ?? [], organizationId: t.organizationId });
+      return res.json({ sites: data ?? [], organizationId: t.organizationId, canWrite: t.permissions.includes('site.write') });
     } catch (error) {
       if (error instanceof TenantContextError) return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
       return res.status(500).json({ error: 'Failed to load sites' });
@@ -120,7 +120,7 @@ export function createResourcesRouter(db: SupabaseClient): Router {
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return res.json({ assets: data ?? [], organizationId: t.organizationId });
+      return res.json({ assets: data ?? [], organizationId: t.organizationId, canWrite: t.permissions.includes('asset.write') });
     } catch (error) {
       if (error instanceof TenantContextError) return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
       return res.status(500).json({ error: 'Failed to load assets' });
