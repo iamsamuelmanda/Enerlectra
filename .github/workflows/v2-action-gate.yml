@@ -9,6 +9,7 @@ on:
       - 'test/v2-actor-channel-privilege-integration.test.mjs'
       - 'test/v2-channel-tenant-context.test.mjs'
       - 'test/v2-customer-operational-issue-integration.test.mjs'
+      - 'test/v2-self-service-onboarding.test.mjs'
       - 'test/customer-operational-issue.test.mjs'
       - 'supabase/v2/migrations/**'
       - 'package.json'
