@@ -29,7 +29,7 @@ export default function V2Workspace() {
         summary,
         severity,
         priority,
-        workType: 'CUSTOMER_OPERATIONAL_ISSUE',
+        workType: 'INVESTIGATE',
         observationType: 'CUSTOMER_REPORT',
         observationValue: { summary, source: 'web_workspace' },
         source: 'WEB',
@@ -55,7 +55,7 @@ export default function V2Workspace() {
         </div>
       </header>
       <section className="mx-auto max-w-5xl px-6 py-12">
-        <p className="text-xs uppercase tracking-[0.25em] text-amber-300">V2 operational workspace</p>
+        <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Operational workspace</p>
         <h1 className="mt-3 text-3xl font-semibold">Capture an operational issue</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
           The authenticated tenant boundary resolves your Actor, organization, role and permissions on the server.
