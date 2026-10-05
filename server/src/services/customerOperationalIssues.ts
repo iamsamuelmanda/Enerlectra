@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TenantContext } from '../platform/tenant/context.js';
 import { deriveOperationalRecommendation } from './operationalRecommendation.js';
+import { recordAudit } from './audit.js';
 
 export type CustomerOperationalIssueInput = {
   title: string;
@@ -80,6 +81,23 @@ export async function createCustomerOperationalIssue(
   if (!row?.observation_id || !row?.event_id || !row?.situation_id || !row?.work_item_id) {
     throw new Error('Customer operational issue transaction returned an invalid result');
   }
+
+  await recordAudit(db, {
+    organizationId: tenant.organizationId,
+    actorId: tenant.actorId,
+    action: 'OPERATIONAL_ISSUE_CREATED',
+    resourceType: 'SITUATION',
+    resourceId: row.situation_id,
+    outcome: 'SUCCESS',
+    correlationId,
+    metadata: {
+      eventId: row.event_id,
+      observationId: row.observation_id,
+      workItemId: row.work_item_id,
+      recommendationType: recommendation.recommendationType,
+      capabilityContext: recommendation.contextSnapshot.capabilities,
+    },
+  });
 
   return {
     observationId: row.observation_id,
