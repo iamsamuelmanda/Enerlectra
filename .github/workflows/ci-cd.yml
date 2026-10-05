@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, develop, reconstruction/platform-identity-boundary]
+    branches: [main, develop]
   pull_request:
     branches: [main]
 
