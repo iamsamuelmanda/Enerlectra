@@ -24,7 +24,6 @@ const __dirname = path.dirname(__filename);
 // ──────────────────────────────────────────────────────────────
 import { createCustomerOperationalIssuesRouter } from './routes/customerOperationalIssues.js';
 import { createActionsRouter } from './routes/actions.js';
-import { createReadingsRouter } from './routes/readings.js';
 
 // ──────────────────────────────────────────────────────────────
 // Express app setup
@@ -202,7 +201,6 @@ app.get('/api/docs', (_req, res) => {
       'POST /api/actions/:id/transition',
       'POST /api/actions/:id/attempts',
       'POST /api/actions/:id/attempts/:attemptId/transition',
-      'POST /api/readings/ingest',
       'GET /metrics',
     ],
     note: 'All operational endpoints require authenticated tenant context.',
@@ -217,7 +215,6 @@ app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabas
 // Action boundary uses the canonical Supabase project. Legacy SUPABASE_* clients
 // remain quarantined until their capabilities are adapted to the tenant model.
 app.use('/api/actions', createActionsRouter(supabase));
-app.use('/api/readings', createReadingsRouter(supabase));
 
 // WhatsApp adapter is intentionally fail-closed until canonical
 // channel identity → Actor → Membership → Organization resolution is wired.
