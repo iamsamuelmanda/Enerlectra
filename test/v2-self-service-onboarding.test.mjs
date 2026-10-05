@@ -285,21 +285,23 @@ if (enabled) {
       .eq('memberships.status', 'ACTIVE')
       .eq('roles.key', 'OWNER');
     assert.ifError(error);
-    assert.ok(owners.length >= 1);
+    assert.equal(owners.length, 1);
 
-    const finalOwnerMembership = owners[0].membership_id;
-    const { data: operatorRole, error: roleError } = await admin
-      .from('roles')
-      .select('id')
-      .eq('key', 'OPERATOR')
-      .single();
-    assert.ifError(roleError);
+    const brianClient = await signIn(secondOwner);
+    const { error: demotionError } = await brianClient.rpc(
+      'transfer_organization_ownership',
+      {
+        p_organization_id: orgDelegated,
+        p_target_membership_id: owners[0].membership_id,
+        p_demote_current_owner: true,
+      }
+    );
 
-    const { error: directDemoteError } = await admin
-      .from('memberships')
-      .update({ role_id: operatorRole.id })
-      .eq('id', finalOwnerMembership);
-    assert.ok(directDemoteError, 'database invariant must reject removal of the final OWNER');
+    assert.ok(
+      demotionError,
+      'the final OWNER must not be demoted even when the caller is attempting an explicit ownership transfer'
+    );
+    assert.match(demotionError.message, /FINAL_OWNER_CANNOT_BE_DEMOTED/);
   });
 
   test('tenant isolation remains enforced between two organizations', async () => {
