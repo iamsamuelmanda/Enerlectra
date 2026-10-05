@@ -67,6 +67,9 @@ test('customer operational issue service delegates atomically to the tenant-scop
   assert.equal(db.calls[0].args.p_actor_id, 'actor-1');
   assert.equal(db.calls[0].args.p_assigned_actor_id, 'actor-2');
   assert.equal(db.calls[0].args.p_idempotency_key, 'issue-1');
+  assert.equal(db.calls[0].args.p_recommendation_type, 'OPERATIONAL_INVESTIGATION');
+  assert.match(db.calls[0].args.p_recommendation_summary, /evidence|operational step/i);
+  assert.deepEqual(db.calls[0].args.p_recommendation_context.capabilities, ['FIELD_SERVICE', 'CUSTOMER_SUPPORT']);
 });
 
 test('customer operational issue service rejects an invalid database transaction result', async () => {
