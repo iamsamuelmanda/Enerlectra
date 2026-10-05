@@ -72,8 +72,5 @@ end $$;
 drop policy if exists operating_model_business_models_manage on public.operating_model_business_models;
 create policy operating_model_business_models_manage
 on public.operating_model_business_models for all to authenticated
-using (operating_model_business_models.organization_id = organization_id
-       and private.has_org_permission(operating_model_business_models.organization_id,'organization.manage'))
-with check (
-  private.has_org_permission(operating_model_business_models.organization_id,'organization.manage')
-);
+using (private.has_org_permission(operating_model_business_models.organization_id,'organization.manage'))
+with check (private.has_org_permission(operating_model_business_models.organization_id,'organization.manage'));
