@@ -147,6 +147,8 @@ declare
   v_target_org uuid;
   v_owner_role uuid;
   v_owner_count integer;
+  v_operator_role uuid;
+  v_current_primary_role uuid;
 begin
   select id into v_current_actor from public.ensure_current_actor();
 
@@ -195,10 +197,26 @@ begin
       raise exception 'FINAL_OWNER_CANNOT_BE_DEMOTED';
     end if;
 
+    select role_id into v_current_primary_role
+    from public.membership_roles
+    where membership_id = v_current_membership
+      and is_primary = true;
+
     delete from public.membership_roles mr
     where mr.membership_id = v_current_membership
-      and mr.role_id = v_owner_role
-      and mr.is_primary = false;
+      and mr.role_id = v_owner_role;
+
+    if v_current_primary_role = v_owner_role then
+      select id into v_operator_role from public.roles where key = 'OPERATOR';
+      if v_operator_role is null then
+        raise exception 'OPERATOR_ROLE_MISSING';
+      end if;
+
+      update public.memberships
+      set role_id = v_operator_role,
+          updated_at = now()
+      where id = v_current_membership;
+    end if;
   end if;
 
   update public.organizations
