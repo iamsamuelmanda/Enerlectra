@@ -26,7 +26,7 @@ export type OperationalIssueInput = {
   summary: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   workType: string;
-  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  priority: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
   observationType: string;
   observationValue: Record<string, unknown>;
   source: 'WEB' | 'WHATSAPP' | 'API' | 'SYSTEM';
