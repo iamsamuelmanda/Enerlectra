@@ -8,7 +8,7 @@ export default function V2Home() {
         <div className="mx-auto flex max-w-6xl items-center gap-3">
           <Zap className="text-amber-400" size={22} />
           <span className="font-semibold tracking-wide">ENERLECTRA</span>
-          <span className="rounded-full border border-amber-400/30 px-2 py-1 text-[10px] uppercase tracking-widest text-amber-300">V2 preview</span>
+          
         </div>
       </header>
       <section className="mx-auto max-w-6xl px-6 py-20">
