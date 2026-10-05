@@ -16,7 +16,7 @@ A customer organization must be able to:
 6. operate inside a strict organization/RLS boundary;
 7. recover or transfer ownership without requiring normal Enerlectra staff membership in the tenant.
 
-This follows the core multi-tenant SaaS pattern of customer-controlled organization administration and organization-scoped authorization. Self-service and invitation flows are established approaches for B2B onboarding. citeturn0search0turn1search2
+This follows the core multi-tenant SaaS pattern of customer-controlled organization administration and organization-scoped authorization. Self-service and invitation flows are established approaches for B2B onboarding.
 
 ## 1. Identity, relationship, authority, provenance
 
@@ -113,7 +113,7 @@ The existing `organization.manage` permission is retained for compatibility, but
 
 This prevents delegated setup from being equivalent to unrestricted organization administration.
 
-Organization-scoped RBAC is the correct baseline for a multi-tenant application: the same person can have different roles in different organizations, and authorization must be evaluated in the organization context. citeturn0search11
+Organization-scoped RBAC is the correct baseline for a multi-tenant application: the same person can have different roles in different organizations, and authorization must be evaluated in the organization context.
 
 ## 5. Data onboarding: Bring Your Data
 
@@ -168,7 +168,7 @@ Non-negotiable:
 - ownership has a database-level final-owner invariant;
 - platform break-glass access is outside tenant membership.
 
-Supabase's current guidance also recommends deriving identity from `auth.uid()`, using RLS for row-level authorization, and treating security-definer functions carefully with a pinned search path. citeturn2search1turn2search0
+Supabase's current guidance also recommends deriving identity from `auth.uid()`, using RLS for row-level authorization, and treating security-definer functions carefully with a pinned search path.
 
 ## 8. Audit result against the previous V2 model
 
