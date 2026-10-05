@@ -146,6 +146,66 @@ if (enabled) {
     assert.equal(denied.status, 403);
   });
 
+  test('authorized action executes through attempt completion and final success', async () => {
+    const operatorToken = await signIn('operator');
+    const created = await request(operatorToken, 'POST', '/api/v2/actions', {
+      workItemId, actionType: 'PERFORM_FIELD_CHECK', consequenceClass: 'OPERATIONAL',
+      idempotencyKey: `http-full-loop-${runId}`,
+    });
+    assert.equal(created.status, 201);
+    const actionId = created.body.action.id;
+
+    const ownerToken = await signIn('owner');
+    const authorized = await request(ownerToken, 'POST', `/api/v2/actions/${actionId}/authorize`, {});
+    assert.equal(authorized.status, 200);
+    assert.equal(authorized.body.action.status, 'AUTHORIZED');
+
+    const technicianToken = await signIn('technician');
+    const executing = await request(technicianToken, 'POST', `/api/v2/actions/${actionId}/transition`, { status: 'EXECUTING' });
+    assert.equal(executing.status, 200);
+    assert.equal(executing.body.action.status, 'EXECUTING');
+
+    const attempt = await request(technicianToken, 'POST', `/api/v2/actions/${actionId}/attempts`, {
+      attemptNumber: 1,
+      executionIdempotencyKey: `http-full-loop-attempt-${runId}`,
+    });
+    assert.equal(attempt.status, 201);
+    assert.equal(attempt.body.attempt.status, 'CREATED');
+
+    const attemptExecuting = await request(
+      technicianToken,
+      'POST',
+      `/api/v2/actions/${actionId}/attempts/${attempt.body.attempt.id}/transition`,
+      { status: 'EXECUTING' },
+    );
+    assert.equal(attemptExecuting.status, 200);
+    assert.equal(attemptExecuting.body.attempt.status, 'EXECUTING');
+
+    const attemptSucceeded = await request(
+      technicianToken,
+      'POST',
+      `/api/v2/actions/${actionId}/attempts/${attempt.body.attempt.id}/transition`,
+      {
+        status: 'SUCCEEDED',
+        result: {
+          resultCode: 'FIELD_CHECK_COMPLETE',
+          resultSummary: 'Field check completed successfully.',
+        },
+      },
+    );
+    assert.equal(attemptSucceeded.status, 200);
+    assert.equal(attemptSucceeded.body.attempt.status, 'SUCCEEDED');
+
+    const actionSucceeded = await request(
+      technicianToken,
+      'POST',
+      `/api/v2/actions/${actionId}/transition`,
+      { status: 'SUCCEEDED' },
+    );
+    assert.equal(actionSucceeded.status, 200);
+    assert.equal(actionSucceeded.body.action.status, 'SUCCEEDED');
+  });
+
   test('missing bearer token is rejected before Action mutation', async () => {
     const result = await request('', 'POST', '/api/v2/actions', {
       workItemId, actionType: 'INSPECT_ASSET', consequenceClass: 'OBSERVATIONAL',
