@@ -13,37 +13,15 @@ export default function V2Home() {
       </header>
       <section className="mx-auto max-w-6xl px-6 py-20">
         <p className="mb-4 text-xs uppercase tracking-[0.25em] text-amber-300">Operational infrastructure for distributed energy</p>
-        <h1 className="max-w-3xl text-4xl font-semibold leading-tight md:text-6xl">
-          See operational issues clearly. Coordinate the work to resolve them.
-        </h1>
-        <p className="mt-6 max-w-2xl text-base leading-7 text-slate-400">
-          Enerlectra connects customer reports and system evidence to operational situations,
-          assigned work, authorized actions and verification.
-        </p>
+        <h1 className="max-w-3xl text-4xl font-semibold leading-tight md:text-6xl">See operational issues clearly. Coordinate the work to resolve them.</h1>
+        <p className="mt-6 max-w-2xl text-base leading-7 text-slate-400">Enerlectra connects customer reports and system evidence to operational situations, assigned work, authorized actions and verification.</p>
         <div className="mt-12 grid gap-4 md:grid-cols-3">
-          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <Activity className="mb-4 text-amber-300" />
-            <h2 className="font-medium">Operational issues</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">Capture an issue as evidence, an event, a situation and a work item.</p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <ShieldCheck className="mb-4 text-amber-300" />
-            <h2 className="font-medium">Tenant security</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">Access is based on verified actors, active organization membership and permissions.</p>
-          </article>
-          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-            <ArrowRight className="mb-4 text-amber-300" />
-            <h2 className="font-medium">Controlled execution</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">Recommendations, authorization, execution and verification remain distinct steps.</p>
-          </article>
+          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"><Activity className="mb-4 text-amber-300" /><h2 className="font-medium">Operational issues</h2><p className="mt-2 text-sm leading-6 text-slate-400">Capture an issue as evidence, an event, a situation and a work item.</p></article>
+          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"><ShieldCheck className="mb-4 text-amber-300" /><h2 className="font-medium">Tenant security</h2><p className="mt-2 text-sm leading-6 text-slate-400">Access is based on verified actors, active organization membership and permissions.</p></article>
+          <article className="rounded-2xl border border-white/10 bg-white/[0.03] p-6"><ArrowRight className="mb-4 text-amber-300" /><h2 className="font-medium">Controlled execution</h2><p className="mt-2 text-sm leading-6 text-slate-400">Recommendations, authorization, execution and verification remain distinct steps.</p></article>
         </div>
-        <div className="mt-10 flex gap-3">
-          <Link to="/signin" className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-medium text-black">Pilot sign in</Link>
-        </div>
-        <div className="mt-12 border-t border-white/10 pt-6 text-sm text-slate-500">
-          V2 pilot access is invitation-only. Sign in with a provisioned account to enter the authenticated operational workspace.
-          Organization creation and actor provisioning remain operator-controlled until the ownership-verification flow is complete.
-        </div>
+        <div className="mt-10 flex gap-3"><Link to="/signin" className="rounded-xl bg-amber-400 px-5 py-3 text-sm font-medium text-black">Get started</Link></div>
+        <div className="mt-12 border-t border-white/10 pt-6 text-sm text-slate-500">Create an account, establish your organization and authority, then invite your team. Enerlectra never trusts a client-supplied organization identity.</div>
       </section>
     </main>
   );
