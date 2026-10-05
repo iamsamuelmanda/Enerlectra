@@ -6,6 +6,7 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { createCustomerOperationalIssuesRouter } from '../server/src/routes/customerOperationalIssues.js';
 import { createVerificationsRouter } from '../server/src/routes/verifications.js';
+import { createOperationsRouter } from '../server/src/routes/operations.js';
 
 const url = process.env.V2_SUPABASE_URL;
 const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
@@ -104,6 +105,7 @@ if (enabled) {
     app.use(express.json());
     app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(admin));
     app.use('/api/verifications', createVerificationsRouter(admin));
+    app.use('/api/operations', createOperationsRouter(admin));
 
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -139,6 +141,25 @@ if (enabled) {
     assert.equal(result.body.success, true);
     assert.ok(result.body.situationId);
     assert.ok(result.body.workItemId);
+  });
+
+  test('operational queue returns tenant-scoped attention metrics', async () => {
+    const token = await signIn();
+    const response = await fetch(`${baseUrl}/api/operations/queue`, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'x-organization-id': state.orgId,
+      },
+    });
+    const body = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(body.organizationId, state.orgId);
+    assert.equal(typeof body.metrics.openSituations, 'number');
+    assert.equal(typeof body.metrics.criticalSituations, 'number');
+    assert.equal(typeof body.metrics.highPriorityWork, 'number');
+    assert.equal(typeof body.metrics.unassignedWork, 'number');
+    assert.equal(typeof body.metrics.overdueWork, 'number');
+    assert.ok(Array.isArray(body.situations));
   });
 
   test('recommendation reflects capabilities rather than an EPC/PAYGo branch', async () => {
