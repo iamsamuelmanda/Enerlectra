@@ -92,34 +92,34 @@ alter table public.fraud_alerts enable row level security;
 
 create policy meter_readings_select_member
   on public.meter_readings for select to authenticated
-  using (public.is_active_member(organization_id));
+  using (private.is_active_member(organization_id));
 
 create policy meter_readings_insert_member
   on public.meter_readings for insert to authenticated
   with check (
-    public.has_org_permission(organization_id, 'observation.write')
-    and actor_id = public.current_actor_id()
+    private.has_org_permission(organization_id, 'observation.write')
+    and actor_id = private.current_actor_id()
   );
 
 create policy meter_readings_update_operator
   on public.meter_readings for update to authenticated
-  using (public.has_org_permission(organization_id, 'observation.write'))
-  with check (public.has_org_permission(organization_id, 'observation.write'));
+  using (private.has_org_permission(organization_id, 'observation.write'))
+  with check (private.has_org_permission(organization_id, 'observation.write'));
 
 create policy fraud_signals_select_member
   on public.fraud_signals for select to authenticated
-  using (public.is_active_member(organization_id));
+  using (private.is_active_member(organization_id));
 
 create policy fraud_signals_insert_member
   on public.fraud_signals for insert to authenticated
   with check (
-    public.has_org_permission(organization_id, 'observation.write')
-    and actor_id = public.current_actor_id()
+    private.has_org_permission(organization_id, 'observation.write')
+    and actor_id = private.current_actor_id()
   );
 
 create policy fraud_alerts_select_member
   on public.fraud_alerts for select to authenticated
-  using (public.is_active_member(organization_id));
+  using (private.is_active_member(organization_id));
 
 revoke all on public.meter_readings, public.fraud_signals, public.fraud_alerts from anon;
 grant select, insert, update on public.meter_readings to authenticated;
