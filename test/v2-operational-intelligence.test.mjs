@@ -109,34 +109,31 @@ if (enabled) {
     assert.ifError(workError);
     assert.equal(work.work_type, 'INVESTIGATE');
 
-    const { data: verification, error: verificationError } = await client
-      .from('verifications')
-      .insert({
-        organization_id: state.orgId,
-        situation_id: data[0].situation_id,
-        work_item_id: data[0].work_item_id,
-        verification_type: 'OPERATOR_CONFIRMATION',
-        status: 'VERIFIED',
-        verified_by_actor_id: state.actorId,
-        result: { summary: 'Outcome confirmed by operational gate.' },
-      })
-      .select('id,status')
-      .single();
+    const { data: verification, error: verificationError } = await client.rpc(
+      'record_operational_verification',
+      {
+        p_organization_id: state.orgId,
+        p_actor_id: state.actorId,
+        p_situation_id: data[0].situation_id,
+        p_work_item_id: data[0].work_item_id,
+        p_verification_type: 'OPERATOR_CONFIRMATION',
+        p_status: 'VERIFIED',
+        p_result: { summary: 'Outcome confirmed by operational gate.' },
+      },
+    );
     assert.ifError(verificationError);
-    assert.equal(verification.status, 'VERIFIED');
+    assert.equal(verification[0].verification_status, 'VERIFIED');
+    assert.equal(verification[0].situation_status, 'RESOLVED');
 
     const { data: situation, error: situationError } = await client
       .from('situations')
-      .update({
-        status: 'RESOLVED',
-        resolved_at: new Date().toISOString(),
-        resolution_summary: 'Outcome confirmed by operational gate.',
-      })
+      .select('status,resolved_at,resolution_summary')
       .eq('organization_id', state.orgId)
       .eq('id', data[0].situation_id)
-      .select('status,resolution_summary')
       .single();
     assert.ifError(situationError);
     assert.equal(situation.status, 'RESOLVED');
+    assert.ok(situation.resolved_at);
+
   });
 }
