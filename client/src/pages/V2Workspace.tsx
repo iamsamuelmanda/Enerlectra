@@ -16,6 +16,14 @@ export default function V2Workspace() {
   const [busy, setBusy] = useState(false);
   const [queueBusy, setQueueBusy] = useState(true);
   const [queue, setQueue] = useState<OperationalQueueItem[]>([]);
+  const [queueMetrics, setQueueMetrics] = useState({
+    openSituations: 0,
+    criticalSituations: 0,
+    highPriorityWork: 0,
+    unassignedWork: 0,
+    overdueWork: 0,
+    oldestOpenAt: null as string | null,
+  });
   const [result, setResult] = useState<string | null>(null);
   const [contextSelection, setContextSelection] = useState<{ customerId?: string; siteId?: string; assetId?: string }>({});
 
@@ -24,6 +32,7 @@ export default function V2Workspace() {
     try {
       const response = await getOperationalQueue();
       setQueue(response.situations);
+      setQueueMetrics(response.metrics);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load operational queue');
     } finally {
@@ -116,6 +125,21 @@ export default function V2Workspace() {
           <button onClick={() => void loadQueue()} disabled={queueBusy} className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 disabled:opacity-50">
             <RefreshCw size={16} className={queueBusy ? 'animate-spin' : ''} /> Refresh
           </button>
+        </div>
+
+        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-5">
+          {[
+            ['Open', queueMetrics.openSituations],
+            ['Critical', queueMetrics.criticalSituations],
+            ['High priority', queueMetrics.highPriorityWork],
+            ['Unassigned', queueMetrics.unassignedWork],
+            ['Overdue', queueMetrics.overdueWork],
+          ].map(([label, value]) => (
+            <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
+              <p className="mt-1 text-2xl font-semibold text-slate-100">{value}</p>
+            </div>
+          ))}
         </div>
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_1.4fr]">
