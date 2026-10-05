@@ -666,3 +666,95 @@ The current implementation inserts the Observation and meter capability record a
 7. Observation and reading record cannot diverge.
 
 PCU minting is intentionally **not** reconnected yet. The reading capability must first be proven independently of the old PCU wallet model.
+
+
+---
+
+# 24. ICP-first correction
+
+The repository X-ray is now governed by an additional test:
+
+> Existing code does not earn a place in the active product merely because it is sophisticated or already implemented.
+
+The first implementation subset is the smallest shared operational kernel proven by the EPC and PAYGo validation slices. The documentation explicitly excludes PCU, wallets, P2P trading, marketplace, staking, blockchain settlement, universal financial ledger, and telemetry dependency from that first slice.
+
+## Active product kernel
+
+The current product value proposition is operational intelligence for energy-facing businesses:
+
+**observe → understand → prioritize → recommend → authorize → work → verify**
+
+The shared primitives are:
+
+- Organization
+- Actor / Membership
+- Customer
+- Site
+- Asset
+- Observation / Evidence
+- Event
+- Situation
+- Recommendation
+- Work
+- Action
+- Verification
+- Communication
+- Audit
+
+## Capability decision rules
+
+A capability should enter the active product only when:
+
+1. a target energy-business workflow needs it;
+2. the workflow creates measurable operational value;
+3. it can operate safely inside the organization boundary;
+4. its behavior can vary through capability/policy configuration rather than creating a separate product;
+5. the pilot/ICP evidence is strong enough to justify the implementation cost.
+
+## Current capability posture
+
+| Capability | Current product posture | Reason |
+|---|---|---|
+| Customer/site/asset context | CORE | Common context across operating models |
+| Observations/evidence | CORE | Common input language |
+| Situations | CORE | Converts signals into operational problems/conditions |
+| Recommendations | CORE | Converts context into explainable next steps |
+| Work | CORE | Turns intelligence into execution |
+| Verification | CORE | Establishes whether outcomes actually occurred |
+| Actions/authorization | CORE | Controls consequential operations |
+| Communication | CORE | Evidence and workflow channel |
+| Audit | CORE | Trust/provenance |
+| Installation/project delivery | OPTIONAL CAPABILITY | Strong EPC fit |
+| Warranty/service | OPTIONAL CAPABILITY | Strong service/O&M fit |
+| Maintenance/field service | OPTIONAL CAPABILITY | Common but should be driven by actual workflow evidence |
+| Payment evidence/reconciliation | OPTIONAL CAPABILITY | Strong PAYGo fit; payment evidence is not full accounting |
+| Collections | OPTIONAL CAPABILITY | PAYGo-specific |
+| Monitoring/telemetry | OPTIONAL CAPABILITY | Useful where organizations actually operate monitoring |
+| Meter readings/OCR | DEFERRED CAPABILITY | Can be an evidence source; not required for first EPC/PAYGo slice |
+| Lenco/provider adapters | DEFERRED CAPABILITY | Reuse when an ICP workflow proves a payment/provider need |
+| Full accounting/ledger | DEFERRED | Not required for first operational slice |
+| Settlement/treasury | DEFERRED | Requires independent financial workflow validation |
+| PCU/wallets | ISOLATE | Historical product/economic thesis, explicitly outside first operational slice |
+| P2P marketplace/matching | ISOLATE | Historical economic product; no first-slice ICP requirement |
+| Staking/blockchain | ISOLATE | Historical protocol layer |
+| Cluster governance/ownership economics | ISOLATE | Historical operating model, not the tenant boundary |
+| Universal ERP/no-code workflows | EXCLUDE | Would dilute the operational intelligence wedge |
+
+## Reading capability correction
+
+The exploratory canonical meter-reading migration was applied and immediately retired through migration 035. No meter-reading tables remain in the active canonical database.
+
+The old reading/OCR/validation implementation remains valuable reference IP and should be reconsidered only when an active ICP workflow establishes the need for it.
+
+This is intentional scope control, not loss of the codebase.
+
+## Current build priority
+
+1. Finish the shared operational kernel.
+2. Prove EPC and PAYGo can traverse the same kernel.
+3. Measure operational outcomes.
+4. Introduce the smallest capability required by the first real organization.
+5. Repeat across different operating models without changing the kernel.
+6. Only then graduate legacy capabilities that repeatedly solve real customer problems.
+
+The architecture is therefore broad by **configuration and extension points**, not broad by the number of modules shipped on day one.
