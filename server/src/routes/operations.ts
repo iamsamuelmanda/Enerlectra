@@ -44,12 +44,27 @@ export function createOperationsRouter(db: SupabaseClient): Router {
       if (workError) throw workError;
       if (recError) throw recError;
 
+      const openSituations = situations ?? [];
+      const workItems = work ?? [];
+      const now = Date.now();
+      const metrics = {
+        openSituations: openSituations.length,
+        criticalSituations: openSituations.filter((s: any) => s.severity === 'CRITICAL').length,
+        highPriorityWork: workItems.filter((w: any) => ['HIGH', 'URGENT'].includes(w.priority) && !['COMPLETED', 'CANCELLED'].includes(w.status)).length,
+        unassignedWork: workItems.filter((w: any) => !w.assigned_actor_id && !['COMPLETED', 'CANCELLED'].includes(w.status)).length,
+        overdueWork: workItems.filter((w: any) => w.due_at && new Date(w.due_at).getTime() < now && !['COMPLETED', 'CANCELLED'].includes(w.status)).length,
+        oldestOpenAt: openSituations.length
+          ? openSituations.reduce((oldest: string, current: any) => current.opened_at < oldest ? current.opened_at : oldest, openSituations[0].opened_at)
+          : null,
+      };
+
       return res.json({
-        situations: (situations ?? []).map((s: any) => ({
+        situations: openSituations.map((s: any) => ({
           ...s,
-          workItems: (work ?? []).filter((w: any) => w.situation_id === s.id),
+          workItems: workItems.filter((w: any) => w.situation_id === s.id),
           recommendations: (recommendations ?? []).filter((r: any) => r.situation_id === s.id),
         })),
+        metrics,
         organizationId: tenant.organizationId,
       });
     } catch (error) {
