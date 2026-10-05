@@ -24,6 +24,7 @@ const __dirname = path.dirname(__filename);
 // ──────────────────────────────────────────────────────────────
 import { createCustomerOperationalIssuesRouter } from './routes/customerOperationalIssues.js';
 import { createActionsRouter } from './routes/actions.js';
+import { createReadingsRouter } from './routes/readings.js';
 
 // ──────────────────────────────────────────────────────────────
 // Express app setup
@@ -48,7 +49,7 @@ if (!v2SupabaseUrl || !v2AnonKey || !v2ServiceRoleKey) {
 const supabase = createClient(v2SupabaseUrl, v2ServiceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
-logger.info('V2 Supabase connected');
+logger.info('Canonical Supabase connected');
 
 // ──────────────────────────────────────────────────────────────
 // Prometheus metrics
@@ -161,7 +162,7 @@ app.get('/api/health', async (_req, res) => {
       posthog: true,
     },
     ...(databaseCheck.error
-      ? { databaseError: 'V2 database health check failed' }
+      ? { databaseError: 'Canonical database health check failed' }
       : {}),
   });
 });
@@ -196,14 +197,15 @@ app.get('/api/docs', (_req, res) => {
     endpoints: [
       'GET /api/health',
       'POST /api/operational-issues',
-      'POST /api/v2/actions',
-      'POST /api/v2/actions/:id/authorize',
-      'POST /api/v2/actions/:id/transition',
-      'POST /api/v2/actions/:id/attempts',
-      'POST /api/v2/actions/:id/attempts/:attemptId/transition',
+      'POST /api/actions',
+      'POST /api/actions/:id/authorize',
+      'POST /api/actions/:id/transition',
+      'POST /api/actions/:id/attempts',
+      'POST /api/actions/:id/attempts/:attemptId/transition',
+      'POST /api/readings/ingest',
       'GET /metrics',
     ],
-    note: 'All operational endpoints require authenticated V2 tenant context.',
+    note: 'All operational endpoints require authenticated tenant context.',
   });
 });
 
@@ -214,12 +216,13 @@ app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabas
 
 // Action boundary uses the canonical Supabase project. Legacy SUPABASE_* clients
 // remain quarantined until their capabilities are adapted to the tenant model.
-app.use('/api/v2/actions', createActionsRouter(supabase));
+app.use('/api/actions', createActionsRouter(supabase));
+app.use('/api/readings', createReadingsRouter(supabase));
 
 // WhatsApp adapter is intentionally fail-closed until canonical
 // channel identity → Actor → Membership → Organization resolution is wired.
 app.post('/api/webhooks/whatsapp', (_req, res) => {
-  res.status(503).json({ error: 'WhatsApp V2 channel adapter not configured' });
+  res.status(503).json({ error: 'WhatsApp channel adapter not configured' });
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -274,10 +277,10 @@ process.on('SIGTERM', async () => {
 // ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   logger.info('═'.repeat(70));
-  logger.info(`⚡ ENERLECTRA V2 BACKEND – OPERATIONAL KERNEL`);
+  logger.info(`⚡ ENERLECTRA BACKEND – OPERATIONAL KERNEL`);
   logger.info('═'.repeat(70));
   logger.info(`🌐 Server: http://localhost:${PORT}`);
   logger.info(`📅 Started: ${new Date().toISOString()}`);
-  logger.info('📊 SERVICES: V2 Supabase, Prometheus, PostHog');
+  logger.info('📊 SERVICES: Canonical Supabase, Prometheus, PostHog');
   logger.info('═'.repeat(70));
 });
