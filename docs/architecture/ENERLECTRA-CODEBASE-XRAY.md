@@ -809,3 +809,110 @@ PAYGo interpretation can be payment/service exception work.
 The kernel stays unchanged.
 
 The next capability should be selected from real ICP workflow evidence rather than from the legacy code inventory.
+
+
+---
+
+# 26. Adaptability-first operational slice checkpoint
+
+The implementation has been corrected to reflect the broader Enerlectra market.
+
+EPC and PAYGo are validation examples only. They are not the product boundary and are not modeled as separate products or schemas.
+
+The active kernel now has three layers:
+
+1. **Tenant and operating context**
+   - identity → actor → membership → organization
+   - operating profile
+   - business-model descriptors
+   - organization capabilities
+   - organization policies
+
+2. **Operational context**
+   - customer
+   - site
+   - asset
+   - observation/evidence
+   - event
+   - situation
+   - recommendation
+   - work
+   - verification
+   - audit
+
+3. **Bounded capability surfaces**
+   - capabilities are enabled per organization
+   - optional capabilities are not loaded merely because legacy code exists
+   - capability context is available to intelligence and future workflows
+   - no capability grants actor authority
+
+## Product discipline
+
+The current active product does not attempt to implement the full energy-business software stack.
+
+It instead establishes the smallest useful operational language that can be reused across energy-facing businesses:
+
+    evidence
+       ↓
+    operational understanding
+       ↓
+    next best step
+       ↓
+    accountable work
+       ↓
+    verified outcome
+
+Different organizations may express that loop through different capabilities, responsibilities, data sources, policies, terminology, and integrations.
+
+The repository should therefore be evaluated on:
+
+- usefulness to the organization;
+- operational outcome improvement;
+- adaptability to mixed operating models;
+- safety of tenant/authorization boundaries;
+- evidence and provenance;
+- implementation cost.
+
+Not on the number of modules shipped.
+
+## Current capability decisions
+
+### Active
+- identity/tenancy
+- organization configuration
+- customer/site/asset context
+- observations/events
+- situations
+- recommendations
+- work
+- actions/authorization
+- verification
+- audit
+- operational queue
+
+### Deferred / conditional
+- meter readings
+- OCR
+- telemetry
+- payment provider integration
+- payment reconciliation
+- collections
+- remote service
+- installation-specific workflows
+- maintenance-specific workflows
+- warranty-specific workflows
+- other energy-business capabilities
+
+A deferred capability can graduate when a real organization workflow proves the need.
+
+### Isolated historical product eras
+- PCU
+- wallet
+- P2P trading
+- marketplace
+- staking
+- clusters/cluster economics
+- blockchain settlement
+- universal financial ledger
+
+These are not being migrated into the first operational kernel merely because they existed in earlier Enerlectra eras.
