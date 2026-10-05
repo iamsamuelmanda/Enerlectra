@@ -43,3 +43,55 @@ export function createOperationalIssue(input: OperationalIssueInput) {
     body: JSON.stringify(input),
   });
 }
+
+
+export type OperationalQueueItem = {
+  id: string;
+  title: string;
+  summary: string | null;
+  status: string;
+  severity: string;
+  priority?: string;
+  customer_id: string | null;
+  site_id: string | null;
+  asset_id: string | null;
+  opened_at: string;
+  updated_at: string;
+  workItems: Array<{
+    id: string;
+    work_type: string;
+    status: string;
+    priority: string;
+    title: string;
+    assigned_actor_id: string | null;
+    due_at: string | null;
+  }>;
+  recommendations: Array<{
+    id: string;
+    status: string;
+    recommendation_type: string;
+    summary: string;
+    rationale: string | null;
+    confidence: number | null;
+  }>;
+};
+
+export async function getOperationalQueue(): Promise<{ situations: OperationalQueueItem[]; organizationId: string }> {
+  return authorizedFetch('/api/operations/queue');
+}
+
+export async function createVerification(input: {
+  situationId?: string;
+  workItemId?: string;
+  actionId?: string;
+  verificationType: string;
+  status: 'VERIFIED' | 'PARTIAL' | 'FAILED' | 'REOPENED';
+  result: Record<string, unknown>;
+  observationId?: string;
+  eventId?: string;
+}) {
+  return authorizedFetch('/api/verifications', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
+}
