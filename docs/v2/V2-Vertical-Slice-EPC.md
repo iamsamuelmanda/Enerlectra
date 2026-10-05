@@ -1,8 +1,8 @@
-# V2 Vertical Slice — EPC
+# Validation Slice — EPC
 
 ## 1. Purpose
 
-Define the smallest complete EPC workflow that can validate Enerlectra V2's operational kernel.
+Define one representative EPC workflow used to validate Enerlectra's shared operational kernel. This slice is a validation case, not an EPC-specific product boundary.
 
 Source contracts:
 - `docs/v2/V2-Domain-and-Tenancy-Blueprint.md`
@@ -378,3 +378,16 @@ The EPC slice validates the minimum need for:
 - strict organization scoping across all of them.
 
 No EPC-specific parallel versions of the core primitives are required.
+
+
+## 17. Market-scope interpretation
+
+EPC is one validation case, not Enerlectra's ICP definition. The same organization may operate installation, maintenance, financing, energy services, distribution, or other activities simultaneously.
+
+The slice proves only that an installation/service-oriented workflow can traverse the shared kernel. It does not prescribe that every customer must enable the EPC capability set above.
+
+The active product question remains:
+
+> Which operational capabilities does this organization actually need, and how can Enerlectra turn its evidence into useful decisions, work, actions, and verified outcomes?
+
+A different energy-facing business may therefore arrive with a materially different capability set while using the same Customer, Site, Asset, Observation, Event, Situation, Recommendation, Work, Action, and Verification primitives.
