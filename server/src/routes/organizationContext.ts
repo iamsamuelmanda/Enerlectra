@@ -36,7 +36,7 @@ export function createOrganizationContextRouter(db: SupabaseClient): Router {
   router.get('/', async (req: Request, res: Response) => {
     try {
       const t = await tenant(req);
-      return res.json({ organizationId: t.organizationId, operatingContext: t.operatingContext });
+      return res.json({ organizationId: t.organizationId, canManage: t.permissions.includes('organization.manage'), operatingContext: t.operatingContext });
     } catch (error) {
       if (error instanceof TenantContextError) {
         return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
