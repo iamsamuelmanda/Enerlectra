@@ -144,22 +144,9 @@ export type ValidationResult =
   | { valid: true; delta: number | null; prevKwh: number | null; deltaKwh?: number; imageHash?: string; hammingDistance?: number; visualMismatch?: boolean; reason?: never; flag?: 'meter_rollover' | 'first_reading' | 'after_reset'; hoursSinceLastReading?: number | null; maxAllowed?: number | null }
   | { valid: false; reason: string; delta?: never; prevKwh?: never; flag?: 'possible_meter_reset' | 'low_confidence'; hoursSinceLastReading?: never; maxAllowed?: never };
 
-export interface ValidationHistoryReading {
-  reading_kwh: number | string;
-  captured_at: string;
-  source?: string | null;
-  status?: string | null;
-  metadata?: Record<string, unknown> | null;
-}
-
 export interface ValidationContext {
-  // Legacy callers may still provide userId/clusterId while they are being
-  // retired. Canonical callers provide organizationId/assetId and history.
-  userId?: string;
-  clusterId?: string;
-  organizationId?: string;
-  assetId?: string;
-  actorId?: string;
+  userId: string;
+  clusterId: string;
   newKwh: number;
   confidence: number;
   meterType: MeterType;
@@ -167,12 +154,6 @@ export interface ValidationContext {
   requestId?: string;
   logger?: Logger;
   overrideRules?: Partial<MeterTypeRules>;
-  recentReadings?: ValidationHistoryReading[];
-  recordFraudSignal?: (
-    signalType: 'delta_spike' | 'rapid_submission' | 'visual_mismatch',
-    severity: number,
-    metadata: Record<string, unknown>
-  ) => Promise<void>;
 }
 
 function createSafeLogger(base: Logger | undefined, context: Record<string, unknown>) {
@@ -241,28 +222,11 @@ function computeMaxIncreaseKwh(rules: MeterTypeRules, hoursSinceLastReading: num
 }
 
 export async function validateReading(ctx: ValidationContext): Promise<ValidationResult> {
-  const {
-    userId,
-    clusterId,
-    organizationId,
-    assetId,
-    newKwh,
-    confidence,
-    meterType,
-    imageUrl,
-    requestId,
-    overrideRules,
-  } = ctx;
-  const scopeIdentity = organizationId && assetId
-    ? { organizationId, assetId }
-    : { userId, clusterId };
-  const log = createSafeLogger(ctx.logger, { requestId, ...scopeIdentity, meterType });
+  const { userId, clusterId, newKwh, confidence, meterType, imageUrl, requestId, overrideRules } = ctx;
+  const log = createSafeLogger(ctx.logger, { requestId, userId, clusterId, meterType });
 
-  if (
-    (!organizationId?.trim() || !assetId?.trim()) &&
-    (!userId?.trim() || !clusterId?.trim())
-  ) {
-    return { valid: false, reason: 'Missing reading authorization scope.' };
+  if (!userId?.trim() || !clusterId?.trim()) {
+    return { valid: false, reason: 'Missing user or cluster identifier.' };
   }
 
   const baseRules = METER_TYPE_RULES[meterType] ?? METER_TYPE_RULES.unknown;
@@ -302,24 +266,18 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
     now.getTime() - VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES * 60 * 1000
   );
 
-  let recentReadings = ctx.recentReadings;
-  if (!recentReadings) {
-    // Compatibility path for non-runtime legacy callers. The canonical runtime
-    // supplies history explicitly and never queries the legacy schema.
-    const { data, error } = await supabase
-      .from('meter_readings')
-      .select('reading_kwh, captured_at, id, source, status, metadata')
-      .eq('user_id', userId)
-      .eq('cluster_id', clusterId)
-      .eq('meter_type', meterType)
-      .order('captured_at', { ascending: false })
-      .limit(VALIDATION_CONFIG.MAX_RECENT_READINGS_TO_FETCH);
+  const { data: recentReadings, error } = await supabase
+    .from('meter_readings')
+    .select('reading_kwh, captured_at, id, source, status, metadata')
+    .eq('user_id', userId)
+    .eq('cluster_id', clusterId)
+    .eq('meter_type', meterType)
+    .order('captured_at', { ascending: false })
+    .limit(VALIDATION_CONFIG.MAX_RECENT_READINGS_TO_FETCH);
 
-    if (error) {
-      log.error({ error }, 'Database query failed during legacy validation');
-      return { valid: false, reason: 'Database error – please try again' };
-    }
-    recentReadings = data ?? [];
+  if (error) {
+    log.error({ error }, 'Database query failed during validation');
+    return { valid: false, reason: 'Database error – please try again' };
   }
 
   let lastActualReading: { reading_kwh: number; captured_at: string; metadata?: any } | null = null;
@@ -367,22 +325,14 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
 
     if (isDuplicate) {
       log.info({ newKwh: sanitizedKwh }, 'Duplicate reading rejected');
-      if (ctx.recordFraudSignal) {
-        await ctx.recordFraudSignal(
-          'rapid_submission',
-          0.3,
-          { duplicateKwh: sanitizedKwh, windowMinutes: VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES }
-        );
-      } else if (userId && clusterId) {
-        await recordFraudSignal(
-          userId,
-          clusterId,
-          'rapid_submission',
-          0.3,
-          { duplicateKwh: sanitizedKwh, windowMinutes: VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES },
-          log
-        );
-      }
+      await recordFraudSignal(
+        userId,
+        clusterId,
+        'rapid_submission',
+        0.3,
+        { duplicateKwh: sanitizedKwh, windowMinutes: VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES },
+        log
+      );
       return {
         valid: false,
         reason: `This reading (${sanitizedKwh.toFixed(2)} kWh) was already submitted within the last ${VALIDATION_CONFIG.DUPLICATE_WINDOW_MINUTES} minutes.`,
@@ -444,22 +394,14 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
   const maxIncreaseKwh = computeMaxIncreaseKwh(rules, hoursSinceLastReading);
   if (delta > maxIncreaseKwh) {
     log.warn({ prevKwh, newKwh: sanitizedKwh, delta, maxAllowed: maxIncreaseKwh, hoursSinceLastReading }, 'Delta exceeds maximum');
-    if (ctx.recordFraudSignal) {
-      await ctx.recordFraudSignal(
-        'delta_spike',
-        Math.min(0.9, (delta / maxIncreaseKwh) * 0.3),
-        { delta, maxAllowed: maxIncreaseKwh, hoursSinceLastReading, meterType }
-      );
-    } else if (userId && clusterId) {
-      await recordFraudSignal(
-        userId,
-        clusterId,
-        'delta_spike',
-        Math.min(0.9, (delta / maxIncreaseKwh) * 0.3),
-        { delta, maxAllowed: maxIncreaseKwh, hoursSinceLastReading, meterType },
-        log
-      );
-    }
+    await recordFraudSignal(
+      userId,
+      clusterId,
+      'delta_spike',
+      Math.min(0.9, (delta / maxIncreaseKwh) * 0.3),
+      { delta, maxAllowed: maxIncreaseKwh, hoursSinceLastReading, meterType },
+      log
+    );
     return {
       valid: false,
       reason: `Unusually large increase (${delta.toFixed(1)} kWh in ${(hoursSinceLastReading ?? 0).toFixed(1)} hrs). The maximum allowed for ${meterType} is ${maxIncreaseKwh.toFixed(1)} kWh. Please verify the reading.`,
@@ -482,22 +424,14 @@ export async function validateReading(ctx: ValidationContext): Promise<Validatio
         visualMismatch = !isVisuallySame(current.hash, prevHash);
         if (visualMismatch) {
           log.warn({ hammingDistance, prevHashPrefix: prevHash.slice(0, 16) }, 'Visual mismatch detected');
-          if (ctx.recordFraudSignal) {
-            await ctx.recordFraudSignal(
-              'visual_mismatch',
-              0.5,
-              { hammingDistance, prevHashPrefix: prevHash.slice(0, 16) }
-            );
-          } else if (userId && clusterId) {
-            await recordFraudSignal(
-              userId,
-              clusterId,
-              'visual_mismatch',
-              0.5,
-              { hammingDistance, prevHashPrefix: prevHash.slice(0, 16) },
-              log
-            );
-          }
+          await recordFraudSignal(
+            userId,
+            clusterId,
+            'visual_mismatch',
+            0.5,
+            { hammingDistance, prevHashPrefix: prevHash.slice(0, 16) },
+            log
+          );
         }
       }
     } catch (err) {
