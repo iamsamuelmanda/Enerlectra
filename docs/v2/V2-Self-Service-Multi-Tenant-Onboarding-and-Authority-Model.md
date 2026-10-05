@@ -210,3 +210,35 @@ These are implementation gates, not reasons to return to manual tenant provision
 Do **not** provision the planned first real test user yet.
 
 The architecture must first establish the self-service onboarding boundary. After Migration 028 and its authenticated integration tests are proven, the first real organization can be created through the same customer-facing flow that every later organization will use.
+
+
+## 10. Technical gate implementation
+
+The architecture is now backed by an executable authenticated integration gate:
+
+`test/v2-self-service-onboarding.test.mjs`
+
+It exercises:
+
+- owner-led self-service organization creation;
+- actor creation from the authenticated identity;
+- delegated operator creation;
+- owner-claim invitation and acceptance;
+- multiple owners;
+- ownership transfer with optional current-owner demotion;
+- final-owner protection;
+- organization-level RLS isolation.
+
+Lifecycle hardening is in:
+
+`supabase/v2/migrations/029_onboarding_lifecycle_hardening.sql`
+
+It fixes primary-role demotion semantics, keeps OWNER assignments consistent, and makes ownership transfer atomic.
+
+The GitHub Actions V2 gate now invokes:
+
+`npm run test:v2:self-service`
+
+The live gate requires `V2_SUPABASE_URL`, `V2_SUPABASE_ANON_KEY`, and `V2_SUPABASE_SERVICE_ROLE_KEY`. Tests create isolated temporary identities and tenants and clean them up after execution.
+
+**Gate status:** implemented and wired into CI; not yet executed against the live database because migrations 028–029 have deliberately not been applied to the live V2 project. No passing result is claimed until that deployment step is performed.
