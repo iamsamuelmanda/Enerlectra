@@ -255,6 +255,26 @@ if (enabled) {
       .select('role_id,roles(key)')
       .eq('membership_id', membership.id);
     assert.ok(ownerAssignments.some((row) => row.roles.key === 'OWNER'));
+
+    const { error: demotionTransferError } = await ownerClient.rpc(
+      'transfer_organization_ownership',
+      {
+        p_organization_id: orgOwner,
+        p_target_membership_id: membership.id,
+        p_demote_current_owner: true,
+      }
+    );
+    assert.ifError(demotionTransferError);
+
+    const { data: remainingOwners, error: remainingOwnersError } = await admin
+      .from('membership_roles')
+      .select('membership_id,memberships!inner(organization_id,status),roles!inner(key)')
+      .eq('memberships.organization_id', orgOwner)
+      .eq('memberships.status', 'ACTIVE')
+      .eq('roles.key', 'OWNER');
+    assert.ifError(remainingOwnersError);
+    assert.equal(remainingOwners.length, 1);
+    assert.equal(remainingOwners[0].membership_id, membership.id);
   });
 
   test('final active OWNER cannot be removed or demoted', async () => {
