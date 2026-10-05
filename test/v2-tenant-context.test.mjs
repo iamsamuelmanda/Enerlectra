@@ -27,6 +27,18 @@ function makeClient({ user, actor, memberships, permissions }) {
       if (table === 'role_permissions') {
         return chain(permissions.map((key) => ({ permissions: { key } })));
       }
+      if (table === 'operating_model_profiles') {
+        return chain(null);
+      }
+      if (table === 'operating_model_business_models') {
+        return chain([]);
+      }
+      if (table === 'organization_capabilities') {
+        return chain([]);
+      }
+      if (table === 'organization_policies') {
+        return chain([]); 
+      }
       throw new Error(`unexpected table: ${table}`);
     },
   };
@@ -68,6 +80,15 @@ test('resolves authenticated user to verified tenant context', async () => {
       membershipId: 'membership-1',
       roles: ['OPERATOR'],
       permissions: ['organization.read', 'customer.read'],
+      operatingContext: {
+        profileId: null,
+        profileName: null,
+        profileConfiguration: {},
+        businessModels: [],
+        capabilities: [],
+        capabilityConfiguration: {},
+        policies: {},
+      },
       correlationId: 'corr-1',
       requestId: 'req-1',
       source: 'web',
