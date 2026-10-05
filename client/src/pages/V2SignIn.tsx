@@ -1,15 +1,21 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { ArrowRight, Loader2, LogIn, UserPlus, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabaseV2 } from '@/lib/supabase-v2';
 
 export default function V2SignIn() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const invite = new URLSearchParams(location.search).get('invite');
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+
+  const onboardingPath = invite
+    ? `/onboarding?invite=${encodeURIComponent(invite)}`
+    : '/onboarding';
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -20,7 +26,7 @@ export default function V2SignIn() {
         const { data, error } = await supabaseV2.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: `${window.location.origin}/onboarding` },
+          options: { emailRedirectTo: `${window.location.origin}${onboardingPath}` },
         });
         if (error) throw error;
 
@@ -28,13 +34,13 @@ export default function V2SignIn() {
           toast.success('Check your email to confirm your account, then continue setup.');
           return;
         }
-        navigate('/onboarding', { replace: true });
+        navigate(onboardingPath, { replace: true });
         return;
       }
 
       const { error } = await supabaseV2.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      navigate('/onboarding', { replace: true });
+      navigate(onboardingPath, { replace: true });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Authentication failed');
     } finally {
@@ -52,7 +58,11 @@ export default function V2SignIn() {
         </div>
         <h1 className="mt-8 text-2xl font-semibold">{mode === 'signup' ? 'Create your Enerlectra account' : 'Sign in'}</h1>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          {mode === 'signup' ? 'Create your account first. You will choose your organization and authority during setup.' : 'Sign in to continue to your Enerlectra workspace.'}
+          {invite
+            ? 'Sign in or create your account to continue with this workspace invitation.'
+            : mode === 'signup'
+              ? 'Create your account first. You will choose your organization and authority during setup.'
+              : 'Sign in to continue to your Enerlectra workspace.'}
         </p>
         <label className="mt-6 block text-sm text-slate-300">Email
           <input className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-amber-400/50" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
@@ -71,6 +81,7 @@ export default function V2SignIn() {
 
 export function V2AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'loading' | 'signed-in' | 'signed-out'>('loading');
+  const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -87,6 +98,9 @@ export function V2AuthGate({ children }: { children: ReactNode }) {
   }, []);
 
   if (state === 'loading') return <main className="min-h-screen bg-[#020205]" />;
-  if (state === 'signed-out') return <Navigate to="/signin" replace />;
+  if (state === 'signed-out') {
+    const invite = new URLSearchParams(location.search).get('invite');
+    return <Navigate to={invite ? `/signin?invite=${encodeURIComponent(invite)}` : '/signin'} replace />;
+  }
   return children;
 }
