@@ -1,208 +1,238 @@
 import { Router } from 'express';
-import { supabase } from '../lib/supabase.js';
-import { validateReading } from '../services/validation.js';
-import { mintPCUForExportReading } from '../services/pcuMinting.js';
-import { reconcileEnergyAllocation } from 'enerlectra-core';
-import { authenticate } from '../middleware/auth.js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import pino from 'pino';
+import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
+import { validateReading } from '../services/validation.js';
+import type { MeterType } from '../../../enerlectra-core/src/core/services/ocr.js';
 
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
-const router = Router();
+const METER_TYPES: MeterType[] = ['grid_import','solar_import','solar_export','solar_generation','generator','unit_submeter','unknown'];
 
-function getCurrentPeriod(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+function bearer(req: any): string | null {
+  const value = req.headers.authorization;
+  if (typeof value !== 'string') return null;
+  const [scheme, token] = value.split(' ');
+  return scheme?.toLowerCase() === 'bearer' && token ? token : null;
 }
 
-router.post('/ingest', authenticate, async (req: any, res) => {
-  const {
-    cluster_id,
-    unit_id,
-    reading_kwh,
-    meter_type,
-    photo_url,
-    confidence,
-    source = 'telegram',
-    reading_key,
-  } = req.body;
+function period() {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+}
 
-  const userId = req.user.id;
-
-  if (!cluster_id || !unit_id || reading_kwh == null || !meter_type) {
-    return res.status(400).json({ error: 'cluster_id, unit_id, reading_kwh, and meter_type are required' });
+function statusFor(error: unknown) {
+  if (error instanceof TenantContextError) {
+    return error.code === 'UNAUTHENTICATED' ? 401 : 403;
   }
+  return 500;
+}
 
-  if (!reading_key) {
-    return res.status(400).json({ error: 'reading_key is required for idempotency' });
-  }
+export function createReadingsRouter(supabase: SupabaseClient): Router {
+  const router = Router();
+  const resolver = createTenantContextResolver(supabase);
 
-  try {
-    const { data: membership, error: membershipError } = await supabase
-      .from('cluster_members')
-      .select('cluster_id, unit_id')
-      .eq('user_id', userId)
-      .eq('cluster_id', cluster_id)
-      .eq('unit_id', unit_id)
-      .maybeSingle();
+  router.post('/ingest', async (req: any, res) => {
+    const token = bearer(req);
+    const organizationId = req.header('x-organization-id') || req.body?.organization_id;
+    if (!token) return res.status(401).json({ error: 'Authentication required' });
+    if (!organizationId) return res.status(400).json({ error: 'x-organization-id is required' });
 
-    if (membershipError) throw membershipError;
-    if (!membership) {
-      return res.status(403).json({ error: 'You are not authorized to submit readings for this unit' });
-    }
+    try {
+      const tenant = await resolver.resolve({
+        accessToken: token,
+        organizationId,
+        correlationId: req.header('x-correlation-id') || req.id,
+        requestId: req.id,
+        source: 'api',
+      });
 
-    const validation = await validateReading({
-      userId,
-      clusterId: cluster_id,
-      newKwh: reading_kwh,
-      confidence: confidence ?? 1.0,
-      meterType: meter_type,
-      requestId: req.id,
-      logger,
-    });
+      if (!tenant.permissions.includes('observation.write')) {
+        return res.status(403).json({ error: 'Missing observation.write permission' });
+      }
 
-    if (!validation.valid) {
-      return res.status(400).json({ error: validation.reason });
-    }
+      const {
+        asset_id: assetId,
+        reading_kwh: readingKwh,
+        meter_type: meterType,
+        photo_url: photoUrl,
+        confidence = 1,
+        source = 'manual',
+        reading_key: readingKey,
+        captured_at: capturedAt,
+      } = req.body ?? {};
 
-    const { data: existing, error: existingError } = await supabase
-      .from('meter_readings')
-      .select('id, meter_type')
-      .eq('reading_key', reading_key)
-      .maybeSingle();
+      if (!assetId || readingKwh == null || !meterType || !readingKey) {
+        return res.status(400).json({ error: 'asset_id, reading_kwh, meter_type, and reading_key are required' });
+      }
+      if (!METER_TYPES.includes(meterType)) {
+        return res.status(400).json({ error: 'Unsupported meter_type' });
+      }
 
-    if (existingError) throw existingError;
-    if (existing) {
-      return res.status(200).json({ success: true, duplicate: true, reading_id: existing.id, meter_type: existing.meter_type });
-    }
+      const { data: asset, error: assetError } = await supabase
+        .from('assets')
+        .select('id, organization_id, site_id, customer_id, status, asset_type')
+        .eq('id', assetId)
+        .eq('organization_id', tenant.organizationId)
+        .maybeSingle();
 
-    const { data: reading, error: insertError } = await supabase
-      .from('meter_readings')
-      .insert({
-        reading_key,
-        user_id: userId,
-        cluster_id,
-        unit_id,
-        reading_kwh,
-        meter_type,
-        photo_url: photo_url || null,
-        ocr_confidence: confidence ?? null,
-        validated: true,
-        captured_at: new Date().toISOString(),
-        reporting_period: getCurrentPeriod(),
+      if (assetError) throw assetError;
+      if (!asset) return res.status(404).json({ error: 'Asset not found in active organization' });
+      if (asset.status !== 'ACTIVE') return res.status(409).json({ error: 'Asset is not active' });
+
+      const { data: existing, error: existingError } = await supabase
+        .from('meter_readings')
+        .select('id, meter_type, reading_kwh, delta_kwh, validation_status')
+        .eq('organization_id', tenant.organizationId)
+        .eq('reading_key', readingKey)
+        .maybeSingle();
+
+      if (existingError) throw existingError;
+      if (existing) return res.status(200).json({ success: true, duplicate: true, reading_id: existing.id, ...existing });
+
+      const { data: history, error: historyError } = await supabase
+        .from('meter_readings')
+        .select('reading_kwh, captured_at, source, validation_status, metadata')
+        .eq('organization_id', tenant.organizationId)
+        .eq('asset_id', assetId)
+        .eq('meter_type', meterType)
+        .order('captured_at', { ascending: false })
+        .limit(10);
+
+      if (historyError) throw historyError;
+
+      const validation = await validateReading({
+        organizationId: tenant.organizationId,
+        assetId,
+        actorId: tenant.actorId,
+        newKwh: readingKwh,
+        confidence,
+        meterType,
+        imageUrl: photoUrl,
+        requestId: req.id,
+        logger,
+        recentReadings: history ?? [],
+        recordFraudSignal: async (signalType, severity, metadata) => {
+          const { data: signal, error } = await supabase.from('fraud_signals').insert({
+            organization_id: tenant.organizationId,
+            actor_id: tenant.actorId,
+            customer_id: asset.customer_id,
+            site_id: asset.site_id,
+            asset_id: asset.id,
+            signal_type: signalType,
+            severity,
+            metadata,
+          }).select('id').single();
+          if (error) {
+            logger.warn({ error, assetId }, 'Fraud signal write failed');
+            return;
+          }
+
+          const windowStart = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+          const { data: signals } = await supabase.from('fraud_signals')
+            .select('severity')
+            .eq('organization_id', tenant.organizationId)
+            .eq('asset_id', asset.id)
+            .gte('created_at', windowStart);
+
+          const score = (signals ?? []).reduce((sum, row) => sum + Number(row.severity ?? 0), 0);
+          if (score >= 1) {
+            await supabase.from('fraud_alerts').insert({
+              organization_id: tenant.organizationId,
+              actor_id: tenant.actorId,
+              customer_id: asset.customer_id,
+              site_id: asset.site_id,
+              asset_id: asset.id,
+              cumulative_score: score,
+              status: 'OPEN',
+              metadata: { triggering_signal_id: signal.id },
+            });
+          }
+        },
+      });
+
+      if (!validation.valid) {
+        return res.status(422).json({ error: validation.reason, flag: validation.flag });
+      }
+
+      const observedAt = capturedAt ? new Date(capturedAt) : new Date();
+      if (Number.isNaN(observedAt.getTime())) return res.status(400).json({ error: 'Invalid captured_at' });
+
+      const value = {
+        reading_kwh: Number(readingKwh),
+        meter_type: meterType,
+        delta_kwh: validation.delta,
+        confidence: Number(confidence),
         source,
-      })
-      .select('*')
-      .single();
+        validation_status: 'VALIDATED',
+        validation_flag: validation.flag ?? null,
+        image_hash: validation.imageHash ?? null,
+      };
 
-    if (insertError) throw insertError;
+      const { data: observation, error: observationError } = await supabase.from('observations').insert({
+        organization_id: tenant.organizationId,
+        actor_id: tenant.actorId,
+        source,
+        observation_type: 'METER_READING',
+        observed_at: observedAt.toISOString(),
+        customer_id: asset.customer_id,
+        site_id: asset.site_id,
+        asset_id: asset.id,
+        value,
+        provenance: {
+          request_id: req.id,
+          reading_key: readingKey,
+          validation: { confidence: Number(confidence), flag: validation.flag ?? null, hamming_distance: validation.hammingDistance ?? null },
+        },
+        raw_reference: readingKey,
+        correlation_id: req.header('x-correlation-id') || req.id,
+      }).select('id').single();
 
-    if (reading.meter_type === 'solar_export' || reading.meter_type === 'solar_generation') {
-      await mintPCUForExportReading(reading);
+      if (observationError) throw observationError;
+
+      const { data: reading, error: insertError } = await supabase.from('meter_readings').insert({
+        organization_id: tenant.organizationId,
+        actor_id: tenant.actorId,
+        customer_id: asset.customer_id,
+        site_id: asset.site_id,
+        asset_id: asset.id,
+        observation_id: observation.id,
+        reading_key: readingKey,
+        reading_kwh: Number(readingKwh),
+        meter_type: meterType,
+        photo_url: photoUrl || null,
+        ocr_confidence: confidence == null ? null : Number(confidence),
+        validation_status: 'VALIDATED',
+        delta_kwh: validation.delta,
+        validation_flag: validation.flag ?? null,
+        source,
+        captured_at: observedAt.toISOString(),
+        reporting_period: period(),
+        metadata: {
+          image_hash: validation.imageHash ?? null,
+          hamming_distance: validation.hammingDistance ?? null,
+          visual_mismatch: validation.visualMismatch ?? false,
+          previous_kwh: validation.prevKwh ?? null,
+          max_allowed_kwh: validation.maxAllowed ?? null,
+        },
+      }).select('id, reading_kwh, delta_kwh, meter_type, validation_status').single();
+
+      if (insertError) throw insertError;
+
+      return res.status(201).json({
+        success: true,
+        reading_id: reading.id,
+        observation_id: observation.id,
+        delta_kwh: validation.delta,
+        meter_type: reading.meter_type,
+        validation_status: reading.validation_status,
+      });
+    } catch (error) {
+      logger.error({ err: error }, 'Canonical reading ingestion failed');
+      return res.status(statusFor(error)).json({ error: error instanceof Error ? error.message : 'Reading ingestion failed' });
     }
+  });
 
-    return res.status(201).json({
-      success: true,
-      reading_id: reading.id,
-      delta_kwh: validation.delta,
-      meter_type: reading.meter_type,
-    });
-  } catch (error: any) {
-    logger.error({ err: error }, 'Ingest reading failed');
-    return res.status(500).json({ error: error.message });
-  }
-});
+  return router;
+}
 
-router.post('/clusters/:clusterId/reconcile', authenticate, async (req: any, res) => {
-  const { clusterId } = req.params;
-  const { period } = req.body;
-  const targetPeriod = period || getCurrentPeriod();
-  const userId = req.user.id;
-
-  try {
-    const { data: admin, error: adminError } = await supabase
-      .from('cluster_members')
-      .select('role')
-      .eq('user_id', userId)
-      .eq('cluster_id', clusterId)
-      .maybeSingle();
-
-    if (adminError) throw adminError;
-    if (!admin || !['admin', 'owner'].includes(admin.role)) {
-      return res.status(403).json({ error: 'Not authorized to reconcile this cluster' });
-    }
-
-    const { data: readings, error: readingsError } = await supabase
-      .from('meter_readings')
-      .select('*')
-      .eq('cluster_id', clusterId)
-      .eq('reporting_period', targetPeriod)
-      .eq('validated', true);
-
-    if (readingsError) throw readingsError;
-    if (!readings?.length) {
-      return res.status(400).json({ error: 'No validated readings found for this period' });
-    }
-
-    const { data: ownership, error: ownershipError } = await supabase
-      .from('ownership_snapshots')
-      .select('user_id, ownership_pct')
-      .eq('cluster_id', clusterId)
-      .eq('period', targetPeriod);
-
-    if (ownershipError) throw ownershipError;
-    if (!ownership?.length) {
-      return res.status(400).json({ error: 'No ownership snapshot found for this period' });
-    }
-
-    const reconciliationResult = reconcileEnergyAllocation({
-      readings: readings.map((r: any) => ({
-        clusterId: r.cluster_id,
-        unitId: r.unit_id || r.user_id,
-        userId: r.user_id,
-        readingKwh: r.reading_kwh,
-        meterType: r.meter_type,
-        reportingPeriod: r.reporting_period,
-        source: 'manual' as const,
-      })),
-      ownership: ownership.map((o: any) => ({
-        userId: o.user_id,
-        ownershipPct: o.ownership_pct,
-      })),
-      clusterId,
-      period: targetPeriod,
-    });
-
-    const allocations = (reconciliationResult as any).allocations || [];
-    if (allocations.length > 0) {
-      const rows = allocations.map((alloc: any) => ({
-        id: `stl_${clusterId}_${alloc.userId}_${targetPeriod}`,
-        user_id: alloc.userId,
-        cluster_id: clusterId,
-        period: targetPeriod,
-        delta_kwh: alloc.netKwh ?? 0,
-        rate_per_kwh: 1.35,
-        amount_zmw: Math.abs(alloc.netKwh ?? 0) * 1.35,
-        status: 'PENDING',
-        created_at: new Date().toISOString(),
-      }));
-
-      const { error: upsertError } = await supabase
-        .from('settlement_ledger')
-        .upsert(rows, { onConflict: 'id' });
-
-      if (upsertError) throw upsertError;
-    }
-
-    return res.json({
-      success: true,
-      clusterId,
-      period: targetPeriod,
-      allocations,
-    });
-  } catch (error: any) {
-    logger.error({ err: error, clusterId, period }, 'Reconciliation failed');
-    return res.status(500).json({ error: error.message });
-  }
-});
-
-export default router;
+export default createReadingsRouter;
