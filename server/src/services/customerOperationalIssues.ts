@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TenantContext } from '../platform/tenant/context.js';
+import { deriveOperationalRecommendation } from './operationalRecommendation.js';
 
 export type CustomerOperationalIssueInput = {
   title: string;
@@ -45,6 +46,7 @@ export async function createCustomerOperationalIssue(
   input: CustomerOperationalIssueInput,
 ): Promise<CustomerOperationalIssueResult> {
   const correlationId = input.correlationId ?? randomUUID();
+  const recommendation = deriveOperationalRecommendation(tenant, input);
 
   const { data, error } = await db.rpc('create_customer_operational_issue', {
     p_organization_id: tenant.organizationId,
@@ -63,6 +65,11 @@ export async function createCustomerOperationalIssue(
     p_assigned_actor_id: input.assignedActorId ?? null,
     p_idempotency_key: input.idempotencyKey ?? null,
     p_correlation_id: correlationId,
+    p_recommendation_type: recommendation.recommendationType,
+    p_recommendation_summary: recommendation.summary,
+    p_recommendation_rationale: recommendation.rationale,
+    p_recommendation_confidence: recommendation.confidence,
+    p_recommendation_context: recommendation.contextSnapshot,
   });
 
   if (error) {
