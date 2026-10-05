@@ -32,6 +32,15 @@ test('customer operational issue service delegates atomically to the tenant-scop
     correlationId: 'corr-1',
     requestId: 'req-1',
     source: 'web',
+    operatingContext: {
+      profileId: 'profile-1',
+      profileName: 'Test profile',
+      profileConfiguration: {},
+      businessModels: ['MIXED'],
+      capabilities: ['FIELD_SERVICE', 'CUSTOMER_SUPPORT'],
+      capabilityConfiguration: {},
+      policies: {},
+    },
   };
 
   const result = await createCustomerOperationalIssue(db, tenant, {
@@ -78,6 +87,15 @@ test('customer operational issue service rejects an invalid database transaction
       correlationId: 'corr-1',
       requestId: 'req-1',
       source: 'web',
+    operatingContext: {
+      profileId: 'profile-1',
+      profileName: 'Test profile',
+      profileConfiguration: {},
+      businessModels: ['MIXED'],
+      capabilities: ['FIELD_SERVICE', 'CUSTOMER_SUPPORT'],
+      capabilityConfiguration: {},
+      policies: {},
+    },
     }, {
       title: 'Invalid result test',
       observationValue: { report: 'test' },
