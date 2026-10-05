@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
+import { recordAudit } from '../services/audit.js';
 
 function bearer(req: Request): string {
   const value = req.headers.authorization;
@@ -151,6 +152,21 @@ export function createOrganizationContextRouter(db: SupabaseClient): Router {
           if (error) throw error;
         }
       }
+
+      await recordAudit(db, {
+        organizationId: t.organizationId,
+        actorId: t.actorId,
+        action: 'ORGANIZATION_CONTEXT_UPDATED',
+        resourceType: 'OPERATING_MODEL_PROFILE',
+        resourceId: profile.id,
+        outcome: 'SUCCESS',
+        correlationId: t.correlationId,
+        metadata: {
+          businessModels,
+          capabilities: capabilities.filter((c) => c.status !== 'DISABLED').map((c) => c.key),
+          policyKeys: policies.map((p) => p.key),
+        },
+      });
 
       return res.json({
         success: true,
