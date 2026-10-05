@@ -241,4 +241,4 @@ The GitHub Actions V2 gate now invokes:
 
 The live gate requires `V2_SUPABASE_URL`, `V2_SUPABASE_ANON_KEY`, and `V2_SUPABASE_SERVICE_ROLE_KEY`. Tests create isolated temporary identities and tenants and clean them up after execution.
 
-**Gate status:** implemented and wired into CI; not yet executed against the live database because migrations 028–029 have deliberately not been applied to the live V2 project. No passing result is claimed until that deployment step is performed.
+**Gate status:** implemented, wired into CI, migrations 028–033 applied to the live V2 project, and the database-level authenticated/RLS gate has passed. The repository Node integration test is the canonical application-level gate; GitHub Actions has not yet executed it because no workflow run is currently available.
