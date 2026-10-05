@@ -1,6 +1,5 @@
 // server/src/index.ts
-// ENERLECTRA PRODUCTION BACKEND v3.1.0 – Full Marketplace + Settlement Engine
-// Entry point for the Enerlectra Protocol coordination layer.
+// Enerlectra production backend — canonical runtime composition root.
 
 import 'dotenv/config';
 import express from 'express';
@@ -34,7 +33,7 @@ const PORT = process.env.PORT || 4000;
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 // ──────────────────────────────────────────────────────────────
-// V2 Supabase client
+// Canonical Supabase client
 // ──────────────────────────────────────────────────────────────
 const v2SupabaseUrl = process.env.V2_SUPABASE_URL;
 const v2AnonKey = process.env.V2_SUPABASE_ANON_KEY;
@@ -42,7 +41,7 @@ const v2ServiceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
 
 if (!v2SupabaseUrl || !v2AnonKey || !v2ServiceRoleKey) {
   throw new Error(
-    'V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the complete V2 database boundary.',
+    'V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the canonical database boundary.',
   );
 }
 
@@ -135,7 +134,7 @@ app.get('/api/info', (req, res) => {
   res.json({
     status: 'OK',
     message: 'Enerlectra Production Backend',
-    version: '4.0.0-v2',
+    version: '4.0.0',
     timestamp: new Date().toISOString(),
   });
 });
@@ -193,7 +192,7 @@ app.get('/api/exchange-rate/:from/:to', async (req, res) => {
 // ──────────────────────────────────────────────────────────────
 app.get('/api/docs', (_req, res) => {
   res.json({
-    name: 'Enerlectra V2 API',
+    name: 'Enerlectra API',
     endpoints: [
       'GET /api/health',
       'POST /api/operational-issues',
@@ -213,11 +212,11 @@ app.get('/api/docs', (_req, res) => {
 // ──────────────────────────────────────────────────────────────
 app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabase));
 
-// V2 Action boundary uses the clean V2 Supabase project. It is intentionally
-// mounted separately from the legacy SUPABASE_* client during reconstruction.
+// Action boundary uses the canonical Supabase project. Legacy SUPABASE_* clients
+// remain quarantined until their capabilities are adapted to the tenant model.
 app.use('/api/v2/actions', createActionsRouter(supabase));
 
-// V2 WhatsApp adapter is intentionally fail-closed until canonical
+// WhatsApp adapter is intentionally fail-closed until canonical
 // channel identity → Actor → Membership → Organization resolution is wired.
 app.post('/api/webhooks/whatsapp', (_req, res) => {
   res.status(503).json({ error: 'WhatsApp V2 channel adapter not configured' });
@@ -235,7 +234,7 @@ app.post('/api/webhooks/airtel', async (req, res) => {
 });
 
 app.get('/api/webhooks/status', (_req, res) => {
-  res.json({ status: 'ok', enabled: ['whatsapp-v2-pending-identity'] });
+  res.json({ status: 'ok', enabled: ['whatsapp-canonical-adapter-pending'] });
 });
 
 // ──────────────────────────────────────────────────────────────
