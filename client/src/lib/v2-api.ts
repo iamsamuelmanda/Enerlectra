@@ -76,7 +76,20 @@ export type OperationalQueueItem = {
   }>;
 };
 
-export async function getOperationalQueue(): Promise<{ situations: OperationalQueueItem[]; organizationId: string }> {
+export type OperationalQueueMetrics = {
+  openSituations: number;
+  criticalSituations: number;
+  highPriorityWork: number;
+  unassignedWork: number;
+  overdueWork: number;
+  oldestOpenAt: string | null;
+};
+
+export async function getOperationalQueue(): Promise<{
+  situations: OperationalQueueItem[];
+  metrics: OperationalQueueMetrics;
+  organizationId: string;
+}> {
   return authorizedFetch('/api/operations/queue');
 }
 
