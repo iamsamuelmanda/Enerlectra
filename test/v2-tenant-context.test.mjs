@@ -7,6 +7,7 @@ function chain(data, error = null) {
     data,
     error,
     select() { return this; },
+    is() { return this; },
     select() { return this; },
     eq() { return this; },
     maybeSingle() { return Promise.resolve({ data, error }); },
