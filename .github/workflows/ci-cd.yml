@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: integrations/telegram-bot
+        working-directory: integrations/enerlectra-bot
 
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: integrations/telegram-bot/package-lock.json
+          cache-dependency-path: integrations/enerlectra-bot/package-lock.json
 
       - run: npm ci
       - run: npm run build
@@ -86,7 +86,7 @@ jobs:
         run: npm ci && npm audit --audit-level=high
 
       - name: Audit telegram-bot dependencies
-        working-directory: integrations/telegram-bot
+        working-directory: integrations/enerlectra-bot
         run: npm ci && npm audit --audit-level=high
 
   server-typecheck:
