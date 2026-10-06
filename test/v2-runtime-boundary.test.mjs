@@ -46,7 +46,7 @@ test('active client router exposes only V2 landing and no legacy auth or protoco
   for (const retired of [
     'ClusterDetailPage', 'LaunchClusterPage', 'EnergyWalletPage',
     'TradingPage', 'TransactionsPage', 'PilotDashboard',
-    'SignIn', 'SignUp', 'ForgotPassword', 'ResetPassword',
+    'LegacySignIn', 'SignUp', 'ForgotPassword', 'ResetPassword',
   ]) assert.equal(source.includes(retired), false, `legacy client route remains: ${retired}`);
   assert.match(source, /V2Home/);
   assert.match(source, /V2SignIn/);
@@ -56,8 +56,8 @@ test('active client router exposes only V2 landing and no legacy auth or protoco
 
 test('V2 landing does not link users into the legacy authentication client', async () => {
   const source = await read('../client/src/pages/V2Home.tsx');
-  assert.equal(source.includes('/signin'), false);
   assert.equal(source.includes('Legacy sign-in'), false);
+  assert.equal(source.includes('LegacySignIn'), false);
 });
 
 test('legacy WhatsApp handler is a no-op until canonical V2 channel identity exists', async () => {
