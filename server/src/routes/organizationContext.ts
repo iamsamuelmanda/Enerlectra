@@ -37,7 +37,12 @@ export function createOrganizationContextRouter(db: SupabaseClient): Router {
   router.get('/', async (req: Request, res: Response) => {
     try {
       const t = await tenant(req);
-      return res.json({ organizationId: t.organizationId, canManage: t.permissions.includes('organization.manage'), operatingContext: t.operatingContext });
+      return res.json({
+        organizationId: t.organizationId,
+        canManage: t.permissions.includes('organization.manage'),
+        permissions: t.permissions,
+        operatingContext: t.operatingContext,
+      });
     } catch (error) {
       if (error instanceof TenantContextError) {
         return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
@@ -180,6 +185,7 @@ export function createOrganizationContextRouter(db: SupabaseClient): Router {
           capabilityConfiguration: Object.fromEntries(capabilities.filter((c) => c.status !== 'DISABLED').map((c) => [c.key, c.configuration])),
           policies: Object.fromEntries(policies.map((p) => [p.key, p.value])),
         },
+        permissions: t.permissions,
       });
     } catch (error) {
       if (error instanceof TenantContextError) {
