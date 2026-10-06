@@ -35,7 +35,14 @@ export function createOperationsRouter(db: SupabaseClient): Router {
       if (error) throw error;
 
       const ids = (situations ?? []).map((s: any) => s.id);
-      if (!ids.length) return res.json({ situations: [] });
+      if (!ids.length) {
+        return res.json({
+          situations: [],
+          metrics: { openSituations: 0, criticalSituations: 0, highPriorityWork: 0, unassignedWork: 0, overdueWork: 0, oldestOpenAt: null },
+          organizationId: tenant.organizationId,
+          permissions: tenant.permissions,
+        });
+      }
 
       const [{ data: work, error: workError }, { data: recommendations, error: recError }] = await Promise.all([
         db.from('work_items').select('id,situation_id,work_type,status,priority,title,assigned_actor_id,due_at,created_at,updated_at').eq('organization_id', tenant.organizationId).in('situation_id', ids).order('created_at', { ascending: false }),
@@ -43,6 +50,26 @@ export function createOperationsRouter(db: SupabaseClient): Router {
       ]);
       if (workError) throw workError;
       if (recError) throw recError;
+
+      const workIds = (work ?? []).map((item: any) => item.id);
+      const { data: actions, error: actionsError } = workIds.length
+        ? await db.from('actions')
+            .select('id,work_item_id,action_type,consequence_class,status,requested_by_actor_id,authorized_by_actor_id,requested_at,authorized_at,started_at,completed_at,created_at,updated_at')
+            .eq('organization_id', tenant.organizationId)
+            .in('work_item_id', workIds)
+            .order('created_at', { ascending: false })
+        : { data: [], error: null };
+      if (actionsError) throw actionsError;
+
+      const actionIds = (actions ?? []).map((action: any) => action.id);
+      const { data: attempts, error: attemptsError } = actionIds.length
+        ? await db.from('action_attempts')
+            .select('id,action_id,attempt_number,status,executor_type,executor_actor_id,started_at,finished_at,result_code,result_summary,error_code,error_summary,created_at')
+            .eq('organization_id', tenant.organizationId)
+            .in('action_id', actionIds)
+            .order('attempt_number', { ascending: true })
+        : { data: [], error: null };
+      if (attemptsError) throw attemptsError;
 
       const openSituations = situations ?? [];
       const workItems = work ?? [];
@@ -61,11 +88,18 @@ export function createOperationsRouter(db: SupabaseClient): Router {
       return res.json({
         situations: openSituations.map((s: any) => ({
           ...s,
-          workItems: workItems.filter((w: any) => w.situation_id === s.id),
+          workItems: workItems.filter((w: any) => w.situation_id === s.id).map((w: any) => ({
+            ...w,
+            actions: (actions ?? []).filter((a: any) => a.work_item_id === w.id).map((a: any) => ({
+              ...a,
+              attempts: (attempts ?? []).filter((attempt: any) => attempt.action_id === a.id),
+            })),
+          })),
           recommendations: (recommendations ?? []).filter((r: any) => r.situation_id === s.id),
         })),
         metrics,
         organizationId: tenant.organizationId,
+        permissions: tenant.permissions,
       });
     } catch (error) {
       if (error instanceof TenantContextError) {
