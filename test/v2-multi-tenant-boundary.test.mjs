@@ -23,8 +23,7 @@ if (enabled) {
   const customerIds = {};
   const situationIds = {};
   const workItemIds = {};
-  const actionIds = {};
-
+  
   async function createUser(label) {
     const email = `v2-multitenant-${label}-${runId}@example.invalid`;
     const { data, error } = await admin.auth.admin.createUser({
@@ -85,30 +84,43 @@ if (enabled) {
     assert.ifError(ce);
     customerIds[label] = customer.id;
 
-    const { data: situation, error: se } = await admin.from('situations').insert({
+    const { data: site, error: siteError } = await admin.from('sites').insert({
       organization_id: org.id,
-      situation_type: 'equipment_fault',
-      status: 'OPEN',
-      severity: 'HIGH',
-      title: `Tenant ${label} situation`,
-      summary: `isolated tenant test ${label}`,
       customer_id: customer.id,
+      name: `Site ${label} ${runId}`,
+      status: 'ACTIVE',
     }).select('id').single();
-    assert.ifError(se);
-    situationIds[label] = situation.id;
+    assert.ifError(siteError);
 
-    const { data: work, error: we } = await admin.from('work_items').insert({
-      organization_id: org.id,
-      situation_id: situation.id,
-      work_type: 'INVESTIGATE',
-      status: 'OPEN',
-      priority: 'HIGH',
-      title: `Tenant ${label} work`,
-      customer_id: customer.id,
-      created_by_actor_id: actor.id,
-    }).select('id').single();
-    assert.ifError(we);
-    workItemIds[label] = work.id;
+    const { data: issue, error: issueError } = await admin.rpc('create_customer_operational_issue', {
+      p_organization_id: org.id,
+      p_actor_id: actor.id,
+      p_title: `Tenant ${label} situation`,
+      p_summary: `isolated tenant test ${label}`,
+      p_severity: 'HIGH',
+      p_customer_id: customer.id,
+      p_site_id: site.id,
+      p_asset_id: null,
+      p_observation_type: 'MULTI_TENANT_GATE',
+      p_observation_value: { label, runId },
+      p_source: 'test',
+      p_work_type: 'INVESTIGATE',
+      p_priority: 'HIGH',
+      p_assigned_actor_id: null,
+      p_idempotency_key: `multi-tenant-${label}-${runId}`,
+      p_correlation_id: null,
+      p_recommendation_type: 'INSPECT',
+      p_recommendation_summary: `Inspect tenant ${label}`,
+      p_recommendation_rationale: 'Multi-tenant regression fixture',
+      p_recommendation_confidence: 1,
+      p_recommendation_context: { test: true },
+    });
+    assert.ifError(issueError);
+    const row = Array.isArray(issue) ? issue[0] : issue;
+    assert.ok(row?.situation_id);
+    assert.ok(row?.work_item_id);
+    situationIds[label] = row.situation_id;
+    workItemIds[label] = row.work_item_id;
   }
 
   async function selectVisible(client, table, id) {
