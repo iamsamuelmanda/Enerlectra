@@ -389,3 +389,37 @@ The next phase is:
 > **prove the boundary, preserve the valuable logic, remove duplicate runtime paths, then implement the Figma console against the resulting canonical contract.**
 
 This audit does not authorize destructive cleanup by itself.
+
+## 12. Figma console reconciliation — verified 2026-10-06
+
+The existing Figma prototype has now been inspected directly. File: `Enerlectra Configurable Console — Product Prototype` (`m7d3GYmQsQNVuLqAafwcyE`).
+
+The prototype is directionally aligned with the canonical platform:
+
+- account creation and organization setup;
+- configurable operating context;
+- organization capabilities;
+- customer/site/asset context;
+- operational queue;
+- issue intake;
+- recommendation context;
+- work execution;
+- verification and resolution;
+- company-private workspace language.
+
+It does not introduce EPC/PAYGo-specific database concepts. Its operating-model choices remain configuration examples.
+
+### Implementation gaps found
+
+The current React router exposes only the canonical landing/sign-in/onboarding/workspace surface, but the workspace does not yet implement the full Figma interaction sequence.
+
+Specifically:
+
+1. The browser can create an operational issue and directly submit verification, but it does not yet expose the complete Action proposal → authorization → execution/attempt sequence in the console.
+2. The Figma prototype shows assigned work and a consequential-action approval step, while the current UI has no dedicated work-assignment interaction.
+3. The Figma organization setup includes country/region fields that are not currently represented in the onboarding RPC contract. These should not be added to the database merely to match the mockup; they need a demonstrated product purpose first.
+4. The Figma copy currently says an operator can authorize work. The canonical migration 049 role matrix does not grant `action.authorize` to OPERATOR; OWNER is the role with that permission. The product surface must follow the authorization contract, not weaken the security model to match prototype copy.
+
+The correct next implementation step is therefore to bring the console up to the existing Action/Attempt/Verification contract, then revise prototype copy/interaction where it conflicts with the canonical authorization model.
+
+Figma mutation was not performed in this pass because the connected Figma Starter-plan MCP tool reported its call quota was exhausted. No claim is made that the prototype itself was modified.
