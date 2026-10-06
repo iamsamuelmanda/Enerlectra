@@ -33,7 +33,7 @@ function scopedClient(req: Request): SupabaseClient {
   });
 }
 
-function requirePermission(permissions: string[], permission: string) {
+function requirePermission(permissions: readonly string[], permission: string) {
   if (!permissions.includes(permission)) {
     const error = new Error(`MISSING_PERMISSION:${permission}`);
     error.name = 'AuthorizationError';
