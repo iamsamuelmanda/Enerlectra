@@ -3,7 +3,18 @@ import { AlertTriangle, CheckCircle2, LogOut, RefreshCw, Send, Zap } from 'lucid
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabaseV2 } from '@/lib/supabase-v2';
-import { createOperationalIssue, createVerification, getOperationalQueue, type OperationalQueueItem } from '@/lib/v2-api';
+import {
+  authorizeAction,
+  createAction,
+  createActionAttempt,
+  createOperationalIssue,
+  createVerification,
+  getOperationalQueue,
+  transitionAction,
+  transitionActionAttempt,
+  type OperationalAction,
+  type OperationalQueueItem,
+} from '@/lib/v2-api';
 import OperatingContextPanel from '@/components/OperatingContextPanel';
 import ResourceContextPanel from '@/components/ResourceContextPanel';
 
@@ -16,6 +27,7 @@ export default function V2Workspace() {
   const [busy, setBusy] = useState(false);
   const [queueBusy, setQueueBusy] = useState(true);
   const [queue, setQueue] = useState<OperationalQueueItem[]>([]);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [queueMetrics, setQueueMetrics] = useState({
     openSituations: 0,
     criticalSituations: 0,
@@ -26,6 +38,7 @@ export default function V2Workspace() {
   });
   const [result, setResult] = useState<string | null>(null);
   const [contextSelection, setContextSelection] = useState<{ customerId?: string; siteId?: string; assetId?: string }>({});
+  const [actionBusy, setActionBusy] = useState<string | null>(null);
 
   const loadQueue = async () => {
     setQueueBusy(true);
@@ -33,6 +46,7 @@ export default function V2Workspace() {
       const response = await getOperationalQueue();
       setQueue(response.situations);
       setQueueMetrics(response.metrics);
+      setPermissions(response.permissions);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not load operational queue');
     } finally {
@@ -102,6 +116,100 @@ export default function V2Workspace() {
     }
   };
 
+  const runAction = async (action: OperationalAction, operation: () => Promise<unknown>) => {
+    setActionBusy(action.id);
+    try {
+      await operation();
+      toast.success('Action lifecycle updated');
+      await loadQueue();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not update action');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const proposeAction = async (workItemId: string) => {
+    setActionBusy(workItemId);
+    try {
+      await createAction({
+        workItemId,
+        actionType: 'PERFORM_FIELD_CHECK',
+        consequenceClass: 'OPERATIONAL',
+        target: contextSelection.assetId ? { assetId: contextSelection.assetId } : {},
+        metadata: { source: 'web_workspace' },
+      });
+      toast.success('Action proposed');
+      await loadQueue();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Could not propose action');
+    } finally {
+      setActionBusy(null);
+    }
+  };
+
+  const executeAction = async (action: OperationalAction) => {
+    const latestAttempt = action.attempts[action.attempts.length - 1];
+
+    if (action.status === 'AUTHORIZED') {
+      await runAction(action, () => transitionAction(action.id, 'EXECUTING'));
+      return;
+    }
+
+    if (action.status === 'EXECUTING' && !latestAttempt) {
+      await runAction(action, () => createActionAttempt(action.id, 1));
+      return;
+    }
+
+    if (action.status === 'EXECUTING' && latestAttempt?.status === 'CREATED') {
+      await runAction(action, () => transitionActionAttempt(action.id, latestAttempt.id, 'EXECUTING'));
+      return;
+    }
+
+    if (action.status === 'EXECUTING' && latestAttempt?.status === 'EXECUTING') {
+      await runAction(action, () => transitionActionAttempt(action.id, latestAttempt.id, 'SUCCEEDED', {
+        resultCode: 'FIELD_CHECK_COMPLETE',
+        resultSummary: 'Completed from the Enerlectra operational workspace.',
+      }));
+      return;
+    }
+
+    if (action.status === 'EXECUTING' && latestAttempt?.status === 'SUCCEEDED') {
+      await runAction(action, () => transitionAction(action.id, 'SUCCEEDED'));
+    }
+  };
+
+  const actionButton = (action: OperationalAction) => {
+    const busyForAction = actionBusy === action.id;
+
+    if (action.status === 'PROPOSED' && permissions.includes('action.authorize')) {
+      return (
+        <button disabled={busyForAction} onClick={() => void runAction(action, () => authorizeAction(action.id))}
+          className="rounded-lg border border-amber-300/20 px-3 py-2 text-xs text-amber-200 hover:bg-amber-300/5 disabled:opacity-50">
+          {busyForAction ? 'Authorizing…' : 'Authorize'}
+        </button>
+      );
+    }
+
+    if (['AUTHORIZED', 'EXECUTING'].includes(action.status) && permissions.includes('work.execute')) {
+      const attempt = action.attempts[action.attempts.length - 1];
+      let label = 'Start execution';
+      if (action.status === 'EXECUTING' && !attempt) label = 'Create attempt';
+      else if (attempt?.status === 'CREATED') label = 'Start attempt';
+      else if (attempt?.status === 'EXECUTING') label = 'Complete attempt';
+      else if (attempt?.status === 'SUCCEEDED') label = 'Complete action';
+
+      return (
+        <button disabled={busyForAction} onClick={() => void executeAction(action)}
+          className="rounded-lg border border-sky-300/20 px-3 py-2 text-xs text-sky-200 hover:bg-sky-300/5 disabled:opacity-50">
+          {busyForAction ? 'Updating…' : label}
+        </button>
+      );
+    }
+
+    return null;
+  };
+
   return (
     <main className="min-h-screen bg-[#020205] text-slate-100">
       <header className="border-b border-white/10 px-6 py-5">
@@ -119,7 +227,7 @@ export default function V2Workspace() {
             <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Operational intelligence</p>
             <h1 className="mt-3 text-3xl font-semibold">See what needs attention</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
-              Enerlectra turns operational evidence into situations, recommendations, work and verified outcomes. The queue below is the current operational picture for your organization.
+              Enerlectra turns operational evidence into situations, recommendations, work, actions and verified outcomes.
             </p>
           </div>
           <button onClick={() => void loadQueue()} disabled={queueBusy} className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 disabled:opacity-50">
@@ -176,7 +284,7 @@ export default function V2Workspace() {
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-medium">Operational queue</h2>
-                <p className="mt-1 text-xs text-slate-500">Open and investigating situations</p>
+                <p className="mt-1 text-xs text-slate-500">Situation → recommendation → work → action → verification</p>
               </div>
               <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">{queue.length}</span>
             </div>
@@ -203,17 +311,54 @@ export default function V2Workspace() {
                         </div>
                         {work && <button onClick={() => void verify(situation)} className="shrink-0 rounded-lg border border-emerald-400/20 px-3 py-2 text-xs text-emerald-300 hover:bg-emerald-400/5">Verify outcome</button>}
                       </div>
+
                       {recommendation && (
                         <div className="mt-4 rounded-lg border border-amber-300/10 bg-amber-300/[0.04] p-3">
                           <p className="text-[10px] uppercase tracking-[0.18em] text-amber-300/70">Recommended next step</p>
                           <p className="mt-1 text-sm text-slate-300">{recommendation.summary}</p>
                         </div>
                       )}
+
                       {work && (
-                        <div className="mt-3 flex flex-wrap gap-3 text-xs text-slate-500">
-                          <span>Work: {work.status}</span>
-                          <span>Type: {work.work_type}</span>
-                          <span>Priority: {work.priority}</span>
+                        <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                            <div className="flex flex-wrap gap-3">
+                              <span>Work: {work.status}</span>
+                              <span>Type: {work.work_type}</span>
+                              <span>Priority: {work.priority}</span>
+                            </div>
+                            {permissions.includes('action.create') && (
+                              <button
+                                disabled={actionBusy === work.id}
+                                onClick={() => void proposeAction(work.id)}
+                                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 disabled:opacity-50"
+                              >
+                                {actionBusy === work.id ? 'Proposing…' : 'Propose action'}
+                              </button>
+                            )}
+                          </div>
+
+                          {work.actions.length > 0 && (
+                            <div className="mt-3 space-y-2">
+                              {work.actions.map((action) => {
+                                const latestAttempt = action.attempts[action.attempts.length - 1];
+                                return (
+                                  <div key={action.id} className="rounded-lg border border-white/5 bg-black/20 p-3">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div>
+                                        <p className="text-xs font-medium text-slate-300">{action.action_type}</p>
+                                        <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
+                                          {action.consequence_class} · {action.status}
+                                          {latestAttempt ? ` · attempt ${latestAttempt.attempt_number}: ${latestAttempt.status}` : ''}
+                                        </p>
+                                      </div>
+                                      {actionButton(action)}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       )}
                     </article>
