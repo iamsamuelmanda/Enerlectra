@@ -15,7 +15,10 @@ async function authorizedFetch(path: string, init: RequestInit = {}) {
   const body = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(body?.error ?? 'Enerlectra API request failed');
+    const error = new Error(body?.error ?? 'Enerlectra API request failed') as Error & { code?: string; permission?: string };
+    error.code = body?.code;
+    error.permission = body?.permission;
+    throw error;
   }
 
   return body;
@@ -44,6 +47,38 @@ export function createOperationalIssue(input: OperationalIssueInput) {
   });
 }
 
+export type ActionAttempt = {
+  id: string;
+  action_id: string;
+  attempt_number: number;
+  status: string;
+  executor_type: string;
+  executor_actor_id: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  result_code: string | null;
+  result_summary: string | null;
+  error_code: string | null;
+  error_summary: string | null;
+  created_at: string;
+};
+
+export type OperationalAction = {
+  id: string;
+  work_item_id: string;
+  action_type: string;
+  consequence_class: string;
+  status: string;
+  requested_by_actor_id: string;
+  authorized_by_actor_id: string | null;
+  requested_at: string;
+  authorized_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  attempts: ActionAttempt[];
+};
 
 export type OperationalQueueItem = {
   id: string;
@@ -65,6 +100,7 @@ export type OperationalQueueItem = {
     title: string;
     assigned_actor_id: string | null;
     due_at: string | null;
+    actions: OperationalAction[];
   }>;
   recommendations: Array<{
     id: string;
@@ -89,8 +125,55 @@ export async function getOperationalQueue(): Promise<{
   situations: OperationalQueueItem[];
   metrics: OperationalQueueMetrics;
   organizationId: string;
+  permissions: string[];
 }> {
   return authorizedFetch('/api/operations/queue');
+}
+
+export function createAction(input: {
+  workItemId: string;
+  actionType: string;
+  consequenceClass: 'OBSERVATIONAL' | 'COMMUNICATION' | 'OPERATIONAL' | 'FINANCIAL' | 'PHYSICAL' | 'EXTERNAL_SYSTEM';
+  target?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+}) {
+  return authorizedFetch('/api/actions', {
+    method: 'POST',
+    body: JSON.stringify({ ...input, idempotencyKey: crypto.randomUUID() }),
+  });
+}
+
+export function authorizeAction(actionId: string) {
+  return authorizedFetch(`/api/actions/${actionId}/authorize`, { method: 'POST', body: JSON.stringify({}) });
+}
+
+export function transitionAction(actionId: string, status: 'EXECUTING' | 'SUCCEEDED' | 'FAILED' | 'EXECUTION_UNKNOWN' | 'CANCELLED') {
+  return authorizedFetch(`/api/actions/${actionId}/transition`, {
+    method: 'POST',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function createActionAttempt(actionId: string, attemptNumber: number) {
+  return authorizedFetch(`/api/actions/${actionId}/attempts`, {
+    method: 'POST',
+    body: JSON.stringify({
+      attemptNumber,
+      executionIdempotencyKey: crypto.randomUUID(),
+    }),
+  });
+}
+
+export function transitionActionAttempt(
+  actionId: string,
+  attemptId: string,
+  status: 'EXECUTING' | 'SUCCEEDED' | 'FAILED' | 'EXECUTION_UNKNOWN' | 'CANCELLED',
+  result?: Record<string, unknown>,
+) {
+  return authorizedFetch(`/api/actions/${actionId}/attempts/${attemptId}/transition`, {
+    method: 'POST',
+    body: JSON.stringify({ status, result }),
+  });
 }
 
 export async function createVerification(input: {
@@ -109,7 +192,6 @@ export async function createVerification(input: {
   });
 }
 
-
 export type OrganizationOperatingContext = {
   profileId: string | null;
   profileName: string | null;
@@ -123,6 +205,7 @@ export type OrganizationOperatingContext = {
 export async function getOrganizationContext(): Promise<{
   organizationId: string;
   canManage: boolean;
+  permissions: string[];
   operatingContext: OrganizationOperatingContext;
 }> {
   return authorizedFetch('/api/organization/context');
@@ -144,7 +227,6 @@ export async function updateOrganizationContext(input: {
     body: JSON.stringify(input),
   });
 }
-
 
 export type Customer = {
   id: string;
@@ -177,33 +259,15 @@ export type Asset = {
   status: string;
 };
 
-export async function listCustomers() {
-  return authorizedFetch('/api/resources/customers');
-}
-
-export async function listSites() {
-  return authorizedFetch('/api/resources/sites');
-}
-
-export async function listAssets() {
-  return authorizedFetch('/api/resources/assets');
-}
-
+export async function listCustomers() { return authorizedFetch('/api/resources/customers'); }
+export async function listSites() { return authorizedFetch('/api/resources/sites'); }
+export async function listAssets() { return authorizedFetch('/api/resources/assets'); }
 export async function createCustomer(input: { name: string; externalRef?: string; phone?: string; email?: string }) {
   return authorizedFetch('/api/resources/customers', { method: 'POST', body: JSON.stringify(input) });
 }
-
 export async function createSite(input: { name: string; customerId?: string; address?: string }) {
   return authorizedFetch('/api/resources/sites', { method: 'POST', body: JSON.stringify(input) });
 }
-
-export async function createAsset(input: {
-  assetType: string;
-  customerId?: string;
-  siteId?: string;
-  manufacturer?: string;
-  model?: string;
-  serialNumber?: string;
-}) {
+export async function createAsset(input: { assetType: string; customerId?: string; siteId?: string; manufacturer?: string; model?: string; serialNumber?: string }) {
   return authorizedFetch('/api/resources/assets', { method: 'POST', body: JSON.stringify(input) });
 }
