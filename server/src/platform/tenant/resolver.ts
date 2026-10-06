@@ -95,7 +95,7 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
         throw new Error(`Tenant membership lookup failed: ${membershipResult.error.message}`);
       }
 
-      const memberships = (membershipResult.data ?? []) as MembershipRow[];
+      const memberships = (membershipResult.data ?? []) as unknown as MembershipRow[];
 
       if (memberships.length === 0) {
         throw new TenantContextError(
