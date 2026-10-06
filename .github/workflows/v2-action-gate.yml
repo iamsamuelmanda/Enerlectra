@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'test/v2-action-integration.test.mjs'
+      - 'test/v2-multi-tenant-boundary.test.mjs'
       - 'test/v2-action-http-integration.test.mjs'
       - 'test/v2-actor-channel-privilege-integration.test.mjs'
       - 'test/v2-channel-tenant-context.test.mjs'
@@ -58,6 +59,9 @@ jobs:
 
       - name: Run V2 Action HTTP gate
         run: npm run test:v2:action-http
+
+      - name: Run V2 multi-tenant boundary gate
+        run: npm run test:v2:multi-tenant
 
       - name: Run V2 Customer Operational Issue gate
         run: npm run test:v2:customer-operational-issue
