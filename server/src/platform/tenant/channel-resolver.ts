@@ -123,6 +123,15 @@ export async function resolveChannelTenantContext(
     permissions: [...new Set((permissions.data ?? [])
       .map((row: any) => row.permissions?.key)
       .filter(Boolean))],
+    operatingContext: {
+      profileId: null,
+      profileName: null,
+      profileConfiguration: {},
+      businessModels: [],
+      capabilities: [],
+      capabilityConfiguration: {},
+      policies: {},
+    },
     correlationId: input.correlationId,
     requestId: input.requestId,
     source: input.channel,
