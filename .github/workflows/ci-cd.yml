@@ -30,25 +30,6 @@ jobs:
       - run: npm run typecheck
       - run: npm run build
 
-  telegram-bot:
-    name: Telegram bot — build
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: integrations/enerlectra-bot
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: integrations/enerlectra-bot/package-lock.json
-
-      - run: npm ci
-      - run: npm run build
-
   root:
     name: Root — install & smoke tests
     runs-on: ubuntu-latest
