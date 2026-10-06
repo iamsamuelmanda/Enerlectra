@@ -43,7 +43,7 @@ type MembershipRow = {
 };
 
 type PermissionRow = {
-  permissions: { key: string } | null;
+  permissions: { key: string } | { key: string }[] | null;
 };
 
 export function createTenantContextResolver(client: SupabaseClient): TenantContextResolver {
@@ -137,8 +137,10 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
       if (capabilityResult.error) throw new Error(`Tenant capability lookup failed: ${capabilityResult.error.message}`);
       if (policyResult.error) throw new Error(`Tenant policy lookup failed: ${policyResult.error.message}`);
 
-      const permissionRows = (permissionResult.data ?? []) as PermissionRow[];
-      const permissions = permissionRows.map((row) => row.permissions?.key).filter((key): key is string => Boolean(key));
+      const permissionRows = (permissionResult.data ?? []) as unknown as PermissionRow[];
+      const permissions = permissionRows
+        .flatMap((row) => Array.isArray(row.permissions) ? row.permissions : row.permissions ? [row.permissions] : [])
+        .map((permission) => permission.key);
 
       const profile = profileResult.data as { id: string; name: string; configuration: Record<string, unknown> } | null;
       const capabilityRows = (capabilityResult.data ?? []) as Array<{ capability_key: string; status: string; configuration: Record<string, unknown> }>;
