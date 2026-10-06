@@ -129,14 +129,14 @@ export default function V2Workspace() {
     }
   };
 
-  const proposeAction = async (workItemId: string) => {
+  const proposeAction = async (workItemId: string, target: Record<string, unknown> = {}) => {
     setActionBusy(workItemId);
     try {
       await createAction({
         workItemId,
         actionType: 'PERFORM_FIELD_CHECK',
         consequenceClass: 'OPERATIONAL',
-        target: contextSelection.assetId ? { assetId: contextSelection.assetId } : {},
+        target,
         metadata: { source: 'web_workspace' },
       });
       toast.success('Action proposed');
@@ -330,7 +330,11 @@ export default function V2Workspace() {
                             {permissions.includes('action.create') && (
                               <button
                                 disabled={actionBusy === work.id}
-                                onClick={() => void proposeAction(work.id)}
+                                onClick={() => void proposeAction(work.id, {
+                                  ...(situation.customer_id ? { customerId: situation.customer_id } : {}),
+                                  ...(situation.site_id ? { siteId: situation.site_id } : {}),
+                                  ...(situation.asset_id ? { assetId: situation.asset_id } : {}),
+                                })}
                                 className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 disabled:opacity-50"
                               >
                                 {actionBusy === work.id ? 'Proposing…' : 'Propose action'}
