@@ -16,7 +16,7 @@
     "typecheck:client": "cd client && npx tsc --noEmit",
     "typecheck:telegram-bot": "cd integrations/enerlectra-bot && npx tsc --noEmit",
     "test": "node --import tsx --test test/ci-smoke.test.mjs test/v2-boundary.test.mjs test/v2-tenant-context.test.mjs test/v2-channel-tenant-context.test.mjs && npm run test:v2:command-tenant-context && npm run test:v2:runtime-boundary && npm run test:v2:action-http && npm run test:v2:multi-tenant && npm run test:v2:operational-intelligence",
-    "ci": "npm test && npm run typecheck:server && npm run typecheck:client && npm run build:client && npm run typecheck:telegram-bot",
+    "ci": "npm test && npm run typecheck:server && npm --prefix client ci && npm run typecheck:client && npm run build:client && npm --prefix integrations/enerlectra-bot ci && npm run typecheck:telegram-bot",
     "clean": "rm -rf dist client/dist",
     "test:v2:action": "node --import tsx --test test/v2-action-integration.test.mjs test/v2-actor-channel-privilege-integration.test.mjs",
     "test:customer-operational-issue": "node --import tsx --test test/customer-operational-issue.test.mjs",
