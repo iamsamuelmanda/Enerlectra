@@ -27,7 +27,8 @@
     "provision:v2:actor": "node scripts/provision-v2-actor.mjs",
     "test:v2:self-service": "node --import tsx --test test/v2-self-service-onboarding.test.mjs",
     "test:v2:security-gate": "npm run test:v2:self-service && npm run test:v2:actor-channel-privilege-integration",
-    "test:v2:operational-intelligence": "node --import tsx --test test/v2-operational-intelligence.test.mjs"
+    "test:v2:operational-intelligence": "node --import tsx --test test/v2-operational-intelligence.test.mjs",
+    "test:v2:multi-tenant": "node --import tsx --test test/v2-multi-tenant-boundary.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
