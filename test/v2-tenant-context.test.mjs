@@ -6,6 +6,7 @@ function chain(data, error = null) {
   const value = {
     data,
     error,
+    select() { return this; },
     eq() { return this; },
     maybeSingle() { return Promise.resolve({ data, error }); },
     then(resolve, reject) { return Promise.resolve({ data, error }).then(resolve, reject); },
