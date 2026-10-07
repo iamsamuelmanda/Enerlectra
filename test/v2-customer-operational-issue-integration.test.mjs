@@ -5,13 +5,13 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { createCustomerOperationalIssuesRouter } from '../server/src/routes/customerOperationalIssues.js';
 
-const url = process.env.V2_SUPABASE_URL;
-const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
+const url = process.env.SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const integrationEnabled = Boolean(url && serviceRoleKey);
 
 test('V2 Customer Operational Issue authenticated HTTP gate is configured', () => {
   if (!integrationEnabled) {
-    assert.ok(true, 'Set V2_SUPABASE_URL and V2_SUPABASE_SERVICE_ROLE_KEY to run live authenticated HTTP tests.');
+    assert.ok(true, 'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to run live authenticated HTTP tests.');
   }
 });
 
