@@ -7,6 +7,7 @@ import type {
   EllieWorkItem,
   EllieMemory,
   EllieOrganizationSnapshot,
+  EllieOperationalDigest,
 } from 'enerlectra-core';
 
 type OperationalQueue = {
@@ -77,7 +78,8 @@ export function buildCanonicalEllieContext(
   tenant: TenantContext,
   queue: OperationalQueue,
   memories: EllieMemory[] = [],
-  organizationSnapshot?: EllieOrganizationSnapshot
+  organizationSnapshot?: EllieOrganizationSnapshot,
+  operationalDigest?: EllieOperationalDigest,
 ): EllieContext {
   const situations: EllieSituation[] = [];
   const work: EllieWorkItem[] = [];
@@ -184,6 +186,7 @@ export function buildCanonicalEllieContext(
     work,
     memories,
     organizationSnapshot,
+    operationalDigest,
     source: 'canonical',
   };
 }
