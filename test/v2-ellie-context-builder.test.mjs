@@ -124,14 +124,6 @@ test('Ellie inference boundary rejects fabricated evidence and targets only supp
       workItems: [],
       recommendations: [],
     }],
-  }, {
-    customers: [{ id: 'customer-b' }],
-    sites: [],
-    assets: [],
-    activeExceptions: [],
-    recentEvidence: [],
-    operationalHistory: [],
-    availableResourceTypes: ['CUSTOMER'],
   }, [{
     id: 'memory-a',
     memoryType: 'OUTCOME_PATTERN',
@@ -145,7 +137,15 @@ test('Ellie inference boundary rejects fabricated evidence and targets only supp
     occurrenceCount: 1,
     contradictionCount: 0,
     lastConfirmedAt: new Date().toISOString(),
-  }]);
+  }], undefined, {
+    customers: [{ id: 'customer-b' }],
+    sites: [],
+    assets: [],
+    activeExceptions: [],
+    recentEvidence: [],
+    operationalHistory: [],
+    availableResourceTypes: ['CUSTOMER'],
+  });
 
   const validInference = {
     summary: 'Inspect the inverter.',
