@@ -1,13 +1,14 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { askEllieStructured } from 'enerlectra-core';
+import { askEllieStructured, type EllieOperationalDigest } from 'enerlectra-core';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
 import { buildCanonicalEllieContext } from '../platform/intelligence/ellie-context-builder.js';
 import { loadOrganizationSnapshot } from '../platform/intelligence/organization-snapshot.js';
 import {
   loadTenantEllieMemories,
   recordEllieLearningEvent,
+  recordEllieCounterEvidence,
   reinforceTenantMemory,
 } from '../platform/intelligence/ellie-learning.js';
 
@@ -71,6 +72,90 @@ async function loadQueue(db: SupabaseClient, organizationId: string) {
   };
 }
 
+async function loadOperationalDigest(
+  db: SupabaseClient,
+  organizationId: string,
+  permissions: readonly string[],
+): Promise<EllieOperationalDigest> {
+  const can = (permission: string) => permissions.includes(permission);
+  const [customers, sites, assets] = await Promise.all([
+    can('customer.read')
+      ? db.from('customers')
+          .select('id,external_ref,name,status,metadata,created_at,updated_at')
+          .eq('organization_id', organizationId)
+          .order('updated_at', { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+    can('site.read')
+      ? db.from('sites')
+          .select('id,customer_id,name,address,status,metadata,created_at,updated_at')
+          .eq('organization_id', organizationId)
+          .order('updated_at', { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+    can('asset.read')
+      ? db.from('assets')
+          .select('id,site_id,customer_id,asset_type,manufacturer,model,status,installed_at,metadata,created_at,updated_at')
+          .eq('organization_id', organizationId)
+          .order('updated_at', { ascending: false })
+          .limit(75)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (customers.error) throw customers.error;
+  if (sites.error) throw sites.error;
+  if (assets.error) throw assets.error;
+
+  return {
+    customers: customers.data ?? [],
+    sites: sites.data ?? [],
+    assets: assets.data ?? [],
+    activeExceptions: [],
+    recentEvidence: [],
+    operationalHistory: [],
+    availableResourceTypes: [
+      ...(can('customer.read') ? ['CUSTOMER'] : []),
+      ...(can('site.read') ? ['SITE'] : []),
+      ...(can('asset.read') ? ['ASSET'] : []),
+      'SITUATION',
+      'WORK',
+      'ACTION',
+      'VERIFICATION',
+    ],
+  };
+}
+
+function validateInferenceAgainstContext(
+  inference: Awaited<ReturnType<typeof askEllieStructured>>,
+  context: ReturnType<typeof buildCanonicalEllieContext>,
+) {
+  const validIds = new Set<string>([
+    ...context.evidence.map((item) => item.id),
+    ...context.situations.map((item) => item.id),
+    ...context.work.map((item) => item.id),
+    ...context.recommendations.map((item) => item.id),
+    ...context.memories.map((item) => item.id),
+  ]);
+
+  const invalidEvidence = inference.evidenceUsed.filter((id) => !validIds.has(id));
+  if (invalidEvidence.length) {
+    throw new Error('ELLIE_EVIDENCE_REFERENCE_INVALID');
+  }
+
+  if (inference.targetSituationId && !context.situations.some((s) => s.id === inference.targetSituationId)) {
+    throw new Error('ELLIE_TARGET_SITUATION_INVALID');
+  }
+
+  const validResourceIds = new Set<string>([
+    ...context.situations.flatMap((s) => s.resourceId ? [s.resourceId] : []),
+    ...context.evidence.flatMap((e) => e.resourceId ? [e.resourceId] : []),
+    ...(context.operationalDigest?.customers ?? []).map((r) => String(r.id)),
+    ...(context.operationalDigest?.sites ?? []).map((r) => String(r.id)),
+    ...(context.operationalDigest?.assets ?? []).map((r) => String(r.id)),
+  ]);
+  const invalidResources = inference.targetResourceIds.filter((id) => !validResourceIds.has(id));
+  if (invalidResources.length) throw new Error('ELLIE_TARGET_RESOURCE_INVALID');
+}
+
 export function createEllieRouter(db: SupabaseClient): Router {
   const router = Router();
   const resolver = createTenantContextResolver(db);
@@ -92,22 +177,30 @@ export function createEllieRouter(db: SupabaseClient): Router {
       const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
       if (!message) return res.status(400).json({ error: 'message is required', code: 'MESSAGE_REQUIRED' });
 
-      const [queue, memories, organizationSnapshot] = await Promise.all([
+      const [queue, memories, organizationSnapshot, operationalDigest] = await Promise.all([
         loadQueue(db, tenant.organizationId),
         loadTenantEllieMemories(db, tenant.organizationId, message),
         loadOrganizationSnapshot(db, tenant.organizationId),
+        loadOperationalDigest(db, tenant.organizationId, tenant.permissions),
       ]);
-      const context = buildCanonicalEllieContext(tenant, queue, memories, organizationSnapshot);
+      const context = buildCanonicalEllieContext(
+        tenant,
+        queue,
+        memories,
+        organizationSnapshot,
+        operationalDigest,
+      );
       const inference = await askEllieStructured(message, JSON.stringify(context));
+      validateInferenceAgainstContext(inference, context);
 
-      const situationId = context.situations[0]?.id;
+      const situationId = inference.targetSituationId ?? null;
       if (!situationId) {
         return res.json({
           recommendation: null,
           inference,
           memoryCount: memories.length,
           organizationId: tenant.organizationId,
-          note: 'No open situation was present, so no persistent recommendation was created.',
+          note: 'Ellie did not identify a specific open situation. No recommendation was attached to an unrelated situation.',
         });
       }
 
@@ -127,6 +220,8 @@ export function createEllieRouter(db: SupabaseClient): Router {
             actorId: tenant.actorId,
             operatingContext: tenant.operatingContext,
             evidenceUsed: inference.evidenceUsed,
+            targetSituationId: situationId,
+            targetResourceIds: inference.targetResourceIds,
             learningSignal: inference.learningSignal ?? null,
             memoryIds: memories.map((m) => m.id),
             generatedAt: new Date().toISOString(),
@@ -147,7 +242,11 @@ export function createEllieRouter(db: SupabaseClient): Router {
       if (error instanceof TenantContextError) {
         return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
       }
-      return res.status(500).json({ error: error instanceof Error ? error.message : 'Ellie inference failed' });
+      const message = error instanceof Error ? error.message : 'Ellie inference failed';
+      if (message.startsWith('ELLIE_')) {
+        return res.status(502).json({ error: 'Ellie produced an inference that failed canonical validation', code: message });
+      }
+      return res.status(500).json({ error: message });
     }
   });
 
@@ -190,7 +289,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
       if (verificationId) {
         const { data: verification, error: verificationError } = await db
           .from('verifications')
-          .select('id,organization_id,situation_id')
+          .select('id,organization_id,situation_id,verification_type,verification_status')
           .eq('id', verificationId)
           .eq('organization_id', tenant.organizationId)
           .maybeSingle();
@@ -209,9 +308,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
         recommendationId: recommendation.id,
         verificationId: verificationId ?? undefined,
         outcome: outcome as any,
-        details: {
-          result: req.body?.result ?? null,
-        },
+        details: { result: req.body?.result ?? null },
       });
 
       const nextStatus = ['VERIFIED', 'ACCEPTED'].includes(outcome)
@@ -226,27 +323,37 @@ export function createEllieRouter(db: SupabaseClient): Router {
         .eq('organization_id', tenant.organizationId);
       if (updateError) throw updateError;
 
-      if (outcome === 'VERIFIED' || outcome === 'FAILED') {
-        const snapshot = (recommendation.context_snapshot ?? {}) as Record<string, unknown>;
-        const signal = typeof snapshot.learningSignal === 'string' ? snapshot.learningSignal.trim() : '';
-        if (signal) {
-          const confidence = Number(recommendation.confidence ?? 0.5);
-          const outcomeStatement = outcome === 'VERIFIED'
-            ? signal
-            : `The previously suggested pattern was not verified: ${signal}`;
-          const memoryInput = {
-            organizationId: tenant.organizationId,
-            scopeKey: `recommendation:${String(recommendation.summary).slice(0, 120)}`,
-            statement: outcomeStatement,
-            evidenceRefs: [recommendation.id, ...(verificationId ? [verificationId] : [])],
-            confidence,
-          };
-          if (outcome === 'VERIFIED') {
-            await reinforceTenantMemory(db, memoryInput);
-          }
-          // A failed verification is counter-evidence, not a new organizational fact.
-          // Keep the learning event for auditability, but never promote the failed signal into memory.
+      const snapshot = (recommendation.context_snapshot ?? {}) as Record<string, unknown>;
+      const signal = typeof snapshot.learningSignal === 'string' ? snapshot.learningSignal.trim() : '';
+      const resourceRefs = Array.isArray(snapshot.targetResourceIds)
+        ? snapshot.targetResourceIds.map(String)
+        : [];
+      const evidenceRefs = [recommendation.id, ...(verificationId ? [verificationId] : [])];
 
+      if (signal && (outcome === 'VERIFIED' || outcome === 'FAILED')) {
+        const scopeKey = [
+          'recommendation-outcome',
+          recommendation.situation_id ?? 'organization',
+          ...resourceRefs.sort(),
+        ].join(':');
+
+        if (outcome === 'VERIFIED') {
+          await reinforceTenantMemory(db, {
+            organizationId: tenant.organizationId,
+            scopeKey,
+            statement: signal,
+            evidenceRefs,
+            resourceRefs,
+            confidence: Number(recommendation.confidence ?? 0.5),
+            evidenceStrength: verificationId ? 0.9 : 0.6,
+          });
+        } else {
+          await recordEllieCounterEvidence(db, {
+            organizationId: tenant.organizationId,
+            scopeKey,
+            statement: signal,
+            evidenceRefs,
+          });
         }
       }
 
