@@ -517,3 +517,15 @@ Enerlectra Core
 **The soul stays. The authority boundary changes.**
 
 This is the governing rule for subsequent Enerlectra convergence work.
+
+
+## 2026-10-07 canonical Ellie context seam
+
+The convergence work now includes a non-breaking intelligence boundary in `enerlectra-core`:
+
+- `EllieContext` is a typed contract containing actor, organization, permissions, operating context, capabilities, policies, evidence, situations, recommendations and work.
+- `ExecutionContext.ellieContext` is optional so existing channel runtimes remain functional during migration.
+- `EllieWorker` prefers the canonical context when supplied and falls back to the existing context-builder only for legacy callers.
+- The legacy context-builder is therefore explicitly an adapter path, not the future tenant authority.
+
+No V2 caller is wired to this seam yet. That is deliberate: the next step is to construct the context from the already-validated V2 tenant resolver and operational queue, rather than allowing Ellie to query legacy customer/transaction/alert tables directly.
