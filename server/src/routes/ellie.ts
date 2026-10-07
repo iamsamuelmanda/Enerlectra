@@ -103,7 +103,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
           organization_id: tenant.organizationId,
           situation_id: situationId,
           generated_by: 'ELLIE',
-          status: 'ACTIVE',
+          status: 'PROPOSED',
           recommendation_type: inference.recommendationType,
           summary: inference.summary,
           rationale: inference.rationale,
@@ -176,7 +176,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
         },
       });
 
-      const nextStatus = outcome === 'VERIFIED' ? 'VERIFIED' : outcome === 'FAILED' ? 'FAILED' : outcome;
+      const nextStatus = ['VERIFIED', 'ACCEPTED'].includes(outcome)\n        ? 'ACCEPTED'\n        : ['FAILED', 'REJECTED'].includes(outcome)\n          ? 'REJECTED'\n          : 'EXPIRED';
       const { error: updateError } = await db
         .from('recommendations')
         .update({ status: nextStatus })
