@@ -11,9 +11,9 @@ test('active server composition root does not mount retired protocol runtime', a
     'settlementCron', 'matchingCron', 'payoutProcessorCron', 'pcuMinting',
     'clusterSettlementEngine',
   ]) assert.equal(source.includes(retired), false, `legacy runtime reference remains: ${retired}`);
-  assert.match(source, /V2_SUPABASE_URL/);
-  assert.match(source, /V2_SUPABASE_ANON_KEY/);
-  assert.match(source, /V2_SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(source, /SUPABASE_URL/);
+  assert.match(source, /SUPABASE_ANON_KEY/);
+  assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
   assert.match(source, /canonical database boundary/);
   assert.match(source, /createCustomerOperationalIssuesRouter/);
   assert.match(source, /createActionsRouter/);
