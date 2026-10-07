@@ -73,4 +73,16 @@ test('canonical Ellie context derives authority from TenantContext', () => {
   assert.equal(context.recommendations[0].id, 'recommendation-a');
   assert.equal(context.evidence[0].id, 'attempt-a');
   assert.equal(context.evidence[0].type, 'ACTION_ATTEMPT_RESULT');
+
+  const memoryContext = buildCanonicalEllieContext(tenant, { situations: [] }, [{
+    id: 'memory-a',
+    memoryType: 'OUTCOME_PATTERN',
+    scopeKey: 'meter-anomaly',
+    statement: 'Verified field checks resolve this anomaly class.',
+    evidenceRefs: ['attempt-a'],
+    confidence: 0.92,
+    occurrenceCount: 4,
+  }]);
+  assert.equal(memoryContext.memories[0].id, 'memory-a');
+  assert.equal(memoryContext.memories[0].confidence, 0.92);
 });
