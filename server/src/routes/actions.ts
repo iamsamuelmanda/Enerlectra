@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   authorizeAction,
   createAction,
@@ -9,6 +9,7 @@ import {
   transitionAttempt,
 } from '../services/actions.js';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
+import { createRequestScopedSupabaseClient } from '../platform/supabase/request-client.js';
 
 type RouteRequest = Request & { requestId?: string };
 
