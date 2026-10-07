@@ -43,6 +43,15 @@ export interface EllieWorkItem {
   metadata?: Record<string, unknown>;
 }
 
+export interface EllieOrganizationSnapshot {
+  customerCount: number;
+  siteCount: number;
+  assetCount: number;
+  openSituationCount: number;
+  openWorkItemCount: number;
+  activeActionCount: number;
+}
+
 export interface EllieContext {
   actorId: string;
   organizationId: string;
@@ -55,5 +64,6 @@ export interface EllieContext {
   recommendations: EllieRecommendation[];
   work: EllieWorkItem[];
   memories: EllieMemory[];
+  organizationSnapshot?: EllieOrganizationSnapshot;
   source: 'canonical';
 }
