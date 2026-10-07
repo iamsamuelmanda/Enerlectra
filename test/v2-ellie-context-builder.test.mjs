@@ -98,3 +98,68 @@ test('canonical Ellie context derives authority from TenantContext', () => {
   assert.equal(memoryContext.memories[0].id, 'memory-a');
   assert.equal(memoryContext.memories[0].confidence, 0.92);
 });
+
+
+import { validateInferenceAgainstContext } from '../server/src/routes/ellie.ts';
+
+test('Ellie inference boundary rejects fabricated evidence and targets only supplied resources', () => {
+  const context = buildCanonicalEllieContext({
+    actorId: 'actor-a',
+    organizationId: 'org-a',
+    membershipId: 'membership-a',
+    roles: ['OWNER'],
+    permissions: ['recommendation.read'],
+    operatingContext: { capabilities: [], policies: {} },
+    correlationId: 'corr-a',
+    requestId: 'req-a',
+    source: 'api',
+  }, {
+    situations: [{
+      id: 'situation-a',
+      status: 'OPEN',
+      title: 'Inverter fault',
+      customer_id: 'customer-a',
+      site_id: 'site-a',
+      asset_id: 'asset-a',
+      workItems: [],
+      recommendations: [],
+    }],
+  }, [{
+    id: 'memory-a',
+    memoryType: 'OUTCOME_PATTERN',
+    knowledgeType: 'OUTCOME',
+    scopeKey: 'situation-a',
+    statement: 'Verified field inspection resolved the case.',
+    evidenceRefs: ['evidence-a'],
+    resourceRefs: ['asset-a'],
+    confidence: 0.9,
+    evidenceStrength: 0.9,
+    occurrenceCount: 1,
+    contradictionCount: 0,
+    lastConfirmedAt: new Date().toISOString(),
+  }]);
+
+  const validInference = {
+    summary: 'Inspect the inverter.',
+    rationale: 'The open situation concerns the supplied asset.',
+    recommendationType: 'FIELD_CHECK',
+    confidence: 0.8,
+    evidenceUsed: ['situation-a', 'memory-a'],
+    targetSituationId: 'situation-a',
+    targetResourceIds: ['asset-a'],
+  };
+  assert.doesNotThrow(() => validateInferenceAgainstContext(validInference, context));
+
+  assert.throws(
+    () => validateInferenceAgainstContext({ ...validInference, evidenceUsed: ['forged-evidence'] }, context),
+    /ELLIE_EVIDENCE_REFERENCE_INVALID/,
+  );
+  assert.throws(
+    () => validateInferenceAgainstContext({ ...validInference, targetResourceIds: ['asset-not-supplied'] }, context),
+    /ELLIE_TARGET_RESOURCE_INVALID/,
+  );
+  assert.throws(
+    () => validateInferenceAgainstContext({ ...validInference, learningSignal: 'Case outcome without a target.' , targetSituationId: undefined }, context),
+    /ELLIE_LEARNING_TARGET_REQUIRED/,
+  );
+});
