@@ -8,6 +8,8 @@ export interface EllieInference {
   proposedWorkType?: string;
   evidenceUsed: string[];
   learningSignal?: string;
+  targetSituationId?: string;
+  targetResourceIds: string[];
 }
 
 const SYSTEM_PROMPT = `You are Ellie, Enerlectra's tenant-scoped operational intelligence layer.
@@ -93,10 +95,12 @@ Return ONLY one JSON object with this exact shape:
   "confidence": 0.0,
   "proposedWorkType": "optional work type or empty string",
   "evidenceUsed": ["IDs of evidence/situations/memories actually used"],
+  "targetSituationId": "ID of the situation this recommendation concerns, or empty string if none",
+  "targetResourceIds": ["canonical customer/site/asset/resource IDs directly concerned, if known"],
   "learningSignal": "one short pattern statement only if the supplied evidence supports one, otherwise empty string"
 }
 
-Confidence must be between 0 and 1. Do not manufacture evidence IDs. If evidence is insufficient, say so in the rationale and lower confidence.`;
+Confidence must be between 0 and 1. Do not manufacture evidence IDs. If evidence is insufficient, say so in the rationale and lower confidence.\n\nRecommendation type must be exactly one of INVESTIGATE, MONITOR, CONTACT_CUSTOMER, FIELD_CHECK, RECONCILE, ESCALATE, NO_ACTION.\nTarget situation must be an ID from the supplied context or empty string. Target resource IDs must come only from supplied context.`;
 
   const raw = await callEllie(instruction, 900);
   const parsed = parseJsonObject(raw);
@@ -105,13 +109,23 @@ Confidence must be between 0 and 1. Do not manufacture evidence IDs. If evidence
     throw new Error('Ellie returned invalid confidence');
   }
 
+  const recommendationTypes = new Set(['INVESTIGATE','MONITOR','CONTACT_CUSTOMER','FIELD_CHECK','RECONCILE','ESCALATE','NO_ACTION']);
+  const recommendationType = String(parsed.recommendationType ?? 'NO_ACTION').trim();
+  if (!recommendationTypes.has(recommendationType)) throw new Error('Ellie returned invalid recommendation type');
+  const targetSituationId = String(parsed.targetSituationId ?? '').trim();
+  const targetResourceIds = Array.isArray(parsed.targetResourceIds)
+    ? parsed.targetResourceIds.map(String).map((value) => value.trim()).filter(Boolean)
+    : [];
+
   return {
     summary: String(parsed.summary ?? '').trim(),
     rationale: String(parsed.rationale ?? '').trim(),
-    recommendationType: String(parsed.recommendationType ?? 'NO_ACTION').trim(),
+    recommendationType,
     confidence,
     proposedWorkType: String(parsed.proposedWorkType ?? '').trim() || undefined,
     evidenceUsed: Array.isArray(parsed.evidenceUsed) ? parsed.evidenceUsed.map(String) : [],
     learningSignal: String(parsed.learningSignal ?? '').trim() || undefined,
+    targetSituationId: targetSituationId || undefined,
+    targetResourceIds,
   };
 }
