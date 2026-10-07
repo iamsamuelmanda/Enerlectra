@@ -219,6 +219,18 @@ export function validateInferenceAgainstContext(
   ]);
   const invalidResources = inference.targetResourceIds.filter((id) => !validResourceIds.has(id));
   if (invalidResources.length) throw new Error('ELLIE_TARGET_RESOURCE_INVALID');
+
+  if (inference.targetSituationId && inference.targetResourceIds.length) {
+    const situation = context.situations.find((item) => item.id === inference.targetSituationId);
+    const situationResourceIds = new Set<string>([
+      ...(situation?.resourceId ? [situation.resourceId] : []),
+      ...(situation?.metadata?.customerId ? [String(situation.metadata.customerId)] : []),
+      ...(situation?.metadata?.siteId ? [String(situation.metadata.siteId)] : []),
+      ...(situation?.metadata?.assetId ? [String(situation.metadata.assetId)] : []),
+    ]);
+    const unrelatedTargets = inference.targetResourceIds.filter((id) => !situationResourceIds.has(id));
+    if (unrelatedTargets.length) throw new Error('ELLIE_TARGET_RESOURCE_SITUATION_MISMATCH');
+  }
 }
 
 export function createEllieRouter(db: SupabaseClient): Router {
@@ -459,7 +471,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
       if (verificationId) {
         const { data: verification, error: verificationError } = await db
           .from('verifications')
-          .select('id,organization_id,situation_id,verification_type,verification_status')
+          .select('id,organization_id,situation_id,verification_type,status')
           .eq('id', verificationId)
           .eq('organization_id', tenant.organizationId)
           .maybeSingle();
@@ -468,6 +480,13 @@ export function createEllieRouter(db: SupabaseClient): Router {
           return res.status(403).json({
             error: 'Verification does not belong to this recommendation tenant/situation',
             code: 'VERIFICATION_SCOPE_MISMATCH',
+          });
+        }
+        const requiredVerificationStatus = outcome === 'VERIFIED' ? 'VERIFIED' : 'FAILED';
+        if (verification.status !== requiredVerificationStatus) {
+          return res.status(409).json({
+            error: `Verification status ${verification.status} does not support learning outcome ${outcome}`,
+            code: 'VERIFICATION_STATUS_MISMATCH',
           });
         }
       }
