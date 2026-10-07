@@ -1,0 +1,47 @@
+export interface EllieEvidence {
+  id: string;
+  type: string;
+  summary?: string;
+  occurredAt?: string;
+  resourceId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EllieSituation {
+  id: string;
+  status: string;
+  title?: string;
+  severity?: string;
+  resourceId?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EllieRecommendation {
+  id: string;
+  situationId?: string;
+  summary?: string;
+  rationale?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EllieWorkItem {
+  id: string;
+  situationId?: string;
+  status: string;
+  type?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface EllieContext {
+  actorId: string;
+  organizationId: string;
+  permissions: string[];
+  operatingContext: Record<string, unknown>;
+  capabilities: Record<string, unknown>;
+  policies: Record<string, unknown>;
+  evidence: EllieEvidence[];
+  situations: EllieSituation[];
+  recommendations: EllieRecommendation[];
+  work: EllieWorkItem[];
+  source: 'canonical';
+}
