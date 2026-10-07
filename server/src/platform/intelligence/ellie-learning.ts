@@ -155,7 +155,7 @@ export async function reinforceTenantMemory(
   const { data: existing, error: lookupError } = await db
     .from('intelligence_memories')
     .select(
-      'id,memory_type,knowledge_type,confidence,evidence_strength,occurrence_count,contradiction_count,evidence_refs,resource_refs,status',
+      'id,memory_type,knowledge_type,confidence,evidence_strength,occurrence_count,contradiction_count,evidence_refs,resource_refs,status,valid_from,valid_until',
     )
     .eq('organization_id', input.organizationId)
     .eq('scope_key', input.scopeKey)
@@ -208,8 +208,8 @@ export async function reinforceTenantMemory(
       evidence_refs: [...new Set([...(Array.isArray(existing.evidence_refs) ? existing.evidence_refs : []), ...input.evidenceRefs])],
       resource_refs: [...new Set([...(Array.isArray(existing.resource_refs) ? existing.resource_refs : []), ...(input.resourceRefs ?? [])])],
       last_confirmed_at: new Date().toISOString(),
-      valid_from: null,
-      valid_until: null,
+      valid_from: existing.valid_from ?? new Date().toISOString(),
+      valid_until: existing.valid_until ?? null,
       status: 'ACTIVE',
     })
     .eq('id', existing.id)
