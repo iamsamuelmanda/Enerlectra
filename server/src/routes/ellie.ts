@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { askEllieStructured, type EllieOperationalDigest } from 'enerlectra-core';
+import { askEllieStructured } from 'enerlectra-core/src/ai/ellie.js';
+import type { EllieOperationalDigest } from 'enerlectra-core/src/domain/intelligence/ellie-context.js';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
 import { buildCanonicalEllieContext } from '../platform/intelligence/ellie-context-builder.js';
 import { loadOrganizationSnapshot } from '../platform/intelligence/organization-snapshot.js';
