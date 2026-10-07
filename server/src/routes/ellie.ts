@@ -96,7 +96,17 @@ export function createEllieRouter(db: SupabaseClient): Router {
       const context = buildCanonicalEllieContext(tenant, queue, memories);
       const inference = await askEllieStructured(message, JSON.stringify(context));
 
-      const situationId = context.situations[0]?.id ?? null;
+      const situationId = context.situations[0]?.id;
+      if (!situationId) {
+        return res.json({
+          recommendation: null,
+          inference,
+          memoryCount: memories.length,
+          organizationId: tenant.organizationId,
+          note: 'No open situation was present, so no persistent recommendation was created.',
+        });
+      }
+
       const { data: recommendation, error } = await db
         .from('recommendations')
         .insert({
