@@ -71,14 +71,15 @@ create index if not exists intelligence_memories_org_scope_idx
 -- Existing first-generation memories are explicitly classified as outcomes.
 update public.intelligence_memories
 set
-  knowledge_type = 'OUTCOME',
+  knowledge_type = case
+    when knowledge_type in ('FACT','PROCEDURE','POLICY','PATTERN','PREFERENCE','OUTCOME') then knowledge_type
+    else 'OUTCOME'
+  end,
   evidence_strength = greatest(least(coalesce(evidence_strength, confidence), 1), 0),
   resource_refs = coalesce(resource_refs, '[]'::jsonb),
   contradiction_count = coalesce(contradiction_count, 0),
-  valid_from = coalesce(valid_from, first_observed_at),
-  valid_until = coalesce(valid_until, first_observed_at + interval '180 days')
-where knowledge_type is null
-   or knowledge_type not in ('FACT','PROCEDURE','POLICY','PATTERN','PREFERENCE','OUTCOME');
+  valid_from = coalesce(valid_from, first_observed_at, now()),
+  valid_until = coalesce(valid_until, first_observed_at + interval '180 days', now() + interval '180 days');
 
 comment on column public.intelligence_memories.knowledge_type is
   'Epistemic class: canonical facts/policies are not AI memory; outcome knowledge requires verified evidence and explicit promotion before becoming a pattern.';
