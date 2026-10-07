@@ -168,20 +168,44 @@ export function createEllieRouter(db: SupabaseClient): Router {
 
       const { data: recommendation, error: recommendationError } = await db
         .from('recommendations')
-        .select('id,organization_id,summary,rationale,confidence,context_snapshot')
+        .select('id,organization_id,situation_id,summary,rationale,confidence,context_snapshot')
         .eq('id', req.params.recommendationId)
         .eq('organization_id', tenant.organizationId)
         .maybeSingle();
       if (recommendationError) throw recommendationError;
       if (!recommendation) return res.status(404).json({ error: 'Recommendation not found', code: 'RECOMMENDATION_NOT_FOUND' });
 
+      const verificationId = req.body?.verificationId ? String(req.body.verificationId) : null;
+      if ((outcome === 'VERIFIED' || outcome === 'FAILED') && !verificationId) {
+        return res.status(400).json({
+          error: 'A verificationId is required for verified learning outcomes',
+          code: 'VERIFICATION_REQUIRED',
+        });
+      }
+
+      if (verificationId) {
+        const { data: verification, error: verificationError } = await db
+          .from('verifications')
+          .select('id,organization_id,situation_id')
+          .eq('id', verificationId)
+          .eq('organization_id', tenant.organizationId)
+          .maybeSingle();
+        if (verificationError) throw verificationError;
+        if (!verification || verification.situation_id !== recommendation.situation_id) {
+          return res.status(403).json({
+            error: 'Verification does not belong to this recommendation tenant/situation',
+            code: 'VERIFICATION_SCOPE_MISMATCH',
+          });
+        }
+      }
+
       await recordEllieLearningEvent(db, {
         organizationId: tenant.organizationId,
         actorId: tenant.actorId,
         recommendationId: recommendation.id,
+        verificationId: verificationId ?? undefined,
         outcome: outcome as any,
         details: {
-          verificationId: req.body?.verificationId ?? null,
           result: req.body?.result ?? null,
         },
       });
@@ -206,7 +230,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
             organizationId: tenant.organizationId,
             scopeKey: `recommendation:${String(recommendation.summary).slice(0, 120)}`,
             statement: outcomeStatement,
-            evidenceRefs: [recommendation.id, ...(req.body?.verificationId ? [String(req.body.verificationId)] : [])],
+            evidenceRefs: [recommendation.id, ...(verificationId ? [verificationId] : [])],
             confidence: outcome === 'VERIFIED' ? confidence : Math.min(confidence, 0.35),
           });
         }
