@@ -10,6 +10,7 @@ import {
   recordEllieLearningEvent,
   recordEllieCounterEvidence,
   reinforceTenantMemory,
+  promoteTenantMemoryToPattern,
 } from '../platform/intelligence/ellie-learning.js';
 
 function bearer(req: any): string {
@@ -302,6 +303,49 @@ export function createEllieRouter(db: SupabaseClient): Router {
         return res.status(502).json({ error: 'Ellie produced an inference that failed canonical validation', code: message });
       }
       return res.status(500).json({ error: message });
+    }
+  });
+
+  router.post('/ellie/memories/:memoryId/promote-pattern', async (req: any, res) => {
+    try {
+      const tenant = await resolver.resolve({
+        accessToken: bearer(req),
+        organizationId: req.header('x-organization-id') || undefined,
+        correlationId: req.header('x-correlation-id') || crypto.randomUUID(),
+        requestId: req.id || crypto.randomUUID(),
+        source: 'api',
+      });
+
+      if (!tenant.permissions.includes('organization.manage')) {
+        return res.status(403).json({ error: 'Forbidden', code: 'MISSING_PERMISSION' });
+      }
+
+      await promoteTenantMemoryToPattern(db, {
+        organizationId: tenant.organizationId,
+        memoryId: String(req.params.memoryId),
+      });
+
+      return res.json({
+        ok: true,
+        memoryId: String(req.params.memoryId),
+        knowledgeType: 'PATTERN',
+      });
+    } catch (error) {
+      if (error instanceof TenantContextError) {
+        return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
+      }
+      const message = error instanceof Error ? error.message : 'Failed to promote Ellie memory';
+      const known = new Set([
+        'ELLIE_MEMORY_NOT_FOUND',
+        'ELLIE_MEMORY_NOT_ACTIVE',
+        'ELLIE_MEMORY_ALREADY_CLASSIFIED',
+        'ELLIE_PATTERN_EVIDENCE_INSUFFICIENT',
+        'ELLIE_PATTERN_CONTRADICTED',
+        'ELLIE_PATTERN_EVIDENCE_WEAK',
+        'ELLIE_PATTERN_PROVENANCE_INSUFFICIENT',
+      ]);
+      if (known.has(message)) return res.status(409).json({ error: message, code: message });
+      return res.status(500).json({ error: message, code: 'ELLIE_MEMORY_PROMOTION_FAILED' });
     }
   });
 
