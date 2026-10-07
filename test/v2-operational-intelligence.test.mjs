@@ -8,9 +8,9 @@ import { createCustomerOperationalIssuesRouter } from '../server/src/routes/cust
 import { createVerificationsRouter } from '../server/src/routes/verifications.js';
 import { createOperationsRouter } from '../server/src/routes/operations.js';
 
-const url = process.env.V2_SUPABASE_URL;
-const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.V2_SUPABASE_ANON_KEY;
+const url = process.env.SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.SUPABASE_ANON_KEY;
 const enabled = Boolean(url && serviceRoleKey && anonKey);
 
 test('operational intelligence gate is configured', () => {
