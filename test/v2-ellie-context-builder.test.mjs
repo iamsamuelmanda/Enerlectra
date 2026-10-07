@@ -74,6 +74,18 @@ test('canonical Ellie context derives authority from TenantContext', () => {
   assert.equal(context.evidence[0].id, 'attempt-a');
   assert.equal(context.evidence[0].type, 'ACTION_ATTEMPT_RESULT');
 
+  const snapshotContext = buildCanonicalEllieContext(tenant, { situations: [] }, [], {
+    customerCount: 12,
+    siteCount: 8,
+    assetCount: 21,
+    openSituationCount: 3,
+    openWorkItemCount: 5,
+    activeActionCount: 2,
+  });
+  assert.equal(snapshotContext.organizationSnapshot.customerCount, 12);
+  assert.equal(snapshotContext.organizationSnapshot.assetCount, 21);
+  assert.equal(snapshotContext.organizationSnapshot.openSituationCount, 3);
+
   const memoryContext = buildCanonicalEllieContext(tenant, { situations: [] }, [{
     id: 'memory-a',
     memoryType: 'OUTCOME_PATTERN',
