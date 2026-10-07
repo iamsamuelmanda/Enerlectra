@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
-import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   authorizeAction,
   createAction,
@@ -24,14 +23,8 @@ function accessToken(req: Request): string {
   return value?.startsWith('Bearer ') ? value.slice(7).trim() : '';
 }
 
-function scopedClient(req: Request): SupabaseClient {
-  const url = process.env.V2_SUPABASE_URL;
-  const anonKey = process.env.V2_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) throw new Error('V2 Supabase public configuration is unavailable');
-  return createClient(url, anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { headers: { Authorization: `Bearer ${accessToken(req)}` } },
-  });
+function scopedClient(req: Request) {
+  return createRequestScopedSupabaseClient(accessToken(req));
 }
 
 function requirePermission(permissions: readonly string[], permission: string) {
