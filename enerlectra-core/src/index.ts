@@ -30,6 +30,8 @@ export { StartResetMeterHandler, SelectResetMeterTypeHandler, ConfirmResetMeterH
 export type {
   EllieContext,
   EllieEvidence,
+  EllieOperationalDigest,
+  EllieKnowledgeType,
   EllieRecommendation,
   EllieSituation,
   EllieWorkItem,
