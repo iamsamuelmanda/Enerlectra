@@ -18,7 +18,7 @@ services:
         value: https://enerlectra-ellie-bot.onrender.com
 
   - type: web
-    name: enerlectra-backend
+    name: enerlectra
     env: node
     plan: free
     buildCommand: "npm ci && npm run build:client"
@@ -32,12 +32,12 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://enerlectra-frontend-c406365od-samuel-mandas-projects.vercel.app,http://localhost:3000
-      - key: V2_SUPABASE_URL
+      - key: SUPABASE_URL
         value: https://mtyhzvkiuibigjximsix.supabase.co
-      - key: V2_SUPABASE_ANON_KEY
+      - key: SUPABASE_ANON_KEY
         sync: false
-      - key: V2_SUPABASE_SERVICE_ROLE_KEY
+      - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
     healthCheckPath: /api/health
-    autoDeploy: false # V2 cutover is manual; do not replace the live V1 runtime on merge.
+    autoDeploy: false
     branch: main
