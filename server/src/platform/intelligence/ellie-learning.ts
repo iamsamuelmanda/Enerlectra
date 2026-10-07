@@ -14,6 +14,7 @@ export type EllieMemory = {
   occurrenceCount: number;
   contradictionCount: number;
   lastConfirmedAt: string;
+  lastCounterEvidenceAt?: string;
   validFrom?: string;
   validUntil?: string;
   status?: string;
@@ -48,7 +49,7 @@ export async function loadTenantEllieMemories(
   let query = db
     .from('intelligence_memories')
     .select(
-      'id,memory_type,knowledge_type,scope_key,statement,evidence_refs,resource_refs,confidence,evidence_strength,occurrence_count,contradiction_count,last_confirmed_at,valid_from,valid_until,status',
+      'id,memory_type,knowledge_type,scope_key,statement,evidence_refs,resource_refs,confidence,evidence_strength,occurrence_count,contradiction_count,last_confirmed_at,last_counter_evidence_at,valid_from,valid_until,status',
     )
     .eq('organization_id', organizationId)
     .eq('status', 'ACTIVE')
@@ -82,10 +83,12 @@ export async function loadTenantEllieMemories(
         (now - new Date(memory.last_confirmed_at).getTime()) / 86_400_000,
       );
       const recencyScore = Math.max(0, 1 - recencyDays / 180);
+      const decayFactor = Math.pow(0.5, recencyDays / 365);
+      const effectiveConfidence = Number(memory.confidence || 0) * decayFactor;
       const score =
         lexicalOverlap * 3 +
         Number(memory.evidence_strength || 0) * 2 +
-        Number(memory.confidence || 0) * 2 +
+        effectiveConfidence * 2 +
         recencyScore +
         (KNOWLEDGE_WEIGHT[memory.knowledge_type as EllieKnowledgeType] ?? 0.8) -
         contradictionPenalty;
@@ -103,6 +106,7 @@ export async function loadTenantEllieMemories(
         occurrenceCount: Number(memory.occurrence_count),
         contradictionCount: Number(memory.contradiction_count ?? 0),
         lastConfirmedAt: memory.last_confirmed_at,
+        lastCounterEvidenceAt: memory.last_counter_evidence_at ?? undefined,
         validFrom: memory.valid_from ?? undefined,
         validUntil: memory.valid_until ?? undefined,
         status: memory.status ?? 'ACTIVE',
@@ -155,7 +159,7 @@ export async function reinforceTenantMemory(
   const { data: existing, error: lookupError } = await db
     .from('intelligence_memories')
     .select(
-      'id,memory_type,knowledge_type,confidence,evidence_strength,occurrence_count,contradiction_count,evidence_refs,resource_refs,status,valid_from,valid_until',
+      'id,memory_type,knowledge_type,confidence,evidence_strength,occurrence_count,contradiction_count,evidence_refs,resource_refs,status,valid_from,valid_until,last_counter_evidence_at',
     )
     .eq('organization_id', input.organizationId)
     .eq('scope_key', input.scopeKey)
@@ -179,7 +183,7 @@ export async function reinforceTenantMemory(
       contradiction_count: 0,
       status: 'ACTIVE',
       valid_from: new Date().toISOString(),
-      valid_until: null,
+      valid_until: new Date(Date.now() + 180 * 86_400_000).toISOString(),
     });
     if (error) throw error;
     return;
@@ -209,7 +213,7 @@ export async function reinforceTenantMemory(
       resource_refs: [...new Set([...(Array.isArray(existing.resource_refs) ? existing.resource_refs : []), ...(input.resourceRefs ?? [])])],
       last_confirmed_at: new Date().toISOString(),
       valid_from: existing.valid_from ?? new Date().toISOString(),
-      valid_until: existing.valid_until ?? null,
+      valid_until: new Date(Date.now() + 180 * 86_400_000).toISOString(),
       status: 'ACTIVE',
     })
     .eq('id', existing.id)
@@ -231,7 +235,7 @@ export async function recordEllieCounterEvidence(
 
   const { data: existing, error } = await db
     .from('intelligence_memories')
-    .select('id,confidence,occurrence_count,contradiction_count,evidence_refs')
+    .select('id,confidence,occurrence_count,contradiction_count,evidence_refs,last_counter_evidence_at')
     .eq('organization_id', input.organizationId)
     .eq('scope_key', input.scopeKey)
     .eq('statement', input.statement)
