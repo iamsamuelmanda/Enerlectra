@@ -178,6 +178,8 @@ export async function reinforceTenantMemory(
       occurrence_count: 1,
       contradiction_count: 0,
       status: 'ACTIVE',
+      valid_from: new Date().toISOString(),
+      valid_until: null,
     });
     if (error) throw error;
     return;
@@ -191,10 +193,10 @@ export async function reinforceTenantMemory(
   const nextEvidenceStrength = clamp(
     (Number(existing.evidence_strength || 0) * Math.max(1, occurrenceCount - 1) + evidenceStrength) / occurrenceCount,
   );
-  const knowledgeType =
-    existing.knowledge_type === 'PATTERN' || occurrenceCount >= 3
-      ? 'PATTERN'
-      : (existing.knowledge_type ?? 'OUTCOME');
+  // A verified recommendation outcome is evidence about this instance. It is not
+  // automatically promoted into an organizational PATTERN merely because it repeats.
+  // Pattern promotion must be an explicit, evidence-reviewed operation.
+  const knowledgeType = existing.knowledge_type ?? 'OUTCOME';
 
   const { error } = await db
     .from('intelligence_memories')
@@ -206,6 +208,8 @@ export async function reinforceTenantMemory(
       evidence_refs: [...new Set([...(Array.isArray(existing.evidence_refs) ? existing.evidence_refs : []), ...input.evidenceRefs])],
       resource_refs: [...new Set([...(Array.isArray(existing.resource_refs) ? existing.resource_refs : []), ...(input.resourceRefs ?? [])])],
       last_confirmed_at: new Date().toISOString(),
+      valid_from: null,
+      valid_until: null,
       status: 'ACTIVE',
     })
     .eq('id', existing.id)
