@@ -2,7 +2,7 @@ import { FormEvent, ReactNode, useEffect, useState } from 'react';
 import { ArrowRight, Loader2, LogIn, UserPlus, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { supabaseV2 } from '@/lib/supabase-v2';
+import { supabase } from '@/lib/supabase';
 
 export default function V2SignIn() {
   const navigate = useNavigate();
@@ -23,7 +23,7 @@ export default function V2SignIn() {
 
     try {
       if (mode === 'signup') {
-        const { data, error } = await supabaseV2.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: `${window.location.origin}${onboardingPath}` },
@@ -38,7 +38,7 @@ export default function V2SignIn() {
         return;
       }
 
-      const { error } = await supabaseV2.auth.signInWithPassword({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       navigate(onboardingPath, { replace: true });
     } catch (error) {
@@ -85,10 +85,10 @@ export function V2AuthGate({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
-    supabaseV2.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       if (mounted) setState(data.session ? 'signed-in' : 'signed-out');
     });
-    const { data: subscription } = supabaseV2.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
       if (mounted) setState(session ? 'signed-in' : 'signed-out');
     });
     return () => {
