@@ -16,6 +16,7 @@ function formatCanonicalContext(context: EllieContext): string {
     'Situations: ' + JSON.stringify(context.situations),
     'Recommendations: ' + JSON.stringify(context.recommendations),
     'Work: ' + JSON.stringify(context.work),
+    'Verified Organizational Memories: ' + JSON.stringify(context.memories),
   ].join('\n');
 }
 
