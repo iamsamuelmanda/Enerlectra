@@ -14,7 +14,7 @@ import {
   transitionActionAttempt,
   type OperationalAction,
   type OperationalQueueItem,
-} from '@/lib/api';
+} from '@/lib/operational-api';
 import OperatingContextPanel from '@/components/OperatingContextPanel';
 import ResourceContextPanel from '@/components/ResourceContextPanel';
 
