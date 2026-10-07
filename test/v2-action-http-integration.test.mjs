@@ -5,13 +5,13 @@ import express from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { createActionsRouter } from '../server/src/routes/actions.ts';
 
-const url = process.env.V2_SUPABASE_URL;
-const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.V2_SUPABASE_ANON_KEY;
+const url = process.env.SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.SUPABASE_ANON_KEY;
 const enabled = Boolean(url && serviceRoleKey && anonKey);
 
 test('V2 Action HTTP gate is configured', () => {
-  if (!enabled) assert.ok(true, 'Set V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY for the live gate.');
+  if (!enabled) assert.ok(true, 'Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY for the live gate.');
 });
 
 if (enabled) {
