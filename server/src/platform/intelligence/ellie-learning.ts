@@ -85,10 +85,11 @@ export async function reinforceTenantMemory(
     confidence: number;
   },
 ): Promise<void> {
+  if (!input.evidenceRefs.length) throw new Error('Learning memory requires evidence references');
   const boundedConfidence = Math.max(0, Math.min(1, input.confidence));
   const { data: existing, error: lookupError } = await db
     .from('intelligence_memories')
-    .select('id,confidence,occurrence_count')
+    .select('id,confidence,occurrence_count,evidence_refs')
     .eq('organization_id', input.organizationId)
     .eq('scope_key', input.scopeKey)
     .eq('statement', input.statement)
@@ -115,7 +116,7 @@ export async function reinforceTenantMemory(
     .update({
       confidence: nextConfidence,
       occurrence_count: Number(existing.occurrence_count) + 1,
-      evidence_refs: input.evidenceRefs,
+      evidence_refs: [...new Set([...(Array.isArray(existing.evidence_refs) ? existing.evidence_refs : []), ...input.evidenceRefs])],
       last_confirmed_at: new Date().toISOString(),
       status: 'ACTIVE',
     })
