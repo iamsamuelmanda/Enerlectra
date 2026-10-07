@@ -52,6 +52,11 @@ function handleError(error: unknown, res: Response, fallback: string) {
     return res.status(403).json({ error: 'Forbidden', code: 'MISSING_PERMISSION', permission: message.slice(18) });
   }
   const known = [
+    'WORK_ITEM_NOT_FOUND',
+    'WORK_ITEM_TERMINAL',
+    'WORK_ITEM_RESPONSIBILITY_SCOPE_REQUIRED',
+    'ACTION_NOT_FOUND',
+    'ACTION_NOT_AUTHORIZABLE',
     'ACTION_CREATE_PERMISSION_REQUIRED',
     'ACTION_AUTHORIZE_PERMISSION_REQUIRED',
     'WORK_EXECUTE_PERMISSION_REQUIRED',
@@ -62,10 +67,12 @@ function handleError(error: unknown, res: Response, fallback: string) {
     'ACTION_TERMINAL_IMMUTABLE',
     'INVALID_ACTION_TRANSITION',
     'ACTION_NOT_EXECUTABLE',
+    'ATTEMPT_NOT_FOUND',
     'HUMAN_EXECUTOR_MUST_BE_CURRENT_ACTOR',
     'ATTEMPT_IDENTITY_IMMUTABLE',
     'ATTEMPT_TERMINAL_IMMUTABLE',
     'INVALID_ATTEMPT_TRANSITION',
+    'ATTEMPT_TERMINAL_IMMUTABLE',
   ];
   const code = known.find((value) => message.includes(value));
   if (code) return res.status(403).json({ error: 'Forbidden', code });
