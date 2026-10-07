@@ -159,6 +159,10 @@ test('Ellie inference boundary rejects fabricated evidence and targets only supp
     /ELLIE_TARGET_RESOURCE_INVALID/,
   );
   assert.throws(
+    () => validateInferenceAgainstContext({ ...validInference, targetResourceIds: ['customer-other-than-situation'] }, context),
+    /ELLIE_TARGET_RESOURCE_SITUATION_MISMATCH/,
+  );
+  assert.throws(
     () => validateInferenceAgainstContext({ ...validInference, learningSignal: 'Case outcome without a target.' , targetSituationId: undefined }, context),
     /ELLIE_LEARNING_TARGET_REQUIRED/,
   );
