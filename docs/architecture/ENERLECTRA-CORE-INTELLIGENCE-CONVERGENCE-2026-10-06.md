@@ -529,3 +529,59 @@ The convergence work now includes a non-breaking intelligence boundary in `enerl
 - The legacy context-builder is therefore explicitly an adapter path, not the future tenant authority.
 
 No V2 caller is wired to this seam yet. That is deliberate: the next step is to construct the context from the already-validated V2 tenant resolver and operational queue, rather than allowing Ellie to query legacy customer/transaction/alert tables directly.
+
+
+## 2026-10-07 canonical Ellie context construction
+
+The next boundary has now been implemented on the server side in:
+
+`server/src/platform/intelligence/ellie-context-builder.ts`
+
+The builder is intentionally not a second database context model. It accepts two already-authoritative inputs:
+
+1. `TenantContext` from the V2 tenant resolver.
+2. The canonical operational queue assembled by the V2 operations route.
+
+It produces the existing `EllieContext` contract without granting Ellie any authorization authority.
+
+The construction is:
+
+```
+trusted bearer
+  ↓
+TenantContextResolver
+  ↓
+Actor + Organization + Membership
+  ↓
+Role + Permissions
+  ↓
+Operating Context + Capabilities + Policies
+  ↓
+canonical operational queue
+  ↓
+situations + work + recommendations
+  ↓
+action attempts as operational evidence
+  ↓
+EllieContext
+  ↓
+EllieWorker / inference
+```
+
+Important boundary properties:
+
+- permissions are copied from the trusted tenant resolver, not from the browser or message;
+- organization identity comes from the resolved membership;
+- capabilities and policies come from the organization operating context;
+- situations, work and recommendations are already organization-scoped by the canonical operations query;
+- completed action attempts can be represented as evidence for reasoning;
+- Ellie receives context for reasoning but does not receive permission to authorize or execute actions;
+- the legacy `captureMessageContext` path remains available only as a compatibility adapter.
+
+A focused test was added at:
+
+`test/v2-ellie-context-builder.test.mjs`
+
+It verifies that the resulting context retains the trusted actor/organization/permission boundary and maps operational work, recommendations and attempt evidence into the canonical intelligence contract.
+
+This is a construction seam, not a production channel cutover. WhatsApp remains fail-closed until its channel identity path is explicitly connected to the V2 tenant boundary.
