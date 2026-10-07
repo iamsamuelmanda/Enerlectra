@@ -5,70 +5,46 @@ import path from 'node:path';
 
 const repoRoot = process.cwd();
 
-test('V2 server config names are explicit and do not fall back to legacy Supabase env names', () => {
-  const file = fs.readFileSync(
-    path.join(repoRoot, 'server/src/platform/config/v2.ts'),
-    'utf8'
-  );
+test('canonical server boundary uses canonical Supabase environment names only', () => {
+  const files = [
+    'server/src/index.ts',
+    'server/src/platform/supabase/request-client.ts',
+    '.env.example',
+  ].map((file) => path.join(repoRoot, file));
 
-  assert.match(file, /V2_SUPABASE_URL/);
-  assert.match(file, /V2_SUPABASE_SERVICE_ROLE_KEY/);
-  assert.doesNotMatch(file, /process\.env\.SUPABASE_URL/);
-  assert.doesNotMatch(file, /process\.env\.SUPABASE_SERVICE_KEY/);
+  for (const filePath of files) {
+    const file = fs.readFileSync(filePath, 'utf8');
+    assert.doesNotMatch(file, /V2_SUPABASE_/);
+    assert.doesNotMatch(file, /VITE_V2_SUPABASE_/);
+  }
+
+  const requestClient = fs.readFileSync(
+    path.join(repoRoot, 'server/src/platform/supabase/request-client.ts'),
+    'utf8',
+  );
+  assert.match(requestClient, /process\.env\.SUPABASE_URL/);
+  assert.match(requestClient, /process\.env\.SUPABASE_ANON_KEY/);
 });
 
-test('V2 browser boundary contains no service-role credential', () => {
+test('browser Supabase boundary contains no service-role credential', () => {
   const file = fs.readFileSync(
-    path.join(repoRoot, 'client/src/lib/supabase-v2.ts'),
-    'utf8'
+    path.join(repoRoot, 'client/src/lib/supabase.ts'),
+    'utf8',
   );
 
-  assert.match(file, /VITE_V2_SUPABASE_PUBLISHABLE_KEY/);
+  assert.match(file, /VITE_SUPABASE_URL/);
+  assert.match(file, /VITE_SUPABASE_ANON_KEY/);
   assert.doesNotMatch(file, /SERVICE_ROLE/i);
   assert.doesNotMatch(file, /SUPABASE_SERVICE_KEY/i);
 });
 
-test('V2 modules do not import quarantined legacy domain paths', () => {
-  const roots = [
-    path.join(repoRoot, 'server/src/platform'),
-    path.join(repoRoot, 'client/src/lib/supabase-v2.ts'),
-  ];
+test('canonical action route has no legacy V2 Supabase client dependency', () => {
+  const file = fs.readFileSync(
+    path.join(repoRoot, 'server/src/routes/actions.ts'),
+    'utf8',
+  );
 
-  const forbidden = [
-    /pcu/i,
-    /cluster/i,
-    /marketplace/i,
-    /settlement/i,
-    /treasury/i,
-    /staking/i,
-    /blockchain/i,
-    /energy_wallet/i,
-  ];
-
-  for (const root of roots) {
-    const files = [];
-    if (fs.statSync(root).isFile()) {
-      files.push(root);
-    } else {
-      const walk = (dir) => {
-        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-          const full = path.join(dir, entry.name);
-          if (entry.isDirectory()) walk(full);
-          else if (/\.(ts|tsx|js|mjs)$/.test(entry.name)) files.push(full);
-        }
-      };
-      walk(root);
-    }
-
-    for (const file of files) {
-      const content = fs.readFileSync(file, 'utf8');
-      for (const pattern of forbidden) {
-        assert.doesNotMatch(
-          content,
-          new RegExp(`from\\s+['"][^'"]*\\${pattern.source}[^'"]*['"]`, pattern.flags),
-          `${file} imports a quarantined legacy domain`
-        );
-      }
-    }
-  }
+  assert.doesNotMatch(file, /V2_SUPABASE_/);
+  assert.match(file, /createRequestScopedSupabaseClient/);
+  assert.doesNotMatch(file, /createClient\(/);
 });
