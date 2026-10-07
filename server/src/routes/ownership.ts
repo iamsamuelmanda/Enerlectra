@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import { supabase } from '../../../enerlectra-core/src/lib/supabase.js';
 const router = Router();
 
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
 }
 const dataDir = path.join(process.cwd(), 'data');
 if (!fs.existsSync(dataDir)) {
