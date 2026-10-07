@@ -2,14 +2,14 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.V2_SUPABASE_URL;
-const serviceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.V2_SUPABASE_ANON_KEY;
+const url = process.env.SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const anonKey = process.env.SUPABASE_ANON_KEY;
 const enabled = Boolean(url && serviceRoleKey && anonKey);
 
 test('V2 actor and channel identity write restrictions are configured', () => {
   if (!enabled) {
-    assert.ok(true, 'Set V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY to run live privilege tests.');
+    assert.ok(true, 'Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to run live privilege tests.');
   }
 });
 
