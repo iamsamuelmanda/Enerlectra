@@ -96,3 +96,28 @@ The two new tables have RLS enabled and one tenant-scoped read policy each.
 The live database currently contains zero learning memories and zero learning events, which is expected: no artificial training data has been inserted.
 
 Repository/runtime execution of the latest exact head still requires a reproducible CI/sandbox environment. GitHub Actions has not provided a usable execution result, so code-level implementation is not represented as a fresh CI pass.
+
+
+## 2026-10-07 broader product direction: Organizational Intelligence
+
+The learning-memory slice is now explicitly treated as one component of a larger product direction documented in:
+
+`docs/architecture/ENERLECTRA-ELLIE-ORGANIZATIONAL-INTELLIGENCE-MODEL-2026-10-07.md`
+
+Ellie is not limited to recommendation memory. The target is a tenant-scoped organizational intelligence layer that learns how each business operates and helps with everyday operations and decision-making, including records, customers, assets, inventory, workflows, communications, exceptions and planning.
+
+The key distinction is between:
+
+- canonical organizational facts, which remain in domain resources;
+- organizational procedures and workflow knowledge;
+- organizational policies, which remain authoritative platform/domain data;
+- evidence-backed organizational patterns;
+- organizational preferences.
+
+The long-term intelligence loop is:
+
+`Observe → Understand → Remember → Predict → Recommend → Assist → Act → Verify → Learn`
+
+Ellie should learn the organization's operating model rather than merely store conversational memories. Tenant A and Tenant B can therefore develop materially different operating knowledge while using the same intelligence layer.
+
+This does not weaken the current learning boundary. Permanent organizational knowledge must remain evidence-backed, tenant-scoped and auditable. LLM output is not itself organizational truth, and Ellie never becomes an authorization boundary.
