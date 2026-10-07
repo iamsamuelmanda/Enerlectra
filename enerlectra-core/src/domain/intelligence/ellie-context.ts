@@ -24,6 +24,17 @@ export interface EllieRecommendation {
   metadata?: Record<string, unknown>;
 }
 
+export interface EllieMemory {
+  id: string;
+  memoryType: string;
+  scopeKey: string;
+  statement: string;
+  evidenceRefs: unknown[];
+  confidence: number;
+  occurrenceCount: number;
+  lastConfirmedAt?: string;
+}
+
 export interface EllieWorkItem {
   id: string;
   situationId?: string;
@@ -43,5 +54,6 @@ export interface EllieContext {
   situations: EllieSituation[];
   recommendations: EllieRecommendation[];
   work: EllieWorkItem[];
+  memories: EllieMemory[];
   source: 'canonical';
 }
