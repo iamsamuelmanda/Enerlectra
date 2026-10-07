@@ -645,3 +645,22 @@ It does not require replacing the canonical tenant boundary or creating a separa
 **Governing principle:**
 
 > **Build one Enerlectra operational kernel and let Ellie learn the operating model of each organization on top of it.**
+
+
+## 16. Reliability and usefulness are product requirements
+
+The target is not maximum AI autonomy. The target is **reliable, useful intelligence**.
+
+Ellie should prefer:
+
+- authoritative canonical records over remembered claims;
+- verified outcomes over unverified conversation;
+- evidence and provenance over unsupported assertions;
+- confidence and uncertainty over false precision;
+- bounded assistance over irreversible autonomous actions;
+- tenant-specific relevance over generic advice;
+- actionable summaries over unnecessary verbosity.
+
+A learning signal that fails verification must not automatically become organizational knowledge. Failed outcomes remain valuable learning evidence and audit history, but they are counter-evidence rather than a new organizational fact.
+
+Organizational memory therefore requires evidence references, tenant scope and controlled promotion from operational outcomes. The intelligence system should become more useful as evidence accumulates without becoming less trustworthy.
