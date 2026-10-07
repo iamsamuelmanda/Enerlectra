@@ -180,19 +180,39 @@ function validateInferenceAgainstContext(
   inference: Awaited<ReturnType<typeof askEllieStructured>>,
   context: ReturnType<typeof buildCanonicalEllieContext>,
 ) {
-  const validEvidenceIds = new Set<string>(context.evidence.map((item) => item.id));
+  const validEvidenceIds = new Set<string>([
+    ...context.evidence.map((item) => item.id),
+    ...context.situations.map((item) => item.id),
+    ...context.memories.map((item) => item.id),
+  ]);
   const invalidEvidence = inference.evidenceUsed.filter((id) => !validEvidenceIds.has(id));
-  if (invalidEvidence.length) {
-    throw new Error('ELLIE_EVIDENCE_REFERENCE_INVALID');
-  }
+  if (invalidEvidence.length) throw new Error('ELLIE_EVIDENCE_REFERENCE_INVALID');
 
   if (inference.targetSituationId && !context.situations.some((s) => s.id === inference.targetSituationId)) {
     throw new Error('ELLIE_TARGET_SITUATION_INVALID');
   }
 
+  if (inference.summary.length < 1 || inference.summary.length > 2000 ||
+      inference.rationale.length < 1 || inference.rationale.length > 4000) {
+    throw new Error('ELLIE_INFERENCE_TEXT_INVALID');
+  }
+
+  if (inference.proposedWorkType && inference.proposedWorkType.length > 120) {
+    throw new Error('ELLIE_WORK_TYPE_INVALID');
+  }
+
+  if (inference.learningSignal && inference.learningSignal.length > 2000) {
+    throw new Error('ELLIE_LEARNING_SIGNAL_INVALID');
+  }
+
+  if (inference.learningSignal && !inference.targetSituationId) {
+    throw new Error('ELLIE_LEARNING_TARGET_REQUIRED');
+  }
+
   const validResourceIds = new Set<string>([
     ...context.situations.flatMap((s) => s.resourceId ? [s.resourceId] : []),
     ...context.evidence.flatMap((e) => e.resourceId ? [e.resourceId] : []),
+    ...context.memories.flatMap((m) => m.resourceRefs.map(String)),
     ...(context.operationalDigest?.customers ?? []).map((r) => String(r.id)),
     ...(context.operationalDigest?.sites ?? []).map((r) => String(r.id)),
     ...(context.operationalDigest?.assets ?? []).map((r) => String(r.id)),
