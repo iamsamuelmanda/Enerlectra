@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { AlertTriangle, CheckCircle2, LogOut, RefreshCw, Send, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { supabaseV2 } from '@/lib/supabase-v2';
+import { supabase } from '@/lib/supabase';
 import {
   authorizeAction,
   createAction,
@@ -14,7 +14,7 @@ import {
   transitionActionAttempt,
   type OperationalAction,
   type OperationalQueueItem,
-} from '@/lib/v2-api';
+} from '@/lib/api';
 import OperatingContextPanel from '@/components/OperatingContextPanel';
 import ResourceContextPanel from '@/components/ResourceContextPanel';
 
@@ -59,7 +59,7 @@ export default function V2Workspace() {
   }, []);
 
   const signOut = async () => {
-    await supabaseV2.auth.signOut();
+    await supabase.auth.signOut();
     navigate('/signin', { replace: true });
   };
 
