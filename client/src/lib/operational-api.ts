@@ -202,23 +202,23 @@ export async function createAction(body: {
 }
 
 export async function authorizeAction(id: string) {
-  return apiPost<{ success: boolean; action: OperationalAction }>(\`/actions/\${id}/authorize\`, {});
+  return apiPost<{ success: boolean; action: OperationalAction }>(`/actions/${id}/authorize`, {});
 }
 
 export async function transitionAction(id: string, status: string) {
-  return apiPost<{ success: boolean; action: OperationalAction }>(\`/actions/\${id}/transition\`, { status });
+  return apiPost<{ success: boolean; action: OperationalAction }>(`/actions/${id}/transition`, { status });
 }
 
 export async function createActionAttempt(id: string, attemptNumber: number, executionIdempotencyKey = crypto.randomUUID()) {
   return apiPost<{ success: boolean; attempt: OperationalAction['attempts'][number] }>(
-    \`/actions/\${id}/attempts\`,
+    `/actions/${id}/attempts`,
     { attemptNumber, executionIdempotencyKey },
   );
 }
 
 export async function transitionActionAttempt(id: string, attemptId: string, status: string, result?: Record<string, unknown>) {
   return apiPost<{ success: boolean; attempt: OperationalAction['attempts'][number] }>(
-    \`/actions/\${id}/attempts/\${attemptId}/transition\`,
+    `/actions/${id}/attempts/${attemptId}/transition`,
     { status, result },
   );
 }
