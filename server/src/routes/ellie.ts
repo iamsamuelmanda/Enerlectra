@@ -128,15 +128,8 @@ function validateInferenceAgainstContext(
   inference: Awaited<ReturnType<typeof askEllieStructured>>,
   context: ReturnType<typeof buildCanonicalEllieContext>,
 ) {
-  const validIds = new Set<string>([
-    ...context.evidence.map((item) => item.id),
-    ...context.situations.map((item) => item.id),
-    ...context.work.map((item) => item.id),
-    ...context.recommendations.map((item) => item.id),
-    ...context.memories.map((item) => item.id),
-  ]);
-
-  const invalidEvidence = inference.evidenceUsed.filter((id) => !validIds.has(id));
+  const validEvidenceIds = new Set<string>(context.evidence.map((item) => item.id));
+  const invalidEvidence = inference.evidenceUsed.filter((id) => !validEvidenceIds.has(id));
   if (invalidEvidence.length) {
     throw new Error('ELLIE_EVIDENCE_REFERENCE_INVALID');
   }
@@ -159,6 +152,68 @@ function validateInferenceAgainstContext(
 export function createEllieRouter(db: SupabaseClient): Router {
   const router = Router();
   const resolver = createTenantContextResolver(db);
+
+  router.get('/ellie/brief', async (req: any, res) => {
+    try {
+      const tenant = await resolver.resolve({
+        accessToken: bearer(req),
+        organizationId: req.header('x-organization-id') || undefined,
+        correlationId: req.header('x-correlation-id') || crypto.randomUUID(),
+        requestId: req.id || crypto.randomUUID(),
+        source: 'api',
+      });
+
+      if (!tenant.permissions.includes('recommendation.read')) {
+        return res.status(403).json({ error: 'Forbidden', code: 'MISSING_PERMISSION' });
+      }
+
+      const [queue, snapshot] = await Promise.all([
+        loadQueue(db, tenant.organizationId),
+        loadOrganizationSnapshot(db, tenant.organizationId),
+      ]);
+
+      const situations = (queue.situations ?? []).map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        severity: s.severity,
+        status: s.status,
+        customerId: s.customer_id ?? null,
+        siteId: s.site_id ?? null,
+        assetId: s.asset_id ?? null,
+        openedAt: s.opened_at ?? null,
+        workItemCount: (s.workItems ?? []).length,
+        unassignedWorkItemCount: (s.workItems ?? []).filter((w: any) => !w.assigned_actor_id).length,
+        overdueWorkItemCount: (s.workItems ?? []).filter((w: any) =>
+          w.due_at && new Date(w.due_at).getTime() < Date.now() &&
+          !['COMPLETED','CANCELLED','VERIFIED'].includes(String(w.status).toUpperCase())
+        ).length,
+      })).sort((a: any, b: any) => {
+        const severityRank: Record<string, number> = { CRITICAL: 4, HIGH: 3, MEDIUM: 2, LOW: 1 };
+        return (severityRank[b.severity] ?? 0) - (severityRank[a.severity] ?? 0)
+          || (b.overdueWorkItemCount - a.overdueWorkItemCount)
+          || (new Date(a.openedAt ?? 0).getTime() - new Date(b.openedAt ?? 0).getTime());
+      });
+
+      const attentionItems = situations.slice(0, 10);
+      return res.json({
+        organizationId: tenant.organizationId,
+        summary: {
+          openSituations: snapshot.openSituationCount,
+          highSeverity: snapshot.unresolvedHighSeverityCount ?? 0,
+          overdueWork: snapshot.overdueWorkItemCount ?? 0,
+          unassignedWork: snapshot.unassignedWorkItemCount ?? 0,
+          activeActions: snapshot.activeActionCount,
+        },
+        attentionItems,
+        generatedAt: new Date().toISOString(),
+      });
+    } catch (error) {
+      if (error instanceof TenantContextError) {
+        return res.status(error.code === 'UNAUTHENTICATED' ? 401 : 403).json({ error: error.message, code: error.code });
+      }
+      return res.status(500).json({ error: error instanceof Error ? error.message : 'Failed to build Ellie brief' });
+    }
+  });
 
   router.post('/ellie', async (req: any, res) => {
     try {
@@ -328,7 +383,13 @@ export function createEllieRouter(db: SupabaseClient): Router {
       const resourceRefs = Array.isArray(snapshot.targetResourceIds)
         ? snapshot.targetResourceIds.map(String)
         : [];
-      const evidenceRefs = [recommendation.id, ...(verificationId ? [verificationId] : [])];
+      const snapshotEvidence = Array.isArray(snapshot.evidenceUsed)
+        ? snapshot.evidenceUsed.map(String).filter(Boolean)
+        : [];
+      const evidenceRefs = [...new Set([
+        ...snapshotEvidence,
+        ...(verificationId ? [verificationId] : []),
+      ])];
 
       if (signal && (outcome === 'VERIFIED' || outcome === 'FAILED')) {
         const scopeKey = [
