@@ -5,7 +5,7 @@ import type {
   EllieRecommendation,
   EllieSituation,
   EllieWorkItem,
-} from '../../../../enerlectra-core/src/domain/intelligence/ellie-context.js';
+} from 'enerlectra-core';
 
 type OperationalQueue = {
   situations?: Array<{
