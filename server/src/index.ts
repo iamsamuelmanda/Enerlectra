@@ -28,6 +28,7 @@ import { createVerificationsRouter } from './routes/verifications.js';
 import { createOperationsRouter } from './routes/operations.js';
 import { createOrganizationContextRouter } from './routes/organizationContext.js';
 import { createResourcesRouter } from './routes/resources.js';
+import { createEllieRouter } from './routes/ellie.js';
 
 // ──────────────────────────────────────────────────────────────
 // Express app setup
@@ -215,6 +216,8 @@ app.get('/api/docs', (_req, res) => {
       'GET /api/resources/assets',
       'POST /api/resources/assets',
       'POST /api/verifications',
+      'POST /api/intelligence/ellie',
+      'POST /api/intelligence/ellie/:recommendationId/feedback',
       'GET /metrics',
     ],
     note: 'All operational endpoints require authenticated tenant context.',
@@ -233,6 +236,7 @@ app.use('/api/operations', createOperationsRouter(supabase));
 app.use('/api/organization/context', createOrganizationContextRouter(supabase));
 app.use('/api/resources', createResourcesRouter(supabase));
 app.use('/api/verifications', createVerificationsRouter(supabase));
+app.use('/api/intelligence', createEllieRouter(supabase));
 
 // WhatsApp adapter is intentionally fail-closed until canonical
 // channel identity → Actor → Membership → Organization resolution is wired.
