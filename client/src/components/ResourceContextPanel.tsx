@@ -1,7 +1,7 @@
 import { FormEvent, useEffect, useState } from 'react';
 import { Database, Plus, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { createAsset, createCustomer, createSite, listAssets, listCustomers, listSites, type Asset, type Customer, type Site } from '@/lib/v2-api';
+import { createAsset, createCustomer, createSite, listAssets, listCustomers, listSites, type Asset, type Customer, type Site } from '@/lib/operational-api';
 
 export default function ResourceContextPanel({ onContextChange }: { onContextChange: (context: { customerId?: string; siteId?: string; assetId?: string }) => void }) {
   const [customers, setCustomers] = useState<Customer[]>([]);
