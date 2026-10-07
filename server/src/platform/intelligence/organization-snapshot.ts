@@ -20,6 +20,14 @@ export async function loadOrganizationSnapshot(
     openSituationCount,
     openWorkItemCount,
     activeActionCount,
+    unresolvedHighSeverityCount,
+    overdueWorkItemCount,
+    unassignedWorkItemCount,
+    oldestOpenSituation,
+    unresolvedHighSeverityCount,
+    overdueWorkItemCount,
+    unassignedWorkItemCount,
+    oldestOpenSituation,
   ] = await Promise.all([
     countRows(db, 'customers', organizationId),
     countRows(db, 'sites', organizationId),
@@ -27,6 +35,13 @@ export async function loadOrganizationSnapshot(
     countRows(db, 'situations', organizationId, (q) => q.in('status', ['OPEN', 'INVESTIGATING'])),
     countRows(db, 'work_items', organizationId, (q) => q.in('status', ['PROPOSED', 'READY', 'IN_PROGRESS', 'EXECUTING'])),
     countRows(db, 'actions', organizationId, (q) => q.in('status', ['PROPOSED', 'AUTHORIZED', 'EXECUTING'])),
+    countRows(db, 'situations', organizationId, (q) => q.in('status', ['OPEN', 'INVESTIGATING']).in('severity', ['HIGH', 'CRITICAL'])),
+    countRows(db, 'work_items', organizationId, (q) => q.in('status', ['PROPOSED', 'READY', 'IN_PROGRESS', 'EXECUTING']).lt('due_at', new Date().toISOString())),
+    countRows(db, 'work_items', organizationId, (q) => q.in('status', ['PROPOSED', 'READY', 'IN_PROGRESS', 'EXECUTING']).is('assigned_actor_id', null)),
+    db.from('situations').select('opened_at').eq('organization_id', organizationId).in('status', ['OPEN', 'INVESTIGATING']).order('opened_at', { ascending: true }).limit(1).maybeSingle().then(({ data, error }) => {
+      if (error) throw error;
+      return data?.opened_at ?? null;
+    }),
   ]);
 
   return {
