@@ -214,7 +214,11 @@ export function createEllieRouter(db: SupabaseClient): Router {
         },
       });
 
-      const nextStatus = ['VERIFIED', 'ACCEPTED'].includes(outcome)\n        ? 'ACCEPTED'\n        : ['FAILED', 'REJECTED'].includes(outcome)\n          ? 'REJECTED'\n          : 'EXPIRED';
+      const nextStatus = ['VERIFIED', 'ACCEPTED'].includes(outcome)
+        ? 'ACCEPTED'
+        : ['FAILED', 'REJECTED'].includes(outcome)
+          ? 'REJECTED'
+          : 'EXPIRED';
       const { error: updateError } = await db
         .from('recommendations')
         .update({ status: nextStatus })
@@ -230,13 +234,19 @@ export function createEllieRouter(db: SupabaseClient): Router {
           const outcomeStatement = outcome === 'VERIFIED'
             ? signal
             : `The previously suggested pattern was not verified: ${signal}`;
-          await reinforceTenantMemory(db, {
+          const memoryInput = {
             organizationId: tenant.organizationId,
             scopeKey: `recommendation:${String(recommendation.summary).slice(0, 120)}`,
             statement: outcomeStatement,
             evidenceRefs: [recommendation.id, ...(verificationId ? [verificationId] : [])],
-            confidence: outcome === 'VERIFIED' ? confidence : Math.min(confidence, 0.35),
-          });
+            confidence,
+          };
+          if (outcome === 'VERIFIED') {
+            await reinforceTenantMemory(db, memoryInput);
+          }
+          // A failed verification is counter-evidence, not a new organizational fact.
+          // Keep the learning event for auditability, but never promote the failed signal into memory.
+
         }
       }
 
