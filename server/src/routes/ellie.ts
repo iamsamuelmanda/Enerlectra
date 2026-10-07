@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { askEllieStructured } from 'enerlectra-core';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
 import { buildCanonicalEllieContext } from '../platform/intelligence/ellie-context-builder.js';
+import { loadOrganizationSnapshot } from '../platform/intelligence/organization-snapshot.js';
 import {
   loadTenantEllieMemories,
   recordEllieLearningEvent,
@@ -91,9 +92,12 @@ export function createEllieRouter(db: SupabaseClient): Router {
       const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
       if (!message) return res.status(400).json({ error: 'message is required', code: 'MESSAGE_REQUIRED' });
 
-      const queue = await loadQueue(db, tenant.organizationId);
-      const memories = await loadTenantEllieMemories(db, tenant.organizationId, message);
-      const context = buildCanonicalEllieContext(tenant, queue, memories);
+      const [queue, memories, organizationSnapshot] = await Promise.all([
+        loadQueue(db, tenant.organizationId),
+        loadTenantEllieMemories(db, tenant.organizationId, message),
+        loadOrganizationSnapshot(db, tenant.organizationId),
+      ]);
+      const context = buildCanonicalEllieContext(tenant, queue, memories, organizationSnapshot);
       const inference = await askEllieStructured(message, JSON.stringify(context));
 
       const situationId = context.situations[0]?.id;
