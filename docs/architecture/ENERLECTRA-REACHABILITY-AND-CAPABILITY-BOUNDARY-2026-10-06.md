@@ -3,8 +3,7 @@
 
 ## Purpose
 
-This document records the reachability pass performed against branch
-`183c7f65ff42f498679c28733064ceca0313c27f`.
+This document records the reachability pass performed against the canonical reconstruction branch at the time of audit. The branch head is now `7c2eeff8aad44196e05f53e4a6455b751a0adb21`.
 
 The purpose is to distinguish:
 
@@ -127,9 +126,9 @@ It is an intentionally isolated legacy capability runtime, but its authorization
 
 ## 5. Deployment boundary
 
-The current Render configuration still describes two services:
+The current Render configuration describes two services:
 
-1. legacy Ellie bot under the bot directory;
+1. legacy Ellie bot under `integrations/enerlectra-bot`;
 2. canonical backend service.
 
 The canonical backend has V2 Supabase variables and manual cutover protection.
@@ -207,3 +206,15 @@ The key invariant remains:
 **One Enerlectra platform. One canonical identity/tenant boundary. One operational kernel. Legacy capabilities survive only behind controlled boundaries until adapted or retired.**
 
 No EPC/PAYGo product split is introduced by this classification.
+
+
+## 8. 2026-10-07 configuration integrity finding
+
+A concrete repository configuration mismatch was found during the second-pass reachability audit: the bot runtime was physically located at `integrations/enerlectra-bot`, while `render.yaml` and the root package script still referenced the retired `integrations/telegram-bot` path. The bot directory exists at the canonical legacy path; the old path does not exist on the reconstruction branch.
+
+This was corrected without changing the bot's runtime architecture:
+
+- `render.yaml` now points the isolated Ellie bot service at `integrations/enerlectra-bot`.
+- `package.json` now exposes `typecheck:enerlectra-bot` against the actual bot directory.
+
+This is a repository/deployment consistency correction, not a production cutover. The legacy bot remains isolated and continues to depend on `enerlectra-core` until its capabilities are adapted through the canonical tenant boundary.
