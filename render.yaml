@@ -3,7 +3,7 @@ services:
     name: enerlectra-ellie-bot
     env: node
     plan: free
-    rootDir: integrations/telegram-bot
+    rootDir: integrations/enerlectra-bot
     buildCommand: "npm ci && npm run build"
     startCommand: "npm start"
     healthCheckPath: /
