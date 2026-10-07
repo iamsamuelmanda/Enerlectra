@@ -259,3 +259,43 @@ export async function recordEllieCounterEvidence(
     .eq('organization_id', input.organizationId);
   if (updateError) throw updateError;
 }
+
+
+export async function promoteTenantMemoryToPattern(
+  db: SupabaseClient,
+  input: {
+    organizationId: string;
+    memoryId: string;
+  },
+): Promise<void> {
+  const { data: memory, error } = await db
+    .from('intelligence_memories')
+    .select('id,knowledge_type,memory_type,status,occurrence_count,contradiction_count,evidence_strength,evidence_refs')
+    .eq('id', input.memoryId)
+    .eq('organization_id', input.organizationId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!memory) throw new Error('ELLIE_MEMORY_NOT_FOUND');
+  if (memory.status !== 'ACTIVE') throw new Error('ELLIE_MEMORY_NOT_ACTIVE');
+  if (memory.knowledge_type !== 'OUTCOME') throw new Error('ELLIE_MEMORY_ALREADY_CLASSIFIED');
+  if (Number(memory.occurrence_count ?? 0) < 3) throw new Error('ELLIE_PATTERN_EVIDENCE_INSUFFICIENT');
+  if (Number(memory.contradiction_count ?? 0) > 0) throw new Error('ELLIE_PATTERN_CONTRADICTED');
+  if (Number(memory.evidence_strength ?? 0) < 0.8) throw new Error('ELLIE_PATTERN_EVIDENCE_WEAK');
+  if (!Array.isArray(memory.evidence_refs) || memory.evidence_refs.length < 3) {
+    throw new Error('ELLIE_PATTERN_PROVENANCE_INSUFFICIENT');
+  }
+
+  const { error: updateError } = await db
+    .from('intelligence_memories')
+    .update({
+      knowledge_type: 'PATTERN',
+      memory_type: 'OPERATIONAL_PATTERN',
+      source: 'CONTROLLED_PROMOTION',
+      last_confirmed_at: new Date().toISOString(),
+    })
+    .eq('id', input.memoryId)
+    .eq('organization_id', input.organizationId);
+
+  if (updateError) throw updateError;
+}
