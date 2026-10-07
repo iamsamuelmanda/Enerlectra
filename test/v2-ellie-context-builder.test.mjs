@@ -124,6 +124,14 @@ test('Ellie inference boundary rejects fabricated evidence and targets only supp
       workItems: [],
       recommendations: [],
     }],
+  }, {
+    customers: [{ id: 'customer-b' }],
+    sites: [],
+    assets: [],
+    activeExceptions: [],
+    recentEvidence: [],
+    operationalHistory: [],
+    availableResourceTypes: ['CUSTOMER'],
   }, [{
     id: 'memory-a',
     memoryType: 'OUTCOME_PATTERN',
@@ -159,7 +167,7 @@ test('Ellie inference boundary rejects fabricated evidence and targets only supp
     /ELLIE_TARGET_RESOURCE_INVALID/,
   );
   assert.throws(
-    () => validateInferenceAgainstContext({ ...validInference, targetResourceIds: ['customer-other-than-situation'] }, context),
+    () => validateInferenceAgainstContext({ ...validInference, targetResourceIds: ['customer-b'] }, context),
     /ELLIE_TARGET_RESOURCE_SITUATION_MISMATCH/,
   );
   assert.throws(
