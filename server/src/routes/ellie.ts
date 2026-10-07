@@ -79,7 +79,7 @@ async function loadOperationalDigest(
   permissions: readonly string[],
 ): Promise<EllieOperationalDigest> {
   const can = (permission: string) => permissions.includes(permission);
-  const [customers, sites, assets] = await Promise.all([
+  const [customers, sites, assets, situations, attempts] = await Promise.all([
     can('customer.read')
       ? db.from('customers')
           .select('id,external_ref,name,status,metadata,created_at,updated_at')
@@ -101,18 +101,68 @@ async function loadOperationalDigest(
           .order('updated_at', { ascending: false })
           .limit(75)
       : Promise.resolve({ data: [], error: null }),
+    can('situation.read')
+      ? db.from('situations')
+          .select('id,situation_type,status,severity,title,summary,customer_id,site_id,asset_id,opened_at,updated_at')
+          .eq('organization_id', organizationId)
+          .in('status', ['OPEN','INVESTIGATING'])
+          .order('updated_at', { ascending: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
+    can('work.read')
+      ? db.from('action_attempts')
+          .select('id,action_id,attempt_number,status,executor_type,executor_actor_id,started_at,finished_at,result_code,result_summary,error_code,error_summary')
+          .eq('organization_id', organizationId)
+          .order('finished_at', { ascending: false, nullsFirst: false })
+          .limit(50)
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (customers.error) throw customers.error;
   if (sites.error) throw sites.error;
   if (assets.error) throw assets.error;
+  if (situations.error) throw situations.error;
+  if (attempts.error) throw attempts.error;
+
+  const activeExceptions = (situations.data ?? []).map((s: any) => ({
+    id: s.id,
+    type: s.situation_type,
+    status: s.status,
+    title: s.title,
+    severity: s.severity,
+    resourceId: s.asset_id ?? s.site_id ?? s.customer_id ?? undefined,
+    metadata: {
+      summary: s.summary,
+      customerId: s.customer_id,
+      siteId: s.site_id,
+      assetId: s.asset_id,
+      openedAt: s.opened_at,
+      updatedAt: s.updated_at,
+    },
+  }));
+
+  const recentEvidence = (attempts.data ?? []).map((a: any) => ({
+    id: a.id,
+    type: 'ACTION_ATTEMPT_RESULT',
+    summary: a.result_summary ?? a.error_summary ?? undefined,
+    occurredAt: a.finished_at ?? a.started_at ?? undefined,
+    metadata: {
+      actionId: a.action_id,
+      attemptNumber: a.attempt_number,
+      status: a.status,
+      executorType: a.executor_type,
+      executorActorId: a.executor_actor_id,
+      resultCode: a.result_code,
+      errorCode: a.error_code,
+    },
+  }));
 
   return {
     customers: customers.data ?? [],
     sites: sites.data ?? [],
     assets: assets.data ?? [],
-    activeExceptions: [],
-    recentEvidence: [],
-    operationalHistory: [],
+    activeExceptions,
+    recentEvidence,
+    operationalHistory: recentEvidence,
     availableResourceTypes: [
       ...(can('customer.read') ? ['CUSTOMER'] : []),
       ...(can('site.read') ? ['SITE'] : []),
