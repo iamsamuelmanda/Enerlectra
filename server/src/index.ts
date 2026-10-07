@@ -1,4 +1,3 @@
-// server/src/index.ts
 // Enerlectra production backend — canonical runtime composition root.
 
 import 'dotenv/config';
@@ -13,15 +12,9 @@ import pino from 'pino';
 import { posthog } from './services/posthog.js';
 import { setupExpressRequestContext, setupExpressErrorHandler } from 'posthog-node';
 
-// ──────────────────────────────────────────────────────────────
-// ESM path configuration
-// ──────────────────────────────────────────────────────────────
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ──────────────────────────────────────────────────────────────
-// Import route modules
-// ──────────────────────────────────────────────────────────────
 import { createCustomerOperationalIssuesRouter } from './routes/customerOperationalIssues.js';
 import { createActionsRouter } from './routes/actions.js';
 import { createVerificationsRouter } from './routes/verifications.js';
@@ -30,34 +23,27 @@ import { createOrganizationContextRouter } from './routes/organizationContext.js
 import { createResourcesRouter } from './routes/resources.js';
 import { createEllieRouter } from './routes/ellie.js';
 
-// ──────────────────────────────────────────────────────────────
-// Express app setup
-// ──────────────────────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 4000;
 const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
-// ──────────────────────────────────────────────────────────────
-// Canonical Supabase client
-// ──────────────────────────────────────────────────────────────
-const v2SupabaseUrl = process.env.V2_SUPABASE_URL;
-const v2AnonKey = process.env.V2_SUPABASE_ANON_KEY;
-const v2ServiceRoleKey = process.env.V2_SUPABASE_SERVICE_ROLE_KEY;
+// Canonical Supabase boundary. Enerlectra is one platform; database configuration
+// is not versioned by environment variable name.
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!v2SupabaseUrl || !v2AnonKey || !v2ServiceRoleKey) {
+if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
   throw new Error(
-    'V2_SUPABASE_URL, V2_SUPABASE_ANON_KEY and V2_SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the canonical database boundary.',
+    'SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are required; refusing to start without the canonical database boundary.',
   );
 }
 
-const supabase = createClient(v2SupabaseUrl, v2ServiceRoleKey, {
+const supabase = createClient(supabaseUrl, supabaseServiceRoleKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 logger.info('Canonical Supabase connected');
 
-// ──────────────────────────────────────────────────────────────
-// Prometheus metrics
-// ──────────────────────────────────────────────────────────────
 const register = new prometheus.Registry();
 prometheus.collectDefaultMetrics({ register });
 
@@ -75,18 +61,14 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/metrics', async (req, res) => {
+app.get('/metrics', async (_req, res) => {
   res.set('Content-Type', register.contentType);
   res.end(await register.metrics());
 });
 
-// ──────────────────────────────────────────────────────────────
-// Global middleware
-// ──────────────────────────────────────────────────────────────
 app.use(cors());
 app.use(express.json());
 
-// Intercept incoming connection details context before route mounting
 setupExpressRequestContext(posthog, app);
 
 app.use((req, res, next) => {
@@ -96,11 +78,6 @@ app.use((req, res, next) => {
   next();
 });
 
-
-
-// ──────────────────────────────────────────────────────────────
-// Exchange rate helper (used across endpoints)
-// ──────────────────────────────────────────────────────────────
 async function getExchangeRate(from: string = 'USD', to: string = 'ZMW'): Promise<{ rate: number; live: boolean; error?: string }> {
   const FALLBACK_RATE = 28.45;
   const API_KEY = process.env.EXCHANGE_RATE_API_KEY;
@@ -132,10 +109,7 @@ async function getExchangeRate(from: string = 'USD', to: string = 'ZMW'): Promis
   }
 }
 
-// ──────────────────────────────────────────────────────────────
-// Health & Info endpoints
-// ──────────────────────────────────────────────────────────────
-app.get('/api/info', (req, res) => {
+app.get('/api/info', (_req, res) => {
   res.json({
     status: 'OK',
     message: 'Enerlectra Production Backend',
@@ -145,7 +119,6 @@ app.get('/api/info', (req, res) => {
 });
 
 app.get('/api/health', async (_req, res) => {
-  // Readiness must verify the V2 database, not merely that a client object exists.
   const databaseCheck = await supabase
     .from('organizations')
     .select('id')
@@ -171,9 +144,6 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
-// ──────────────────────────────────────────────────────────────
-// Exchange rate endpoint
-// ──────────────────────────────────────────────────────────────
 app.get('/api/exchange-rate/:from/:to', async (req, res) => {
   try {
     const { from, to } = req.params;
@@ -192,9 +162,6 @@ app.get('/api/exchange-rate/:from/:to', async (req, res) => {
   }
 });
 
-// ──────────────────────────────────────────────────────────────
-// OpenAPI docs stub
-// ──────────────────────────────────────────────────────────────
 app.get('/api/docs', (_req, res) => {
   res.json({
     name: 'Enerlectra API',
@@ -224,13 +191,7 @@ app.get('/api/docs', (_req, res) => {
   });
 });
 
-// ──────────────────────────────────────────────────────────────
-// Mount route modules
-// ──────────────────────────────────────────────────────────────
 app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(supabase));
-
-// Action boundary uses the canonical Supabase project. Legacy SUPABASE_* clients
-// remain quarantined until their capabilities are adapted to the tenant model.
 app.use('/api/actions', createActionsRouter(supabase));
 app.use('/api/operations', createOperationsRouter(supabase));
 app.use('/api/organization/context', createOrganizationContextRouter(supabase));
@@ -238,20 +199,15 @@ app.use('/api/resources', createResourcesRouter(supabase));
 app.use('/api/verifications', createVerificationsRouter(supabase));
 app.use('/api/intelligence', createEllieRouter(supabase));
 
-// WhatsApp adapter is intentionally fail-closed until canonical
-// channel identity → Actor → Membership → Organization resolution is wired.
 app.post('/api/webhooks/whatsapp', (_req, res) => {
   res.status(503).json({ error: 'WhatsApp channel adapter not configured' });
 });
 
-// ──────────────────────────────────────────────────────────────
-// Other webhooks (MTN, Airtel) – stubs
-// ──────────────────────────────────────────────────────────────
-app.post('/api/webhooks/mtn', async (req, res) => {
+app.post('/api/webhooks/mtn', async (_req, res) => {
   res.status(200).json({ message: 'received' });
 });
 
-app.post('/api/webhooks/airtel', async (req, res) => {
+app.post('/api/webhooks/airtel', async (_req, res) => {
   res.status(200).json({ message: 'received' });
 });
 
@@ -259,9 +215,6 @@ app.get('/api/webhooks/status', (_req, res) => {
   res.json({ status: 'ok', enabled: ['whatsapp-canonical-adapter-pending'] });
 });
 
-// ──────────────────────────────────────────────────────────────
-// SPA static serving & fallback
-// ──────────────────────────────────────────────────────────────
 const distPath = path.resolve(__dirname, '../../client/dist');
 app.use(express.static(distPath));
 
@@ -269,34 +222,29 @@ app.all('/api/*', (req, res) => {
   res.status(404).json({ error: 'API endpoint not found' });
 });
 
-app.get('*', (req, res) => {
+app.get('*', (_req, res) => {
   const indexPath = path.join(distPath, 'index.html');
   res.sendFile(indexPath, (err) => {
     if (err) {
       res.status(200).send(`
-        <h1>⚡ Enerlectra API v3.1.0</h1>
+        <h1>⚡ Enerlectra API</h1>
         <p>Production Backend is Live and Healthy.</p>
       `);
     }
   });
 });
 
-// Catch route handling failure states and throw them straight into PostHog's exception monitor
 setupExpressErrorHandler(posthog, app);
 
-// Gracefully flush the remaining tracking commands stacked in the node lifecycle memory stack on runtime death
 process.on('SIGTERM', async () => {
   logger.info('SIGTERM intercept caught. Compiling final analytics payload flush...');
   await posthog.shutdown();
   process.exit(0);
 });
 
-// ──────────────────────────────────────────────────────────────
-// Start server
-// ──────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   logger.info('═'.repeat(70));
-  logger.info(`⚡ ENERLECTRA BACKEND – OPERATIONAL KERNEL`);
+  logger.info('⚡ ENERLECTRA BACKEND – OPERATIONAL KERNEL');
   logger.info('═'.repeat(70));
   logger.info(`🌐 Server: http://localhost:${PORT}`);
   logger.info(`📅 Started: ${new Date().toISOString()}`);
