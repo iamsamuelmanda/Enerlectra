@@ -1,4 +1,4 @@
-import type { TenantContext } from '../platform/tenant/context.js';
+import type { TenantContext } from '../tenant/context.js';
 import type {
   EllieContext,
   EllieEvidence,
