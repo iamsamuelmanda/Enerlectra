@@ -232,6 +232,19 @@ if (enabled) {
     assert.ok(situation.resolved_at);
   });
 
+  test('operational queue rejects a forged organization context before intelligence retrieval', async () => {
+    const token = await signIn();
+    const response = await fetch(`${baseUrl}/api/operations/queue`, {
+      headers: {
+        authorization: `Bearer ${token}`,
+        'x-organization-id': crypto.randomUUID(),
+      },
+    });
+    const body = await response.json();
+    assert.equal(response.status, 403);
+    assert.equal(body.code, 'MEMBERSHIP_NOT_FOUND');
+  });
+
   test('forged organization header is denied by tenant resolution', async () => {
     const token = await signIn();
     const result = await request('/api/operational-issues', token, {
