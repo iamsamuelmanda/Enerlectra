@@ -2,6 +2,20 @@
   "installCommand": "npm install --legacy-peer-deps --include=dev && npm --prefix client install --legacy-peer-deps --include=dev",
   "buildCommand": "npm run build:client",
   "outputDirectory": "client/dist",
+  "rewrites": [
+    {
+      "source": "/signin",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/onboarding",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/workspace",
+      "destination": "/index.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
