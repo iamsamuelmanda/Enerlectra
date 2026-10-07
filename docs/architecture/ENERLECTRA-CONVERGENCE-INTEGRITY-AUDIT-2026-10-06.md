@@ -482,3 +482,12 @@ The next controlled sequence is:
 6. only then decide whether PR #35 is ready to merge.
 
 No Render production cutover is authorized by this audit.
+
+
+## 2026-10-07 intelligence-boundary proof update
+
+The intelligence path now has an explicit HTTP regression at the point immediately upstream of EllieContext construction: `/api/operations/queue` must resolve the caller's organization through the canonical tenant resolver before returning operational data. A forged `x-organization-id` is therefore rejected before intelligence retrieval.
+
+The focused EllieContext test is also included in the root test suite. The test suite now treats canonical context construction as part of the convergence surface rather than an untested adapter.
+
+This remains a code-level proof addition. It is not a substitute for fresh execution on the exact PR head; GitHub Actions has not produced a usable current-head run in this environment.
