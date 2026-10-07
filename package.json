@@ -24,7 +24,7 @@
     "test:v2:action-http": "node --import tsx --test test/v2-action-http-integration.test.mjs",
     "test:v2:command-tenant-context": "node --import tsx --test test/v2-command-tenant-context.test.mjs",
     "test:v2:runtime-boundary": "node --import tsx --test test/v2-runtime-boundary.test.mjs",
-    "provision:v2:actor": "node scripts/provision-v2-actor.mjs",
+    "provision:actor": "node scripts/provision-actor.mjs",
     "test:v2:self-service": "node --import tsx --test test/v2-self-service-onboarding.test.mjs",
     "test:v2:security-gate": "npm run test:v2:self-service && npm run test:v2:actor-channel-privilege-integration",
     "test:v2:operational-intelligence": "node --import tsx --test test/v2-operational-intelligence.test.mjs",
