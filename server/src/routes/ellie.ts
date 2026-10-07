@@ -176,7 +176,7 @@ async function loadOperationalDigest(
   };
 }
 
-function validateInferenceAgainstContext(
+export function validateInferenceAgainstContext(
   inference: Awaited<ReturnType<typeof askEllieStructured>>,
   context: ReturnType<typeof buildCanonicalEllieContext>,
 ) {
