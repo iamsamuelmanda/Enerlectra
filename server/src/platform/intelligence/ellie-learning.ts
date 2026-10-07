@@ -1,15 +1,42 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { EllieKnowledgeType } from 'enerlectra-core';
 
 export type EllieMemory = {
   id: string;
   memoryType: string;
+  knowledgeType: EllieKnowledgeType;
   scopeKey: string;
   statement: string;
   evidenceRefs: unknown[];
+  resourceRefs: unknown[];
   confidence: number;
+  evidenceStrength: number;
   occurrenceCount: number;
+  contradictionCount: number;
   lastConfirmedAt: string;
+  validFrom?: string;
+  validUntil?: string;
+  status?: string;
 };
+
+const KNOWLEDGE_WEIGHT: Record<EllieKnowledgeType, number> = {
+  FACT: 1.15,
+  PROCEDURE: 1.1,
+  POLICY: 1.2,
+  PATTERN: 1.15,
+  PREFERENCE: 1,
+  OUTCOME: 0.85,
+};
+
+function clamp(value: number) {
+  return Math.max(0, Math.min(1, value));
+}
+
+function normalizeTokens(queryText: string) {
+  return [...new Set(
+    queryText.toLowerCase().split(/[^a-z0-9_]+/).filter((token) => token.length >= 3),
+  )];
+}
 
 export async function loadTenantEllieMemories(
   db: SupabaseClient,
@@ -17,34 +44,68 @@ export async function loadTenantEllieMemories(
   queryText: string,
   limit = 8,
 ): Promise<EllieMemory[]> {
-  const { data, error } = await db
+  const tokens = normalizeTokens(queryText);
+  let query = db
     .from('intelligence_memories')
-    .select('id,memory_type,scope_key,statement,evidence_refs,confidence,occurrence_count,last_confirmed_at')
+    .select(
+      'id,memory_type,knowledge_type,scope_key,statement,evidence_refs,resource_refs,confidence,evidence_strength,occurrence_count,contradiction_count,last_confirmed_at,valid_from,valid_until,status',
+    )
     .eq('organization_id', organizationId)
     .eq('status', 'ACTIVE')
     .order('last_confirmed_at', { ascending: false })
-    .limit(50);
+    .limit(Math.max(50, limit * 6));
 
+  // Structured retrieval comes before ranking: tenant + lifecycle + temporal validity +
+  // full-text relevance. We deliberately do not require vector infrastructure yet.
+  if (tokens.length) {
+    query = query.textSearch('search_document', tokens.join(' & '), { type: 'plain', config: 'simple' });
+  }
+
+  const { data, error } = await query;
   if (error) throw error;
 
-  const tokens = new Set(
-    queryText.toLowerCase().split(/[^a-z0-9_]+/).filter((token) => token.length >= 3),
-  );
-
+  const now = Date.now();
   return (data ?? [])
+    .filter((memory: any) => {
+      const from = memory.valid_from ? new Date(memory.valid_from).getTime() : 0;
+      const until = memory.valid_until ? new Date(memory.valid_until).getTime() : Number.POSITIVE_INFINITY;
+      return from <= now && until >= now;
+    })
     .map((memory: any) => {
       const haystack = `${memory.scope_key} ${memory.statement}`.toLowerCase();
-      const overlap = [...tokens].filter((token) => haystack.includes(token)).length;
-      const score = overlap * 10 + Number(memory.confidence || 0) + Number(memory.occurrence_count || 0) * 0.01;
+      const lexicalOverlap = tokens.length
+        ? tokens.filter((token) => haystack.includes(token)).length / tokens.length
+        : 0;
+      const contradictionPenalty = Math.min(0.5, Number(memory.contradiction_count || 0) * 0.08);
+      const recencyDays = Math.max(
+        0,
+        (now - new Date(memory.last_confirmed_at).getTime()) / 86_400_000,
+      );
+      const recencyScore = Math.max(0, 1 - recencyDays / 180);
+      const score =
+        lexicalOverlap * 3 +
+        Number(memory.evidence_strength || 0) * 2 +
+        Number(memory.confidence || 0) * 2 +
+        recencyScore +
+        (KNOWLEDGE_WEIGHT[memory.knowledge_type as EllieKnowledgeType] ?? 0.8) -
+        contradictionPenalty;
+
       return {
         id: memory.id,
         memoryType: memory.memory_type,
+        knowledgeType: (memory.knowledge_type ?? 'OUTCOME') as EllieKnowledgeType,
         scopeKey: memory.scope_key,
         statement: memory.statement,
         evidenceRefs: Array.isArray(memory.evidence_refs) ? memory.evidence_refs : [],
+        resourceRefs: Array.isArray(memory.resource_refs) ? memory.resource_refs : [],
         confidence: Number(memory.confidence),
+        evidenceStrength: Number(memory.evidence_strength ?? 0.5),
         occurrenceCount: Number(memory.occurrence_count),
+        contradictionCount: Number(memory.contradiction_count ?? 0),
         lastConfirmedAt: memory.last_confirmed_at,
+        validFrom: memory.valid_from ?? undefined,
+        validUntil: memory.valid_until ?? undefined,
+        status: memory.status ?? 'ACTIVE',
         score,
       };
     })
@@ -82,14 +143,20 @@ export async function reinforceTenantMemory(
     scopeKey: string;
     statement: string;
     evidenceRefs: string[];
+    resourceRefs?: string[];
     confidence: number;
+    evidenceStrength?: number;
   },
 ): Promise<void> {
   if (!input.evidenceRefs.length) throw new Error('Learning memory requires evidence references');
-  const boundedConfidence = Math.max(0, Math.min(1, input.confidence));
+
+  const boundedConfidence = clamp(input.confidence);
+  const evidenceStrength = clamp(input.evidenceStrength ?? 0.75);
   const { data: existing, error: lookupError } = await db
     .from('intelligence_memories')
-    .select('id,confidence,occurrence_count,evidence_refs')
+    .select(
+      'id,memory_type,knowledge_type,confidence,evidence_strength,occurrence_count,contradiction_count,evidence_refs,resource_refs,status',
+    )
     .eq('organization_id', input.organizationId)
     .eq('scope_key', input.scopeKey)
     .eq('statement', input.statement)
@@ -101,22 +168,43 @@ export async function reinforceTenantMemory(
     const { error } = await db.from('intelligence_memories').insert({
       organization_id: input.organizationId,
       memory_type: 'OUTCOME_PATTERN',
+      knowledge_type: 'OUTCOME',
       scope_key: input.scopeKey,
       statement: input.statement,
       evidence_refs: input.evidenceRefs,
+      resource_refs: input.resourceRefs ?? [],
       confidence: boundedConfidence,
+      evidence_strength: evidenceStrength,
+      occurrence_count: 1,
+      contradiction_count: 0,
+      status: 'ACTIVE',
     });
     if (error) throw error;
     return;
   }
 
-  const nextConfidence = Math.min(1, Math.max(Number(existing.confidence), boundedConfidence) + 0.05);
+  const occurrenceCount = Number(existing.occurrence_count || 0) + 1;
+  const priorConfidence = Number(existing.confidence || 0);
+  const nextConfidence = clamp(
+    (priorConfidence * Math.max(1, occurrenceCount - 1) + boundedConfidence) / occurrenceCount,
+  );
+  const nextEvidenceStrength = clamp(
+    (Number(existing.evidence_strength || 0) * Math.max(1, occurrenceCount - 1) + evidenceStrength) / occurrenceCount,
+  );
+  const knowledgeType =
+    existing.knowledge_type === 'PATTERN' || occurrenceCount >= 3
+      ? 'PATTERN'
+      : (existing.knowledge_type ?? 'OUTCOME');
+
   const { error } = await db
     .from('intelligence_memories')
     .update({
+      knowledge_type: knowledgeType,
       confidence: nextConfidence,
-      occurrence_count: Number(existing.occurrence_count) + 1,
+      evidence_strength: nextEvidenceStrength,
+      occurrence_count: occurrenceCount,
       evidence_refs: [...new Set([...(Array.isArray(existing.evidence_refs) ? existing.evidence_refs : []), ...input.evidenceRefs])],
+      resource_refs: [...new Set([...(Array.isArray(existing.resource_refs) ? existing.resource_refs : []), ...(input.resourceRefs ?? [])])],
       last_confirmed_at: new Date().toISOString(),
       status: 'ACTIVE',
     })
@@ -124,4 +212,46 @@ export async function reinforceTenantMemory(
     .eq('organization_id', input.organizationId);
 
   if (error) throw error;
+}
+
+export async function recordEllieCounterEvidence(
+  db: SupabaseClient,
+  input: {
+    organizationId: string;
+    scopeKey: string;
+    statement: string;
+    evidenceRefs: string[];
+  },
+): Promise<void> {
+  if (!input.evidenceRefs.length) throw new Error('Counter-evidence requires evidence references');
+
+  const { data: existing, error } = await db
+    .from('intelligence_memories')
+    .select('id,confidence,occurrence_count,contradiction_count,evidence_refs')
+    .eq('organization_id', input.organizationId)
+    .eq('scope_key', input.scopeKey)
+    .eq('statement', input.statement)
+    .maybeSingle();
+  if (error) throw error;
+  if (!existing) return;
+
+  const contradictionCount = Number(existing.contradiction_count || 0) + 1;
+  const occurrenceCount = Math.max(1, Number(existing.occurrence_count || 1));
+  const nextConfidence = clamp(
+    Number(existing.confidence || 0.5) * (contradictionCount >= occurrenceCount ? 0.65 : 0.85),
+  );
+  const status = nextConfidence < 0.2 ? 'RETIRED' : 'ACTIVE';
+
+  const { error: updateError } = await db
+    .from('intelligence_memories')
+    .update({
+      confidence: nextConfidence,
+      contradiction_count: contradictionCount,
+      last_counter_evidence_at: new Date().toISOString(),
+      evidence_refs: [...new Set([...(Array.isArray(existing.evidence_refs) ? existing.evidence_refs : []), ...input.evidenceRefs])],
+      status,
+    })
+    .eq('id', existing.id)
+    .eq('organization_id', input.organizationId);
+  if (updateError) throw updateError;
 }
