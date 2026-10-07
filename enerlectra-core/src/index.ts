@@ -28,3 +28,6 @@ export { SupportHandler as handleSupport } from './core/handlers/handlers/comman
 export { LinkOrganizationHandler } from './core/handlers/handlers/commands/link-organization.handler.js';
 export { StartResetMeterHandler, SelectResetMeterTypeHandler, ConfirmResetMeterHandler } from './core/handlers/handlers/commands/resetmeter.handler.js';
 export type { EllieContext, EllieEvidence, EllieRecommendation, EllieSituation, EllieWorkItem, EllieMemory } from './domain/intelligence/ellie-context.js';
+
+export { askEllie, askEllieStructured } from './ai/ellie.js';
+export type { EllieInference } from './ai/ellie.js';
