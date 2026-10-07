@@ -194,6 +194,7 @@ Server-side semantic validation must reject:
 - unknown evidence IDs;
 - unknown target situations;
 - unknown target resource IDs;
+- target resources unrelated to the selected target situation;
 - unsupported recommendation types;
 - invalid confidence.
 
@@ -222,6 +223,8 @@ learning event
 ```
 
 Ellie cannot authorize, execute or verify an action.
+
+Learning feedback is accepted only when the referenced verification belongs to the same tenant and situation and its authoritative verification status matches the learning outcome (`VERIFIED` → `VERIFIED`, `FAILED` → `FAILED`).
 
 ## Operational attention
 
