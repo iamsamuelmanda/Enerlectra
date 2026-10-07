@@ -18,7 +18,7 @@ services:
         value: https://enerlectra-ellie-bot.onrender.com
 
   - type: web
-    name: enerlectra
+    name: Enerlectra
     env: node
     plan: free
     buildCommand: "npm ci && npm run build:client"
@@ -39,5 +39,5 @@ services:
       - key: SUPABASE_SERVICE_ROLE_KEY
         sync: false
     healthCheckPath: /api/health
-    autoDeploy: false
+    autoDeploy: true
     branch: main
