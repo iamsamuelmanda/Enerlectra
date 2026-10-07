@@ -170,6 +170,17 @@ export function buildCanonicalEllieContext(
     }
   }
 
+  const digestEvidence = operationalDigest?.recentEvidence ?? [];
+  const knownEvidenceIds = new Set(evidence.map((item) => item.id));
+  for (const item of digestEvidence) {
+    if (!knownEvidenceIds.has(item.id)) evidence.push(item);
+  }
+
+  const knownSituationIds = new Set(situations.map((item) => item.id));
+  for (const item of operationalDigest?.activeExceptions ?? []) {
+    if (!knownSituationIds.has(item.id)) situations.push(item);
+  }
+
   return {
     actorId: tenant.actorId,
     organizationId: tenant.organizationId,
