@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import { ArrowRight, Building2, Loader2, Users, Zap } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabaseV2 } from '@/lib/supabase-v2';
+import { supabase } from '@/lib/supabase';
 
 type Intent = 'OWNER' | 'DELEGATED_OPERATOR';
 
@@ -18,7 +18,7 @@ export default function V2Onboarding() {
 
   useEffect(() => {
     let mounted = true;
-    supabaseV2.auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       if (!mounted) return;
       if (!data.session) navigate('/signin', { replace: true });
       setChecking(false);
@@ -32,7 +32,7 @@ export default function V2Onboarding() {
     setInviteLink(null);
 
     try {
-      const { data, error } = await supabaseV2.rpc('create_organization', {
+      const { data, error } = await supabase.rpc('create_organization', {
         p_name: name,
         p_creator_intent: intent,
       });
@@ -44,7 +44,7 @@ export default function V2Onboarding() {
       if (intent === 'DELEGATED_OPERATOR') {
         if (!inviteEmail.trim()) throw new Error('Enter the business owner email before creating a delegated workspace.');
 
-        const { data: invitation, error: invitationError } = await supabaseV2.rpc(
+        const { data: invitation, error: invitationError } = await supabase.rpc(
           'create_organization_invitation',
           {
             p_organization_id: organizationId,
@@ -79,7 +79,7 @@ export default function V2Onboarding() {
     setBusy(true);
 
     try {
-      const { error } = await supabaseV2.rpc('accept_organization_invitation', { p_token: token });
+      const { error } = await supabase.rpc('accept_organization_invitation', { p_token: token });
       if (error) throw error;
       toast.success('You now have access to the workspace.');
       navigate('/workspace', { replace: true });
