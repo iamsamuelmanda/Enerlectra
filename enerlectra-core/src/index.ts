@@ -27,4 +27,4 @@ export { StartSessionHandler as handleStart } from './core/handlers/handlers/com
 export { SupportHandler as handleSupport } from './core/handlers/handlers/commands/support.handler.js';
 export { LinkOrganizationHandler } from './core/handlers/handlers/commands/link-organization.handler.js';
 export { StartResetMeterHandler, SelectResetMeterTypeHandler, ConfirmResetMeterHandler } from './core/handlers/handlers/commands/resetmeter.handler.js';
-export type { EllieContext, EllieEvidence, EllieRecommendation, EllieSituation, EllieWorkItem } from './domain/intelligence/ellie-context.js';
+export type { EllieContext, EllieEvidence, EllieRecommendation, EllieSituation, EllieWorkItem, EllieMemory } from './domain/intelligence/ellie-context.js';
