@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Settings2, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { getOrganizationContext, updateOrganizationContext, type OrganizationOperatingContext } from '@/lib/v2-api';
+import { getOrganizationContext, updateOrganizationContext, type OrganizationOperatingContext } from '@/lib/operational-api';
 
 const CAPABILITIES = [
   'CUSTOMER_MANAGEMENT','SITE_MANAGEMENT','ASSET_MANAGEMENT','PROJECT_DELIVERY',
