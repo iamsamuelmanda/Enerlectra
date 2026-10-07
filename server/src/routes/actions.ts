@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { Router, type Request, type Response } from 'express';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   authorizeAction,
   createAction,
