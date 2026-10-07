@@ -390,36 +390,95 @@ The next phase is:
 
 This audit does not authorize destructive cleanup by itself.
 
-## 12. Figma console reconciliation — verified 2026-10-06
+## 12. Figma console reconciliation — evidence status 2026-10-07
 
-The existing Figma prototype has now been inspected directly. File: `Enerlectra Configurable Console — Product Prototype` (`m7d3GYmQsQNVuLqAafwcyE`).
+The repository contains the referenced Figma prototype and earlier project work established its intended 10-screen console flow. However, **the connected Figma MCP could not perform a fresh visual inspection in this audit pass because the Figma Starter-plan tool quota was exhausted**.
 
-The prototype is directionally aligned with the canonical platform:
+Therefore this document must not treat the following as newly verified visual facts:
 
-- account creation and organization setup;
-- configurable operating context;
-- organization capabilities;
+- exact screen copy;
+- exact screen layout;
+- exact component hierarchy;
+- exact prototype interactions.
+
+What remains verified from the implementation and prior documented design contract is that the canonical console must support:
+
+- account/organization setup;
+- operating-context configuration;
+- capability configuration;
 - customer/site/asset context;
 - operational queue;
-- issue intake;
-- recommendation context;
-- work execution;
-- verification and resolution;
-- company-private workspace language.
+- issue/situation context;
+- recommendation;
+- work;
+- Action proposal → authorization → execution/attempt;
+- verification and resolution.
 
-It does not introduce EPC/PAYGo-specific database concepts. Its operating-model choices remain configuration examples.
+The canonical authorization contract remains authoritative. In particular, prototype language suggesting that an OPERATOR can authorize consequential work must not cause the runtime permission matrix to be weakened: `action.authorize` remains an explicit permission and is currently granted to OWNER in the canonical role matrix.
 
-### Implementation gaps found
+No Figma mutation is claimed.
 
-The current React router exposes only the canonical landing/sign-in/onboarding/workspace surface, but the workspace does not yet implement the full Figma interaction sequence.
+## 13. 2026-10-07 boundary audit findings
 
-Specifically:
+A second-pass inspection of the current branch head found no architectural reason to replace the canonical tenant resolver or Action state model. The important findings are containment and verification issues:
 
-1. The browser can create an operational issue and directly submit verification, but it does not yet expose the complete Action proposal → authorization → execution/attempt sequence in the console.
-2. The Figma prototype shows assigned work and a consequential-action approval step, while the current UI has no dedicated work-assignment interaction.
-3. The Figma organization setup includes country/region fields that are not currently represented in the onboarding RPC contract. These should not be added to the database merely to match the mockup; they need a demonstrated product purpose first.
-4. The Figma copy currently says an operator can authorize work. The canonical migration 049 role matrix does not grant `action.authorize` to OPERATOR; OWNER is the role with that permission. The product surface must follow the authorization contract, not weaken the security model to match prototype copy.
+### A. Canonical tenant resolution remains fail-closed
 
-The correct next implementation step is therefore to bring the console up to the existing Action/Attempt/Verification contract, then revise prototype copy/interaction where it conflicts with the canonical authorization model.
+The resolver derives:
 
-Figma mutation was not performed in this pass because the connected Figma Starter-plan MCP tool reported its call quota was exhausted. No claim is made that the prototype itself was modified.
+`authenticated user → actor → active membership → organization → role → permissions → operating context`
+
+An explicit `x-organization-id` is constrained by the authenticated actor's active membership rather than trusted as authority.
+
+Channel resolution similarly treats the external WhatsApp/Telegram identifier only as a lookup key. It does not accept organization or role information from the channel payload.
+
+### B. Action APIs preserve the backend authority boundary
+
+The HTTP routes resolve tenant context before checking:
+
+- `action.create`;
+- `action.authorize`;
+- `work.execute`.
+
+The client UI is therefore not the security boundary.
+
+The Action/Attempt persistence path also carries the organization ID from trusted tenant context rather than accepting it from the browser.
+
+### C. The canonical composition root is still clean
+
+`server/src/index.ts` mounts only the canonical operational routes. Legacy routes/services remain in the repository but are not mounted by the canonical composition root.
+
+This is the correct state for controlled convergence: **legacy code is quarantined, not silently promoted and not prematurely deleted.**
+
+### D. One real repository hygiene defect was found and corrected
+
+`package.json` already declared Node `24.x` / npm `>=10`, while the root `package-lock.json` still carried stale root-package engine metadata for Node `20.x` / npm `>=8`.
+
+That inconsistency has now been corrected on this branch.
+
+It was not the cause of the GitHub Actions `steps:null` failure; those runs fail before executing any workflow step. It does, however, remove an avoidable install/CI ambiguity.
+
+### E. GitHub Actions remains an infrastructure signal, not a code signal
+
+The current-head GitHub Actions runs still terminate before executing job steps. Consequently:
+
+- no current-head GitHub test pass is claimed;
+- no current-head GitHub typecheck pass is claimed;
+- no current-head GitHub build pass is claimed.
+
+The Vercel status check is green, but the deployment cannot currently be independently inspected from this environment, so it is not treated as equivalent to a reproducible current-head test run.
+
+## 14. Revised convergence decision
+
+The architecture model is now stable enough that the next work should **not** be another broad rewrite.
+
+The next controlled sequence is:
+
+1. finish legacy reachability classification;
+2. preserve/adapt the highest-value reusable capabilities;
+3. finish the canonical browser Action/Attempt/Verification flow;
+4. reconcile the actual Figma prototype once tool access is available;
+5. obtain reproducible current-head install/typecheck/test/build evidence;
+6. only then decide whether PR #35 is ready to merge.
+
+No Render production cutover is authorized by this audit.
