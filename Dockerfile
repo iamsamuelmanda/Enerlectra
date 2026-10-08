@@ -1,4 +1,4 @@
-# Enerlectra V2 runtime image.
+# Enerlectra canonical runtime image.
 # Install the root workspace and local enerlectra-core package together so
 # npm resolves the file: dependency from the same source tree.
 FROM node:24-alpine
