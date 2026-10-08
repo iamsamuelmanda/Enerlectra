@@ -101,6 +101,7 @@ test('canonical Ellie context derives authority from TenantContext', () => {
 
 
 import { validateInferenceAgainstContext } from '../server/src/routes/ellie.ts';
+import { scoreEllieMemory } from '../server/src/platform/intelligence/ellie-learning.ts';
 
 test('Ellie inference boundary rejects fabricated evidence and targets only supplied resources', () => {
   const context = buildCanonicalEllieContext({
@@ -174,4 +175,33 @@ test('Ellie inference boundary rejects fabricated evidence and targets only supp
     () => validateInferenceAgainstContext({ ...validInference, learningSignal: 'Case outcome without a target.' , targetSituationId: undefined }, context),
     /ELLIE_LEARNING_TARGET_REQUIRED/,
   );
+});
+
+
+test('Ellie memory ranking prefers evidence-backed memories scoped to the active resource', () => {
+  const resourceScoped = scoreEllieMemory({
+    scopeKey: 'asset-fault',
+    statement: 'Repeated verified field checks resolved inverter faults at this site.',
+    knowledgeType: 'OUTCOME',
+    resourceRefs: ['asset-a'],
+    evidenceRefs: ['attempt-a', 'verification-a', 'attempt-b'],
+    confidence: 0.8,
+    evidenceStrength: 0.9,
+    contradictionCount: 0,
+    lastConfirmedAt: new Date().toISOString(),
+  }, 'inverter fault', Date.now(), ['asset-a']);
+
+  const organizationWide = scoreEllieMemory({
+    scopeKey: 'asset-fault',
+    statement: 'Repeated verified field checks resolved inverter faults.',
+    knowledgeType: 'OUTCOME',
+    resourceRefs: [],
+    evidenceRefs: ['attempt-c'],
+    confidence: 0.8,
+    evidenceStrength: 0.9,
+    contradictionCount: 0,
+    lastConfirmedAt: new Date().toISOString(),
+  }, 'inverter fault', Date.now(), ['asset-a']);
+
+  assert.ok(resourceScoped > organizationWide);
 });
