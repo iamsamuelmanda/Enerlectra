@@ -9,7 +9,7 @@ export interface StartupCheckResult {
 }
 
 function validateEnvironmentVariables(): { status: 'pass' | 'fail'; message?: string } {
-  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_KEY']
+  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
   const missing = required.filter(key => !process.env[key])
   if (missing.length > 0) {
     return { status: 'fail', message: `Missing required environment variables: ${missing.join(', ')}` }
@@ -26,7 +26,7 @@ export async function runStartupChecks(): Promise<StartupCheckResult> {
   
   // 2. Test Supabase connection
   try {
-    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!)
+    const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
     const { error } = await supabase.from('pcu_balances').select('count').limit(1)
     if (error) {
       checks.push({ name: 'Supabase Connection', status: 'fail', message: error.message })
