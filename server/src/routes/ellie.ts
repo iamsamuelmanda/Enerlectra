@@ -316,12 +316,20 @@ export function createEllieRouter(db: SupabaseClient): Router {
       const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
       if (!message) return res.status(400).json({ error: 'message is required', code: 'MESSAGE_REQUIRED' });
 
-      const [queue, memories, organizationSnapshot, operationalDigest] = await Promise.all([
+      const [queue, organizationSnapshot, operationalDigest] = await Promise.all([
         loadQueue(db, tenant.organizationId),
-        loadTenantEllieMemories(db, tenant.organizationId, message),
         loadOrganizationSnapshot(db, tenant.organizationId),
         loadOperationalDigest(db, tenant.organizationId, tenant.permissions),
       ]);
+      const resourceIds = [
+        ...(queue.situations ?? []).flatMap((s: any) => [s.customer_id, s.site_id, s.asset_id].filter(Boolean)),
+        ...(operationalDigest.customers ?? []).map((r: any) => String(r.id)),
+        ...(operationalDigest.sites ?? []).map((r: any) => String(r.id)),
+        ...(operationalDigest.assets ?? []).map((r: any) => String(r.id)),
+      ];
+      const memories = await loadTenantEllieMemories(db, tenant.organizationId, message, {
+        resourceIds: [...new Set(resourceIds)],
+      });
       const context = buildCanonicalEllieContext(
         tenant,
         queue,
