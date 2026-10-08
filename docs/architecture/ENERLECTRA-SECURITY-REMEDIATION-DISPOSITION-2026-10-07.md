@@ -4,15 +4,13 @@
 
 ## Result
 
-The exact-head executable validation was rerun after the Ellie changes.
+This record is an active merge-gate document and must describe the latest executable evidence, not an earlier validation snapshot.
 
-- `npm run ci`: PASS
-- server typecheck: PASS
-- test suite: PASS — 18 primary tests plus all configured boundary gates
-- client typecheck: PASS
-- client production build: PASS
-
-The remaining dependency audit findings were independently rechecked rather than hidden.
+- Latest inspected PR HEAD: `229eec9274bb280286a935ddb55368dc38d57b3c`.
+- The previous claim that `npm run ci` and the full test suite passed at the current HEAD is no longer valid and has been removed.
+- GitHub Actions currently reports failed `CI` and `Authenticated Action Gate` runs for the reconstruction branch. The connector does not expose executable step logs for those failed jobs, so their root cause is not being guessed.
+- Vercel is building the latest PR HEAD; earlier branch deployments reached READY, but that is client-build evidence only and is not proof of backend/runtime correctness.
+- Dependency audit output from the latest Vercel build reports 27 root vulnerabilities (including 1 critical) and 21 client vulnerabilities. These remain a merge gate.
 
 ## Remediated
 
@@ -22,22 +20,15 @@ No `--force` upgrade was used.
 
 ## Remaining root/client findings
 
-The remaining findings are dominated by dependency trees that require major-version toolchain changes:
+The current dependency findings remain unresolved. No `npm audit fix --force` upgrade has been applied.
 
-- root: Tailwind 3 dependency chain retains `braces` high severity and `postcss-selector-parser` moderate severity; npm's available fix requires Tailwind 4.
-- client production dependencies: React Router 6 has two moderate advisories; npm's available fix requires React Router 7.
-- root dependency graph also contains other moderate findings where the safe fix is not available within the current declared compatibility range.
+The next security work must distinguish:
+- runtime production dependencies;
+- build-only/tooling dependencies;
+- client routing dependencies;
+- legacy capability dependencies.
 
-These are **not silently classified as resolved**.
-
-## Why no force upgrade was applied
-
-The available automated fixes cross architectural/tooling boundaries:
-
-- Tailwind 3 → 4 changes the CSS/PostCSS integration.
-- React Router 6 → 7 changes routing APIs and requires application-level compatibility validation.
-
-Applying `npm audit fix --force` would therefore violate the reconstruction rule against introducing unverified breaking changes merely to make the audit number green.
+No vulnerability is considered closed merely because it can be hidden behind a non-canonical subsystem.
 
 ## Disposition
 
