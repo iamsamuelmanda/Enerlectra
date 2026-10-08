@@ -39,12 +39,32 @@ function normalizeTokens(queryText: string) {
   )];
 }
 
+export type EllieMemoryRetrievalOptions = { limit?: number; resourceIds?: string[]; knowledgeTypes?: EllieKnowledgeType[] };
+
+export function scoreEllieMemory(memory: { scopeKey: string; statement: string; knowledgeType: EllieKnowledgeType; resourceRefs: unknown[]; evidenceRefs: unknown[]; confidence: number; evidenceStrength: number; contradictionCount: number; lastConfirmedAt: string }, queryText: string, now = Date.now(), resourceIds: readonly string[] = []): number {
+  const tokens = normalizeTokens(queryText);
+  const haystack = [memory.scopeKey, memory.statement].join(' ').toLowerCase();
+  const lexicalOverlap = tokens.length ? tokens.filter((token) => haystack.includes(token)).length / tokens.length : 0;
+  const resourceSet = new Set(resourceIds);
+  const resourceOverlap = resourceSet.size && memory.resourceRefs.length ? memory.resourceRefs.map(String).filter((id) => resourceSet.has(id)).length / Math.max(1, resourceSet.size) : 0;
+  const evidenceScore = Math.min(1, memory.evidenceRefs.length / 3);
+  const contradictionPenalty = Math.min(0.5, memory.contradictionCount * 0.08);
+  const recencyDays = Math.max(0, (now - new Date(memory.lastConfirmedAt).getTime()) / 86400000);
+  const recencyScore = Math.max(0, 1 - recencyDays / 180);
+  const decayFactor = Math.pow(0.5, recencyDays / 365);
+  const effectiveConfidence = memory.confidence * decayFactor;
+  return lexicalOverlap * 3 + resourceOverlap * 3 + memory.evidenceStrength * 2 + evidenceScore + effectiveConfidence * 2 + recencyScore + (KNOWLEDGE_WEIGHT[memory.knowledgeType] ?? 0.8) - contradictionPenalty;
+}
+
 export async function loadTenantEllieMemories(
   db: SupabaseClient,
   organizationId: string,
   queryText: string,
-  limit = 8,
+  options: EllieMemoryRetrievalOptions = {},
 ): Promise<EllieMemory[]> {
+  const limit = options.limit ?? 8;
+  const resourceIds = [...new Set((options.resourceIds ?? []).filter(Boolean))];
+  const knowledgeTypes = [...new Set(options.knowledgeTypes ?? [])];
   const tokens = normalizeTokens(queryText);
   let query = db
     .from('intelligence_memories')
@@ -54,7 +74,8 @@ export async function loadTenantEllieMemories(
     .eq('organization_id', organizationId)
     .eq('status', 'ACTIVE')
     .order('last_confirmed_at', { ascending: false })
-    .limit(Math.max(50, limit * 6));
+    .limit(Math.max(50, limit * 10));
+  if (knowledgeTypes.length) query = query.in('knowledge_type', knowledgeTypes);
 
   // Structured retrieval comes before ranking: tenant + lifecycle + temporal validity +
   // full-text relevance. We deliberately do not require vector infrastructure yet.
@@ -73,7 +94,7 @@ export async function loadTenantEllieMemories(
       return from <= now && until >= now;
     })
     .map((memory: any) => {
-      const haystack = `${memory.scope_key} ${memory.statement}`.toLowerCase();
+      const haystack = [memory.scope_key, memory.statement].join(' ').toLowerCase();
       const lexicalOverlap = tokens.length
         ? tokens.filter((token) => haystack.includes(token)).length / tokens.length
         : 0;
@@ -85,8 +106,14 @@ export async function loadTenantEllieMemories(
       const recencyScore = Math.max(0, 1 - recencyDays / 180);
       const decayFactor = Math.pow(0.5, recencyDays / 365);
       const effectiveConfidence = Number(memory.confidence || 0) * decayFactor;
+      const resourceRefs = Array.isArray(memory.resource_refs) ? memory.resource_refs : [];
+      const evidenceRefs = Array.isArray(memory.evidence_refs) ? memory.evidence_refs : [];
+      const resourceOverlap = resourceIds.length && resourceRefs.length
+        ? resourceRefs.map(String).filter((id: string) => resourceIds.includes(id)).length / resourceIds.length
+        : 0;
+      const evidenceScore = Math.min(1, evidenceRefs.length / 3);
       const score =
-        lexicalOverlap * 3 +
+        lexicalOverlap * 3 + resourceOverlap * 3 + evidenceScore +
         Number(memory.evidence_strength || 0) * 2 +
         effectiveConfidence * 2 +
         recencyScore +
