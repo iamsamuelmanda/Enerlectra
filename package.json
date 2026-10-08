@@ -15,7 +15,7 @@
     "typecheck:server": "tsc -p tsconfig.ci-server.json",
     "typecheck:client": "cd client && npx tsc --noEmit",
     "typecheck:telegram-bot": "cd integrations/enerlectra-bot && npx tsc --noEmit",
-    "test": "node --import tsx --test test/ci-smoke.test.mjs test/canonical-boundary.test.mjs test/v2-tenant-context.test.mjs test/v2-channel-tenant-context.test.mjs test/v2-ellie-context-builder.test.mjs && npm run test:command-tenant-context && npm run test:runtime-boundary && npm run test:action-http && npm run test:multi-tenant && npm run test:operational-intelligence",
+    "test": "node --import tsx --test test/ci-smoke.test.mjs test/canonical-boundary.test.mjs test/ellie-inference-boundary.test.mjs test/v2-tenant-context.test.mjs test/v2-channel-tenant-context.test.mjs test/v2-ellie-context-builder.test.mjs && npm run test:command-tenant-context && npm run test:runtime-boundary && npm run test:action-http && npm run test:multi-tenant && npm run test:operational-intelligence",
     "ci": "npm test && npm run typecheck:server && npm --prefix client ci && npm run typecheck:client && npm run build:client",
     "clean": "rm -rf dist client/dist",
     "test:action": "node --import tsx --test test/v2-action-integration.test.mjs test/v2-actor-channel-privilege-integration.test.mjs",
