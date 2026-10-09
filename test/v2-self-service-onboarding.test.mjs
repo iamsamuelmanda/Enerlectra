@@ -7,7 +7,7 @@ const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const enabled = Boolean(url && serviceRoleKey && anonKey);
 
-test('V2 self-service onboarding gate is configured', () => {
+test('Self-service onboarding gate is configured', () => {
   if (!enabled) {
     assert.ok(true, 'Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to run the live onboarding gate.');
   }
@@ -19,7 +19,7 @@ if (enabled) {
   });
 
   const runId = Date.now().toString(36);
-  const password = `V2_Onboarding_Gate_${runId}_Secure!123`;
+  const password = `Onboarding_Gate_${runId}_Secure!123`;
   const state = {
     users: [],
     orgs: [],
@@ -28,12 +28,12 @@ if (enabled) {
   };
 
   async function createUser(label) {
-    const email = `v2-onboarding-${label}-${runId}@example.invalid`;
+    const email = `onboarding-gate-${label}-${runId}@example.invalid`;
     const { data, error } = await admin.auth.admin.createUser({
       email,
       password,
       email_confirm: true,
-      user_metadata: { full_name: `V2 Gate ${label}` },
+      user_metadata: { full_name: `Onboarding Gate ${label}` },
     });
     assert.ifError(error);
     state.users.push(data.user.id);
@@ -84,7 +84,7 @@ if (enabled) {
 
     const ownerClient = await signIn(owner);
     const { data: ownerOrg, error: ownerOrgError } = await ownerClient.rpc('create_organization', {
-      p_name: `V2 Gate Owner ${runId}`,
+      p_name: `Onboarding Gate Owner ${runId}`,
       p_creator_intent: 'OWNER',
     });
     assert.ifError(ownerOrgError);
@@ -96,7 +96,7 @@ if (enabled) {
     const { data: delegatedSetup, error: delegatedOrgError } = await delegatedClient.rpc(
       'create_delegated_organization_with_owner_invitation',
       {
-        p_name: `V2 Gate Delegated ${runId}`,
+        p_name: `Onboarding Gate Delegated ${runId}`,
         p_owner_email: secondOwner.email,
       }
     );
