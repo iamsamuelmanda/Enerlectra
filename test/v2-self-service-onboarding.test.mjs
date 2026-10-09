@@ -72,6 +72,7 @@ if (enabled) {
   let secondOwner;
   let orgOwner;
   let orgDelegated;
+  let delegatedOwnerClaimToken;
 
   before(async () => {
     owner = await createUser('owner');
@@ -89,13 +90,18 @@ if (enabled) {
     state.orgs.push(orgOwner);
 
     const delegatedClient = await signIn(operator);
-    const { data: delegatedOrg, error: delegatedOrgError } = await delegatedClient.rpc('create_organization', {
-      p_name: `V2 Gate Delegated ${runId}`,
-      p_creator_intent: 'DELEGATED_OPERATOR',
-    });
+    const { data: delegatedSetup, error: delegatedOrgError } = await delegatedClient.rpc(
+      'create_delegated_organization_with_owner_invitation',
+      {
+        p_name: `V2 Gate Delegated ${runId}`,
+        p_owner_email: secondOwner.email,
+      }
+    );
     assert.ifError(delegatedOrgError);
-    assert.equal(delegatedOrg.onboarding_state, 'PENDING_AUTHORITY');
-    orgDelegated = delegatedOrg.id;
+    assert.equal(delegatedSetup.organization.onboarding_state, 'PENDING_AUTHORITY');
+    assert.ok(delegatedSetup.invitation.token);
+    delegatedOwnerClaimToken = delegatedSetup.invitation.token;
+    orgDelegated = delegatedSetup.organization.id;
     state.orgs.push(orgDelegated);
   });
 
@@ -145,23 +151,12 @@ if (enabled) {
   });
 
   test('delegated operator can invite a responsible owner who claims the workspace', async () => {
-    const delegatedClient = await signIn(operator);
-    const { data: invite, error: inviteError } = await delegatedClient.rpc(
-      'create_organization_invitation',
-      {
-        p_organization_id: orgDelegated,
-        p_email: secondOwner.email,
-        p_purpose: 'OWNER_CLAIM',
-        p_role_key: 'OWNER',
-      }
-    );
-    assert.ifError(inviteError);
-    assert.ok(invite?.token);
+    assert.ok(delegatedOwnerClaimToken, 'atomic delegated onboarding must issue an owner-claim token');
 
     const secondOwnerClient = await signIn(secondOwner);
     const { data: claimed, error: claimError } = await secondOwnerClient.rpc(
       'accept_organization_invitation',
-      { p_token: invite.token }
+      { p_token: delegatedOwnerClaimToken }
     );
     assert.ifError(claimError);
     assert.equal(claimed.status, 'ACTIVE');
