@@ -59,6 +59,9 @@ if (enabled) {
       await admin.from('memberships').delete().eq('organization_id', orgId);
       await admin.from('organizations').delete().eq('id', orgId);
     }
+    for (const userId of state.users) {
+      await admin.from('actors').delete().eq('auth_user_id', userId);
+    }
     for (const actorId of state.actorIds) {
       await admin.from('actors').delete().eq('id', actorId);
     }
