@@ -45,7 +45,7 @@ export default function V2SignIn() {
   };
 
   return (
-    <main className="el-shell grid min-h-screen lg:grid-cols-[minmax(0,1fr)_minmax(420px,.9fr)]">
+    <main className="el-shell grid min-h-screen min-w-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(420px,.9fr)]">
       <section className="flex flex-col px-5 py-6 sm:px-10 lg:px-14 xl:px-20">
         <a href="/" className="flex w-fit items-center gap-2.5 text-[#202521] no-underline" aria-label="Enerlectra home">
           <span className="grid size-9 place-items-center rounded-xl bg-[#c8f169]"><Zap size={20} strokeWidth={2.5}/></span>
@@ -57,7 +57,7 @@ export default function V2SignIn() {
           <p className="mt-3 text-sm leading-6 text-[#68716b]">
             {invite ? 'Continue with your organization invitation.' : mode === 'signup' ? 'Start with your account. You’ll configure your organization and operating context next.' : 'Sign in to see what needs attention and coordinate work across your organization.'}
           </p>
-          <div className="mt-7 grid grid-cols-2 rounded-xl border border-[#e3e7e2] bg-white p-1">
+          <div className="mt-7 grid grid-cols-1 gap-1 rounded-xl border border-[#e3e7e2] bg-white p-1 min-[360px]:grid-cols-2">
             <button type="button" onClick={() => setMode('signin')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition ${mode === 'signin' ? 'bg-[#202521] text-white' : 'text-[#68716b] hover:bg-[#f4f6f1]'}`}><LogIn size={16}/> Sign in</button>
             <button type="button" onClick={() => setMode('signup')} className={`flex min-h-10 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition ${mode === 'signup' ? 'bg-[#202521] text-white' : 'text-[#68716b] hover:bg-[#f4f6f1]'}`}><UserPlus size={16}/> Create account</button>
           </div>
@@ -75,14 +75,14 @@ export default function V2SignIn() {
           </form>
           <p className="mt-6 text-center text-xs leading-5 text-[#68716b]">Your organization’s data stays within its authorized workspace.</p>
         </div>
-        <p className="text-xs text-[#929a92]">© Enerlectra · The Energy Internet</p>
+        <p className="text-xs text-[#929a92]">© Enerlectra · Operational intelligence</p>
       </section>
       <aside className="hidden flex-col justify-between bg-[#202521] p-10 text-white lg:flex xl:p-14">
         <div className="el-eyebrow !text-white/50">Operational intelligence</div>
         <div className="max-w-lg">
           <div className="mb-8 grid size-14 place-items-center rounded-2xl bg-[#c8f169] text-[#253019]"><ShieldCheck size={28}/></div>
           <h2 className="text-4xl font-semibold leading-tight xl:text-5xl">Clear situations. Controlled work. Verified outcomes.</h2>
-          <p className="mt-5 max-w-md text-base leading-7 text-white/65">Configure one operating foundation for your energy business—from customer reports to the evidence that closes the loop.</p>
+          <p className="mt-5 max-w-md text-base leading-7 text-white/65">Coordinate energy operations from customer reports through authorized work to verified outcomes.</p>
           <div className="mt-8 space-y-3">
             {['One workspace for your team','Authority remains explicit','Evidence stays connected to the outcome'].map((item) => <div key={item} className="flex items-center gap-3 text-sm text-white/80"><span className="grid size-6 place-items-center rounded-full bg-white/10 text-[#c8f169]"><ShieldCheck size={14}/></span>{item}</div>)}
           </div>
