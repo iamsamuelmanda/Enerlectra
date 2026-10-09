@@ -11,22 +11,22 @@ export default function V2Home() {
   return (
     <main className="el-shell">
       <header className="border-b border-[#e3e7e2] bg-white">
-        <div className="el-container flex h-[76px] items-center justify-between">
+        <div className="el-container flex min-h-[76px] flex-col items-stretch justify-center gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-0">
           <Link to="/" className="flex items-center gap-2.5 text-[#202521] no-underline" aria-label="Enerlectra home">
             <span className="grid size-9 place-items-center rounded-xl bg-[#c8f169]"><Zap size={20} strokeWidth={2.5} /></span>
             <span className="text-sm font-extrabold tracking-[.14em]">ENERLECTRA</span>
           </Link>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-sm text-[#68716b] sm:inline">The Energy Internet</span>
+          <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
+            <span className="hidden text-sm text-[#68716b] sm:inline">Operational intelligence</span>
             <Link to="/signin" className="el-button-secondary no-underline">Sign in</Link>
             <Link to="/signin?mode=signup" className="el-button-primary no-underline">Get started <ArrowRight size={16} /></Link>
           </div>
         </div>
       </header>
 
-      <section className="el-container grid gap-12 pb-16 pt-14 md:grid-cols-[.92fr_1.08fr] md:items-center md:pb-24 md:pt-20">
+      <section className="el-container grid min-w-0 gap-8 pb-12 pt-8 sm:gap-12 sm:pb-16 sm:pt-12 md:grid-cols-[.92fr_1.08fr] md:items-center md:pb-24 md:pt-20">
         <div>
-          <p className="el-eyebrow flex items-center gap-2"><span className="size-2 rounded-full bg-[#7b9a37]" /> Operational infrastructure for distributed energy</p>
+          <p className="el-eyebrow flex items-center gap-2"><span className="size-2 rounded-full bg-[#7b9a37]" /> Operational intelligence for energy operations</p>
           <h1 className="mt-5 max-w-[620px] text-4xl font-semibold leading-[1.06] sm:text-5xl lg:text-[3.65rem]">Run operations from <span className="text-[#657b3e]">one place.</span></h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-[#68716b] sm:text-lg">From the first customer report to verified resolution, Enerlectra helps energy teams understand what is happening and coordinate the next right action.</p>
           <div className="mt-8 flex flex-wrap gap-3">
@@ -39,22 +39,22 @@ export default function V2Home() {
           </div>
         </div>
 
-        <div className="el-card overflow-hidden p-3 sm:p-4">
+        <div className="el-card min-w-0 overflow-hidden p-3 sm:p-4">
           <div className="flex items-center justify-between border-b border-[#e3e7e2] px-3 pb-4 pt-2">
             <div><p className="text-sm font-bold">Operations overview</p><p className="mt-1 text-xs text-[#68716b]">A single view of work that needs attention</p></div>
             <span className="rounded-full bg-[#eff6e3] px-3 py-1.5 text-xs font-semibold text-[#4f6729]">Workspace preview</span>
           </div>
-          <div className="grid grid-cols-3 gap-2.5 py-4">
+          <div className="grid grid-cols-1 gap-2.5 py-4 min-[380px]:grid-cols-3">
             {[['12','Open issues'],['03','Need attention'],['07','Active work']].map(([value,label]) => <div key={label} className="rounded-xl border border-[#e3e7e2] bg-[#fafbf8] p-3"><p className="text-2xl font-semibold tracking-tight">{value}</p><p className="mt-1 text-[11px] leading-4 text-[#68716b]">{label}</p></div>)}
           </div>
-          <div className="el-dark-panel p-4 sm:p-5">
+          <div className="el-dark-panel min-w-0 p-3 sm:p-5">
             <div className="flex items-center justify-between"><p className="text-sm font-semibold">Needs attention</p><span className="text-xs text-white/55">Illustrative preview</span></div>
             <div className="mt-4 space-y-2.5">
               {[
                 ['CRITICAL','Inverter offline — Kafue 04','Field investigation'],
                 ['HIGH','Commissioning evidence missing','Commissioning'],
                 ['HIGH','Payment mismatch — Customer 0182','Payment reconciliation'],
-              ].map(([level,title,work]) => <div key={title} className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[.04] p-3">
+              ].map(([level,title,work]) => <div key={title} className="flex min-w-0 items-start gap-2 rounded-xl border border-white/10 bg-white/[.04] p-2.5 sm:gap-3 sm:p-3">
                 <span className={`mt-0.5 rounded-md px-2 py-1 text-[9px] font-bold tracking-wide ${level === 'CRITICAL' ? 'bg-[#f7d7d2] text-[#8d3026]' : 'bg-[#f7e7be] text-[#76520a]'}`}>{level}</span>
                 <div className="min-w-0"><p className="text-xs font-semibold text-white">{title}</p><p className="mt-1 text-[11px] text-white/60">Recommended next: {work}</p></div>
                 <ArrowRight className="ml-auto mt-1 shrink-0 text-white/50" size={15} />
@@ -73,7 +73,7 @@ export default function V2Home() {
           </div>
         </div>
       </section>
-      <footer className="el-container flex flex-col gap-3 py-7 text-xs text-[#68716b] sm:flex-row sm:items-center sm:justify-between"><span>ENERLECTRA · The Energy Internet</span><span>One workspace. Clear authority. Verifiable outcomes.</span></footer>
+      <footer className="el-container flex flex-col gap-2 py-7 text-xs text-[#68716b] sm:flex-row sm:items-center sm:justify-between"><span>ENERLECTRA · Operational intelligence</span><span>One workspace. Clear authority. Verifiable outcomes.</span></footer>
     </main>
   );
 }
