@@ -32,20 +32,27 @@ export default function V2Onboarding() {
     setInviteLink(null);
     try {
       if (intent === 'DELEGATED_OPERATOR' && !inviteEmail.trim()) throw new Error('Enter the business owner email before creating a delegated workspace.');
-      const { data, error } = await supabase.rpc('create_organization', { p_name: name.trim(), p_creator_intent: intent });
-      if (error) throw error;
-      const organizationId = data.id as string;
       if (intent === 'DELEGATED_OPERATOR') {
-        const { data: invitation, error: invitationError } = await supabase.rpc('create_organization_invitation', {
-          p_organization_id: organizationId, p_email: inviteEmail.trim(), p_purpose: 'OWNER_CLAIM', p_role_key: 'OWNER',
+        // Create the pending organization and owner-claim invitation in one
+        // database transaction so an invitation failure cannot orphan a workspace.
+        const { data, error } = await supabase.rpc('create_delegated_organization_with_owner_invitation', {
+          p_name: name.trim(),
+          p_owner_email: inviteEmail.trim(),
         });
-        if (invitationError) throw invitationError;
-        const token = invitation.token as string;
+        if (error) throw error;
+        const invitation = data?.invitation as { token?: string } | undefined;
+        const token = invitation?.token;
         if (!token) throw new Error('Owner claim invitation was created without a token.');
         setInviteLink(`${window.location.origin}/onboarding?invite=${encodeURIComponent(token)}`);
         toast.success('Workspace created. Owner claim invitation is ready.');
         return;
       }
+
+      const { error } = await supabase.rpc('create_organization', {
+        p_name: name.trim(),
+        p_creator_intent: 'OWNER',
+      });
+      if (error) throw error;
       toast.success('Workspace created.');
       navigate('/workspace', { replace: true });
     } catch (error) {
