@@ -185,7 +185,7 @@ export default function V2Workspace() {
     if (action.status === 'PROPOSED' && permissions.includes('action.authorize')) {
       return (
         <button disabled={busyForAction} onClick={() => void runAction(action, () => authorizeAction(action.id))}
-          className="rounded-lg border border-amber-300/20 px-3 py-2 text-xs text-amber-200 hover:bg-amber-300/5 disabled:opacity-50">
+          className="rounded-lg border border-[#d8e5bd] px-3 py-2 text-xs text-[#607b31] hover:bg-[#f5f8ef] disabled:opacity-50">
           {busyForAction ? 'Authorizing…' : 'Authorize'}
         </button>
       );
@@ -201,7 +201,7 @@ export default function V2Workspace() {
 
       return (
         <button disabled={busyForAction} onClick={() => void executeAction(action)}
-          className="rounded-lg border border-sky-300/20 px-3 py-2 text-xs text-sky-200 hover:bg-sky-300/5 disabled:opacity-50">
+          className="rounded-lg border border-[#d8e6ed] px-3 py-2 text-xs text-[#456a7c] hover:bg-[#eff6f8] disabled:opacity-50">
           {busyForAction ? 'Updating…' : label}
         </button>
       );
@@ -211,31 +211,31 @@ export default function V2Workspace() {
   };
 
   return (
-    <main className="min-h-screen bg-[#020205] text-slate-100">
-      <header className="border-b border-white/10 px-6 py-5">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center gap-3"><Zap className="text-amber-400" size={22} /><span className="font-semibold tracking-wide">ENERLECTRA</span></div>
-          <button onClick={signOut} className="flex items-center gap-2 text-sm text-slate-400 hover:text-white"><LogOut size={16} /> Sign out</button>
+    <main className="min-h-screen el-shell">
+      <header className="border-b border-[#e3e7e2] bg-white px-4 py-4 sm:px-6 sm:py-5">
+        <div className="el-container flex items-center justify-between">
+          <div className="flex items-center gap-3"><Zap className="text-[#607b31]" size={22} /><span className="font-semibold tracking-wide">ENERLECTRA</span></div>
+          <button onClick={signOut} className="flex items-center gap-2 text-sm text-[#68716b] hover:text-[#202521]"><LogOut size={16} /> Sign out</button>
         </div>
       </header>
 
-      <section className="mx-auto max-w-6xl px-6 py-10">
+      <section className="el-container py-7 sm:py-10">
         <OperatingContextPanel />
         <ResourceContextPanel onContextChange={(next) => setContextSelection((current) => ({ ...current, ...next }))} />
-        <div className="flex items-end justify-between gap-4">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <p className="text-xs uppercase tracking-[0.25em] text-amber-300">Operational intelligence</p>
+            <p className="text-xs uppercase tracking-[0.25em] text-[#607b31]">Operational intelligence</p>
             <h1 className="mt-3 text-3xl font-semibold">See what needs attention</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-[#68716b]">
               Enerlectra turns operational evidence into situations, recommendations, work, actions and verified outcomes.
             </p>
           </div>
-          <button onClick={() => void loadQueue()} disabled={queueBusy} className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300 hover:bg-white/5 disabled:opacity-50">
+          <button onClick={() => void loadQueue()} disabled={queueBusy} className="flex items-center gap-2 rounded-xl border border-[#e3e7e2] px-4 py-2 text-sm text-[#454d47] hover:bg-[#f1f4ee] disabled:opacity-50">
             <RefreshCw size={16} className={queueBusy ? 'animate-spin' : ''} /> Refresh
           </button>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-5">
+        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
             ['Open', queueMetrics.openSituations],
             ['Critical', queueMetrics.criticalSituations],
@@ -243,85 +243,85 @@ export default function V2Workspace() {
             ['Unassigned', queueMetrics.unassignedWork],
             ['Overdue', queueMetrics.overdueWork],
           ].map(([label, value]) => (
-            <div key={label} className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3">
-              <p className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</p>
-              <p className="mt-1 text-2xl font-semibold text-slate-100">{value}</p>
+            <div key={label} className="rounded-2xl border border-[#e3e7e2] bg-white px-4 py-4 shadow-[0_2px_10px_rgba(32,37,33,0.03)]">
+              <p className="text-[10px] uppercase tracking-[0.16em] text-[#7b847c]">{label}</p>
+              <p className="mt-1 text-2xl font-semibold text-[#202521]">{value}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-8 grid gap-8 lg:grid-cols-[1.05fr_1.4fr]">
-          <form onSubmit={submit} className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+        <div className="mt-7 grid items-start gap-5 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
+          <form onSubmit={submit} className="rounded-2xl border border-[#e3e7e2] bg-white p-5 sm:p-6">
             <div className="flex items-center gap-3">
-              <AlertTriangle size={18} className="text-amber-300" />
+              <AlertTriangle size={18} className="text-[#607b31]" />
               <h2 className="font-medium">Report an operational issue</h2>
             </div>
-            <label className="mt-6 block text-sm text-slate-300">Issue title
-              <input value={title} onChange={(e) => setTitle(e.target.value)} required className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-amber-400/50" />
+            <label className="mt-6 block text-sm text-[#454d47]">Issue title
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required className="mt-2 w-full rounded-xl border border-[#e3e7e2] bg-[#fafbf8] px-4 py-3 outline-none focus:border-[#8ba64d]" />
             </label>
-            <label className="mt-4 block text-sm text-slate-300">What happened?
-              <textarea value={summary} onChange={(e) => setSummary(e.target.value)} required rows={5} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 outline-none focus:border-amber-400/50" />
+            <label className="mt-4 block text-sm text-[#454d47]">What happened?
+              <textarea value={summary} onChange={(e) => setSummary(e.target.value)} required rows={5} className="mt-2 w-full rounded-xl border border-[#e3e7e2] bg-[#fafbf8] px-4 py-3 outline-none focus:border-[#8ba64d]" />
             </label>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <label className="text-sm text-slate-300">Severity
-                <select value={severity} onChange={(e) => setSeverity(e.target.value as typeof severity)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3">
+              <label className="text-sm text-[#454d47]">Severity
+                <select value={severity} onChange={(e) => setSeverity(e.target.value as typeof severity)} className="mt-2 w-full rounded-xl border border-[#e3e7e2] bg-[#fafbf8] px-4 py-3">
                   <option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option>
                 </select>
               </label>
-              <label className="text-sm text-slate-300">Priority
-                <select value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3">
+              <label className="text-sm text-[#454d47]">Priority
+                <select value={priority} onChange={(e) => setPriority(e.target.value as typeof priority)} className="mt-2 w-full rounded-xl border border-[#e3e7e2] bg-[#fafbf8] px-4 py-3">
                   <option>LOW</option><option>NORMAL</option><option>HIGH</option><option>URGENT</option>
                 </select>
               </label>
             </div>
-            <button disabled={busy} className="mt-6 flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 font-medium text-black disabled:opacity-50">
+            <button disabled={busy} className="mt-6 flex items-center gap-2 rounded-xl bg-[#c8f169] px-5 py-3 font-medium text-[#253019] disabled:opacity-50">
               {busy ? 'Creating…' : <><Send size={17} /> Create operational issue</>}
             </button>
-            {result && <div className="mt-4 flex gap-3 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4 text-sm text-emerald-200"><CheckCircle2 size={18} />{result}</div>}
+            {result && <div className="mt-4 flex gap-3 rounded-xl border border-[#d9e8d9] bg-[#f2f8f1] p-4 text-sm text-[#3f6d45]"><CheckCircle2 size={18} />{result}</div>}
           </form>
 
-          <section className="rounded-2xl border border-white/10 bg-white/[0.03] p-6">
+          <section className="rounded-2xl border border-[#e3e7e2] bg-white p-5 sm:p-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-medium">Operational queue</h2>
-                <p className="mt-1 text-xs text-slate-500">Situation → recommendation → work → action → verification</p>
+                <p className="mt-1 text-xs text-[#7b847c]">Situation → recommendation → work → action → verification</p>
               </div>
-              <span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">{queue.length}</span>
+              <span className="rounded-full border border-[#e3e7e2] px-3 py-1 text-xs text-[#68716b]">{queue.length}</span>
             </div>
 
             {queueBusy ? (
-              <div className="py-14 text-center text-sm text-slate-500">Loading operational picture…</div>
+              <div className="py-14 text-center text-sm text-[#7b847c]">Loading operational picture…</div>
             ) : queue.length === 0 ? (
-              <div className="py-14 text-center text-sm text-slate-500">No unresolved situations.</div>
+              <div className="py-14 text-center text-sm text-[#7b847c]">No unresolved situations.</div>
             ) : (
               <div className="mt-5 space-y-3">
                 {queue.map((situation) => {
                   const recommendation = situation.recommendations[0];
                   const work = situation.workItems[0];
                   return (
-                    <article key={situation.id} className="rounded-xl border border-white/10 bg-black/20 p-4">
+                    <article key={situation.id} className="rounded-xl border border-[#e3e7e2] bg-[#f7f8f5] p-4">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="text-sm font-medium">{situation.title}</span>
-                            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-400">{situation.severity}</span>
-                            <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-wide text-slate-500">{situation.status}</span>
+                            <span className="rounded-full border border-[#e3e7e2] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#68716b]">{situation.severity}</span>
+                            <span className="rounded-full border border-[#e3e7e2] px-2 py-0.5 text-[10px] uppercase tracking-wide text-[#7b847c]">{situation.status}</span>
                           </div>
-                          {situation.summary && <p className="mt-2 text-sm leading-5 text-slate-400">{situation.summary}</p>}
+                          {situation.summary && <p className="mt-2 text-sm leading-5 text-[#68716b]">{situation.summary}</p>}
                         </div>
-                        {work && <button onClick={() => void verify(situation)} className="shrink-0 rounded-lg border border-emerald-400/20 px-3 py-2 text-xs text-emerald-300 hover:bg-emerald-400/5">Verify outcome</button>}
+                        {work && <button onClick={() => void verify(situation)} className="shrink-0 rounded-lg border border-[#d9e8d9] px-3 py-2 text-xs text-[#3f6d45] hover:bg-[#f2f8f1]">Verify outcome</button>}
                       </div>
 
                       {recommendation && (
-                        <div className="mt-4 rounded-lg border border-amber-300/10 bg-amber-300/[0.04] p-3">
-                          <p className="text-[10px] uppercase tracking-[0.18em] text-amber-300/70">Recommended next step</p>
-                          <p className="mt-1 text-sm text-slate-300">{recommendation.summary}</p>
+                        <div className="mt-4 rounded-lg border border-[#e3e7e2] bg-[#f5f8ef] p-3">
+                          <p className="text-[10px] uppercase tracking-[0.18em] text-[#607b31]/70">Recommended next step</p>
+                          <p className="mt-1 text-sm text-[#454d47]">{recommendation.summary}</p>
                         </div>
                       )}
 
                       {work && (
-                        <div className="mt-3 rounded-lg border border-white/5 bg-white/[0.02] p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+                        <div className="mt-3 rounded-lg border border-[#e3e7e2] bg-[#fafbf8] p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-[#7b847c]">
                             <div className="flex flex-wrap gap-3">
                               <span>Work: {work.status}</span>
                               <span>Type: {work.work_type}</span>
@@ -335,7 +335,7 @@ export default function V2Workspace() {
                                   ...(situation.site_id ? { siteId: situation.site_id } : {}),
                                   ...(situation.asset_id ? { assetId: situation.asset_id } : {}),
                                 })}
-                                className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 disabled:opacity-50"
+                                className="rounded-lg border border-[#e3e7e2] px-3 py-2 text-xs text-[#454d47] hover:bg-[#f1f4ee] disabled:opacity-50"
                               >
                                 {actionBusy === work.id ? 'Proposing…' : 'Propose action'}
                               </button>
@@ -347,11 +347,11 @@ export default function V2Workspace() {
                               {work.actions.map((action) => {
                                 const latestAttempt = action.attempts[action.attempts.length - 1];
                                 return (
-                                  <div key={action.id} className="rounded-lg border border-white/5 bg-black/20 p-3">
+                                  <div key={action.id} className="rounded-lg border border-[#e3e7e2] bg-[#f7f8f5] p-3">
                                     <div className="flex items-center justify-between gap-3">
                                       <div>
-                                        <p className="text-xs font-medium text-slate-300">{action.action_type}</p>
-                                        <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
+                                        <p className="text-xs font-medium text-[#454d47]">{action.action_type}</p>
+                                        <p className="mt-1 text-[10px] uppercase tracking-wide text-[#7b847c]">
                                           {action.consequence_class} · {action.status}
                                           {latestAttempt ? ` · attempt ${latestAttempt.attempt_number}: ${latestAttempt.status}` : ''}
                                         </p>
