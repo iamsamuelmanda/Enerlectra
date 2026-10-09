@@ -11,11 +11,11 @@ Authentication proves an identity. It does not grant organization ownership or a
 
 ## Repository observations
 
-- The current V1 client already has a `GoogleSignIn` component calling `supabase.auth.signInWithOAuth({ provider: 'google' })`.
+- The existing client already has a `GoogleSignIn` component calling `supabase.auth.signInWithOAuth({ provider: 'google' })`.
 - The existing sign-in and sign-up screens render this component.
-- The V1 client uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; never put a service-role key in browser code.
-- The V2 foundation migration models `actors.auth_user_id` as a unique reference to `auth.users(id)`, and separates actors, organizations, memberships, roles, permissions, and channel identities.
-- The V2 organization-creation function requires an active actor and assigns ownership only through the explicit organization-creation workflow. Authentication alone must not create an organization or membership.
+- The existing client uses `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`; never put a service-role key in browser code.
+- The identity foundation migration models `actors.auth_user_id` as a unique reference to `auth.users(id)`, and separates actors, organizations, memberships, roles, permissions, and channel identities.
+- The organization-creation function requires an active actor and assigns ownership only through the explicit organization-creation workflow. Authentication alone must not create an organization or membership.
 
 ## Required sign-in flow
 
@@ -58,7 +58,7 @@ These are dashboard/provider settings and require the project owner to supply/ma
 - No production Render deployment or PR merge.
 - No enabling Google provider without the correct Google OAuth credentials and exact redirect URLs.
 - No phone OTP/WhatsApp authentication until delivery and anti-abuse controls are configured.
-- No change to the legacy V1 database URL or client environment.
+- No change to the legacy database URL or client environment.
 
 ## Release gate
 
