@@ -313,3 +313,67 @@
     @apply glass transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl hover:shadow-brand-glow;
   }
 }
+
+/* Enerlectra operational console — Figma-aligned refinement */
+:root {
+  --el-ink: #202521;
+  --el-muted: #68716b;
+  --el-line: #e3e7e2;
+  --el-paper: #f7f8f5;
+  --el-surface: #ffffff;
+  --el-accent: #c8f169;
+  --el-accent-ink: #253019;
+  --el-night: #202521;
+}
+body {
+  font-family: Inter, "DM Sans", system-ui, sans-serif;
+  background: var(--el-paper) !important;
+  color: var(--el-ink);
+}
+body::before, body::after { display: none; }
+h1, h2, h3, h4, h5, h6 {
+  font-family: Inter, "DM Sans", system-ui, sans-serif;
+  color: inherit;
+  letter-spacing: -0.035em;
+}
+button, input, textarea, select { font: inherit; }
+input, textarea, select {
+  min-width: 0;
+  max-width: 100%;
+}
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: .58; }
+a { text-underline-offset: 3px; }
+@layer components {
+  .el-shell {
+    min-height: 100vh;
+    background: var(--el-paper);
+    color: var(--el-ink);
+  }
+  .el-container { width: min(100% - 48px, 1240px); margin-inline: auto; }
+  .el-eyebrow { font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: #68716b; }
+  .el-card { background: var(--el-surface); border: 1px solid var(--el-line); border-radius: 18px; box-shadow: 0 2px 10px rgb(32 37 33 / 3%); }
+  .el-input {
+    display: block; width: 100%; min-height: 46px; margin-top: 8px; padding: 11px 13px;
+    color: var(--el-ink); background: #fff; border: 1px solid #d8ded7; border-radius: 10px;
+    outline: none; transition: border-color .15s, box-shadow .15s;
+  }
+  .el-input:focus { border-color: #697b4c; box-shadow: 0 0 0 3px rgb(200 241 105 / 30%); }
+  .el-label { display: block; color: #454d47; font-size: .84rem; font-weight: 600; }
+  .el-button-primary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 9px; min-height: 44px;
+    padding: 11px 17px; border: 1px solid var(--el-accent); border-radius: 10px;
+    background: var(--el-accent); color: var(--el-accent-ink); font-size: .875rem; font-weight: 700;
+    transition: transform .15s, filter .15s;
+  }
+  .el-button-primary:hover:not(:disabled) { filter: brightness(.97); transform: translateY(-1px); }
+  .el-button-secondary {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px;
+    padding: 10px 15px; border: 1px solid var(--el-line); border-radius: 10px;
+    background: white; color: var(--el-ink); font-size: .875rem; font-weight: 600;
+  }
+  .el-dark-panel { background: var(--el-night); color: #f5f6f2; border-radius: 16px; }
+}
+@media (max-width: 640px) {
+  .el-container { width: min(100% - 32px, 1240px); }
+}
