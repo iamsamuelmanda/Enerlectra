@@ -93,7 +93,7 @@ export default function V2SignIn() {
   );
 }
 
-export function V2AuthGate({ children }: { children: ReactNode }) {
+export function AuthGate({ children }: { children: ReactNode }) {
   const [state, setState] = useState<'loading' | 'signed-in' | 'signed-out'>('loading');
   const location = useLocation();
   useEffect(() => {
