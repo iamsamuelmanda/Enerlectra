@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, LogOut, RefreshCw, Send, Zap } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, LogOut, RefreshCw, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
@@ -18,7 +18,7 @@ import {
 import OperatingContextPanel from '@/components/OperatingContextPanel';
 import ResourceContextPanel from '@/components/ResourceContextPanel';
 
-export default function V2Workspace() {
+export default function Workspace() {
   const navigate = useNavigate();
   const [title, setTitle] = useState('');
   const [summary, setSummary] = useState('');
@@ -37,6 +37,9 @@ export default function V2Workspace() {
     oldestOpenAt: null as string | null,
   });
   const [result, setResult] = useState<string | null>(null);
+  const [verificationTarget, setVerificationTarget] = useState<{ situationId: string; workItemId: string } | null>(null);
+  const [verificationEvidence, setVerificationEvidence] = useState('');
+  const [verificationBusy, setVerificationBusy] = useState(false);
   const [contextSelection, setContextSelection] = useState<{ customerId?: string; siteId?: string; assetId?: string }>({});
   const [actionBusy, setActionBusy] = useState<string | null>(null);
 
@@ -98,22 +101,29 @@ export default function V2Workspace() {
   const verify = async (situation: OperationalQueueItem) => {
     const work = situation.workItems[0];
     if (!work) return;
-    const summary = window.prompt('What evidence confirms the outcome?');
-    if (!summary?.trim()) return;
+    setVerificationTarget({ situationId: situation.id, workItemId: work.id });
+    setVerificationEvidence('');
+  };
 
+  const submitVerification = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!verificationTarget || !verificationEvidence.trim()) return;
+    setVerificationBusy(true);
     try {
       await createVerification({
-        situationId: situation.id,
-        workItemId: work.id,
+        situationId: verificationTarget.situationId,
+        workItemId: verificationTarget.workItemId,
         verificationType: 'OPERATOR_CONFIRMATION',
         status: 'VERIFIED',
-        result: { summary: summary.trim(), source: 'web_workspace' },
+        result: { evidenceStatement: verificationEvidence.trim(), source: 'web_workspace' },
       });
-      toast.success('Outcome verified');
+      toast.success('Verification evidence recorded');
+      setVerificationTarget(null);
+      setVerificationEvidence('');
       await loadQueue();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not verify outcome');
-    }
+      toast.error(error instanceof Error ? error.message : 'Could not record verification');
+    } finally { setVerificationBusy(false); }
   };
 
   const runAction = async (action: OperationalAction, operation: () => Promise<unknown>) => {
@@ -166,14 +176,6 @@ export default function V2Workspace() {
       return;
     }
 
-    if (action.status === 'EXECUTING' && latestAttempt?.status === 'EXECUTING') {
-      await runAction(action, () => transitionActionAttempt(action.id, latestAttempt.id, 'SUCCEEDED', {
-        resultCode: 'FIELD_CHECK_COMPLETE',
-        resultSummary: 'Completed from the Enerlectra operational workspace.',
-      }));
-      return;
-    }
-
     if (action.status === 'EXECUTING' && latestAttempt?.status === 'SUCCEEDED') {
       await runAction(action, () => transitionAction(action.id, 'SUCCEEDED'));
     }
@@ -196,8 +198,12 @@ export default function V2Workspace() {
       let label = 'Start execution';
       if (action.status === 'EXECUTING' && !attempt) label = 'Create attempt';
       else if (attempt?.status === 'CREATED') label = 'Start attempt';
-      else if (attempt?.status === 'EXECUTING') label = 'Complete attempt';
+      else if (attempt?.status === 'EXECUTING') label = 'Evidence required';
       else if (attempt?.status === 'SUCCEEDED') label = 'Complete action';
+
+      if (action.status === 'EXECUTING' && attempt?.status === 'EXECUTING') {
+        return <span className="text-xs text-[var(--color-ink-muted)]">Awaiting recorded execution evidence</span>;
+      }
 
       return (
         <button disabled={busyForAction} onClick={() => void executeAction(action)}
@@ -214,7 +220,7 @@ export default function V2Workspace() {
     <main className="min-h-screen el-shell">
       <header className="border-b border-[#e3e7e2] bg-white px-4 py-4 sm:px-6 sm:py-5">
         <div className="el-container flex items-center justify-between">
-          <div className="flex items-center gap-3"><Zap className="text-[#607b31]" size={22} /><span className="font-semibold tracking-wide">ENERLECTRA</span></div>
+          <div className="flex items-center gap-3"><span className="text-sm font-bold tracking-[.12em]">ENERLECTRA</span></div>
           <button onClick={signOut} className="flex items-center gap-2 text-sm text-[#68716b] hover:text-[#202521]"><LogOut size={16} /> Sign out</button>
         </div>
       </header>
@@ -278,6 +284,12 @@ export default function V2Workspace() {
               {busy ? 'Creating…' : <><Send size={17} /> Create operational issue</>}
             </button>
             {result && <div className="mt-4 flex gap-3 rounded-xl border border-[#d9e8d9] bg-[#f2f8f1] p-4 text-sm text-[#3f6d45]"><CheckCircle2 size={18} />{result}</div>}
+            {verificationTarget && <form onSubmit={submitVerification} className="mt-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-canvas)] p-4">
+              <h3 className="text-sm font-semibold">Record verification evidence</h3>
+              <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">Describe the observation or evidence that supports this outcome. This records your statement; it does not independently prove the outcome.</p>
+              <textarea value={verificationEvidence} onChange={(event) => setVerificationEvidence(event.target.value)} required minLength={8} rows={4} className="el-input mt-3" placeholder="Describe the evidence observed…" />
+              <div className="mt-3 flex gap-2"><button disabled={verificationBusy} className="el-button-primary">{verificationBusy ? 'Recording…' : 'Record evidence'}</button><button type="button" onClick={() => setVerificationTarget(null)} className="el-button-secondary">Cancel</button></div>
+            </form>}
           </form>
 
           <section className="rounded-2xl border border-[#e3e7e2] bg-white p-5 sm:p-6">
@@ -309,7 +321,7 @@ export default function V2Workspace() {
                           </div>
                           {situation.summary && <p className="mt-2 text-sm leading-5 text-[#68716b]">{situation.summary}</p>}
                         </div>
-                        {work && <button onClick={() => void verify(situation)} className="shrink-0 rounded-lg border border-[#d9e8d9] px-3 py-2 text-xs text-[#3f6d45] hover:bg-[#f2f8f1]">Verify outcome</button>}
+                        {work && <button onClick={() => verify(situation)} className="shrink-0 rounded-lg border border-[#d9e8d9] px-3 py-2 text-xs text-[#3f6d45] hover:bg-[#f2f8f1]">Verify outcome</button>}
                       </div>
 
                       {recommendation && (
