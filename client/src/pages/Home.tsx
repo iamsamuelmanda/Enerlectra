@@ -1,4 +1,3 @@
-import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const principles = [
@@ -20,14 +19,14 @@ export default function Home() {
   return (
     <main className="el-shell">
       <header className="border-b border-[var(--color-border)] bg-white">
-        <div className="el-container flex min-h-[72px] flex-col justify-center gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="el-container flex min-h-[72px] flex-col items-start justify-center gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:py-3">
           <Link to="/" className="w-fit text-sm font-bold tracking-[.12em] no-underline" aria-label="Enerlectra home">
             ENERLECTRA
           </Link>
-          <nav aria-label="Main navigation" className="flex flex-wrap items-center gap-2">
+          <nav aria-label="Main navigation" className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
             <span className="hidden pr-3 text-sm text-[var(--color-ink-muted)] md:inline">Operational intelligence</span>
             <Link to="/signin" className="el-button-secondary">Sign in</Link>
-            <Link to="/signin?mode=signup" className="el-button-primary">Get started <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link to="/signin?mode=signup" className="el-button-primary">Get started <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></Link>
           </nav>
         </div>
       </header>
@@ -42,7 +41,7 @@ export default function Home() {
             Enerlectra connects organizational context, customer reports, evidence, work and verification in one accountable operating system.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/signin?mode=signup" className="el-button-primary">Create an account <ArrowRight size={16} aria-hidden="true" /></Link>
+            <Link to="/signin?mode=signup" className="el-button-primary">Create an account <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></Link>
             <a href="#operating-model" className="el-button-secondary">How it works</a>
           </div>
           <p className="mt-5 max-w-lg text-xs leading-5 text-[var(--color-ink-muted)]">
@@ -56,7 +55,7 @@ export default function Home() {
           <p className="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">
             Evidence informs a situation. A recommendation informs a decision. Authorization governs action. Verification establishes the outcome.
           </p>
-          <ol className="mt-6 divide-y divide-[var(--color-border)]">
+          <ol className="mt-6 list-none divide-y divide-[var(--color-border)] p-0">
             {['Evidence and context', 'Situation and recommendation', 'Authorized work', 'Verification and audit'].map((item, index) => (
               <li key={item} className="flex items-start gap-3 py-3 first:pt-0 last:pb-0">
                 <span className="grid size-7 shrink-0 place-items-center rounded-md bg-[var(--color-surface-muted)] text-xs font-semibold text-[var(--color-ink-soft)]" aria-hidden="true">{index + 1}</span>
