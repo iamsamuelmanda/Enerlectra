@@ -122,9 +122,9 @@ export default function OperatingContextPanel() {
             ['Service responsibilities', serviceResponsibilities, setServiceResponsibilities],
             ['Payment models', paymentModels, setPaymentModels],
           ] as const).map(([label, value, setter]) => (
-            <label key={label} className="block text-sm text-slate-300">
+            <label key={label} className="block text-sm text-[var(--color-ink)]">
               {label}
-              <input value={value} onChange={(e) => setter(e.target.value)} placeholder="Comma-separated; mixed values are allowed" className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3" />
+              <input value={value} onChange={(e) => setter(e.target.value)} placeholder="Comma-separated; mixed values are allowed" className="el-input mt-2" />
             </label>
           ))}
           <div>
