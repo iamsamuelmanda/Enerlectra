@@ -1,12 +1,12 @@
 import { FormEvent, useEffect, useState } from 'react';
-import { ArrowRight, Building2, Check, Copy, Loader2, ShieldCheck, Users, Zap } from 'lucide-react';
+import { ArrowRight, Building2, Check, Copy, Loader2, ShieldCheck, Users } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 
 type Intent = 'OWNER' | 'DELEGATED_OPERATOR';
 
-export default function V2Onboarding() {
+export default function Onboarding() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [name, setName] = useState('');
@@ -82,7 +82,7 @@ export default function V2Onboarding() {
     <main className="el-shell min-h-screen">
       <header className="border-b border-[#e3e7e2] bg-white">
         <div className="el-container flex h-[72px] items-center justify-between">
-          <a href="/" className="flex items-center gap-2.5 text-[#202521] no-underline"><span className="grid size-9 place-items-center rounded-xl bg-[#c8f169]"><Zap size={20}/></span><span className="text-sm font-extrabold tracking-[.14em]">ENERLECTRA</span></a>
+          <a href="/" className="flex items-center gap-2.5 text-[#202521] no-underline"><span className="grid size-9 place-items-center rounded-xl border border-[#e3e7e2] bg-white text-xs font-bold tracking-tight">E</span><span className="text-sm font-extrabold tracking-[.14em]">ENERLECTRA</span></a>
           <span className="text-xs font-medium text-[#68716b]">Workspace setup · Step 1 of 3</span>
         </div>
       </header>
