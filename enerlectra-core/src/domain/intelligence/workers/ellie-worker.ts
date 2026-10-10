@@ -1,42 +1,55 @@
-// domains/intelligence/workers/ellie-worker.ts
 import { ExecutionContext } from '../../../core/workflow/execution-context.js';
+import type { EllieContext } from '../ellie-context.js';
 import { captureMessageContext } from './context-builder.js';
+import { askEllie } from '../../../ai/ellie.js';
 
-import { askEllie } from '../../../ai/ellie.js'; 
+function formatCanonicalContext(context: EllieContext): string {
+  return [
+    '[Canonical Enerlectra Context]',
+    'Actor: ' + context.actorId,
+    'Organization: ' + context.organizationId,
+    'Permissions: ' + JSON.stringify(context.permissions),
+    'Operating Context: ' + JSON.stringify(context.operatingContext),
+    'Capabilities: ' + JSON.stringify(context.capabilities),
+    'Policies: ' + JSON.stringify(context.policies),
+    'Evidence: ' + JSON.stringify(context.evidence),
+    'Situations: ' + JSON.stringify(context.situations),
+    'Recommendations: ' + JSON.stringify(context.recommendations),
+    'Work: ' + JSON.stringify(context.work),
+    'Verified Organizational Memories: ' + JSON.stringify(context.memories),
+  ].join('\n');
+}
 
 export class EllieWorker {
   /**
-   * Orchestrates the inference pipeline.
-   * Now purely dependency-injected and testable.
+   * Canonical callers provide ellieContext; legacy channels remain behind
+   * the legacy context-builder adapter until their identity/persistence
+   * boundaries are migrated.
    */
   async execute(userText: string, context: ExecutionContext, senderPhone?: string): Promise<string> {
     try {
-      // 1. Fetch context using the kernel's Supabase instance
-      // We pass the context.supabase instead of a global import
-      const dataContext = await captureMessageContext(context.supabase, userText, senderPhone);
+      let telemetryContext: string;
 
-      if (!dataContext.customerRecord) {
-        return "I searched our unified records but could not find a customer profile matching that phone number or meter record. Please verify the identifier and try again.";
+      if (context.ellieContext) {
+        telemetryContext = formatCanonicalContext(context.ellieContext);
+      } else {
+        const dataContext = await captureMessageContext(context.supabase, userText, senderPhone);
+        if (!dataContext.customerRecord) {
+          return 'I searched our unified records but could not find a customer profile matching that phone number or meter record. Please verify the identifier and try again.';
+        }
+        telemetryContext = [
+          '[Legacy Adapter Context]',
+          'Customer Record: ' + JSON.stringify(dataContext.customerRecord),
+          'Recent Ledger Transactions: ' + JSON.stringify(dataContext.transactionHistory),
+          'Unresolved System Alerts: ' + JSON.stringify(dataContext.systemAlerts),
+        ].join('\n');
       }
 
-      // 2. Format the database payload cleanly
-      const telemetryContext = `
-[Verified System Telemetry Snapshot]
-Customer Record: ${JSON.stringify(dataContext.customerRecord)}
-Recent Ledger Transactions: ${JSON.stringify(dataContext.transactionHistory)}
-Unresolved System Alerts: ${JSON.stringify(dataContext.systemAlerts)}
-`.trim();
-
-      // 3. Execute inference
-      // We log via the kernel's logger instead of console.log
-      context.logger.info(`[EllieWorker] Executing inference for user`);
-      
+      context.logger.info({ actorId: context.actorId, organizationId: context.organizationId }, '[EllieWorker] Executing inference');
       return await askEllie(userText, telemetryContext);
-
     } catch (error) {
-      // Use the kernel's logger for error tracking
       context.logger.error('[EllieWorker] Cognitive Engine Failure', { error });
-      return "The operational reasoning layer was unable to extract ledger telemetry data. Please use manual platform dashboards.";
+      return 'The operational reasoning layer was unable to extract operational telemetry. Please use manual platform dashboards.';
     }
   }
 }

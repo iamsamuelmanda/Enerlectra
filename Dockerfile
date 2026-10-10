@@ -1,38 +1,21 @@
-# Use official Node.js runtime as base image
-FROM node:18-alpine
+# Enerlectra canonical runtime image.
+# Install the root workspace and local enerlectra-core package together so
+# npm resolves the file: dependency from the same source tree.
+FROM node:24-alpine
 
-# Set working directory in container
 WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Install TypeScript globally
-RUN npm install -g typescript
-
-# Copy source code
 COPY . .
 
-# Build the application
-RUN npm run build || (npx tsc && mkdir -p dist/db && cp -r src/db/* dist/db/)
+RUN npm ci --include=dev \
+  && npm run build:client \
+  && chown -R node:node /app
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs
-RUN adduser -S nodejs -u 1001
+ENV NODE_ENV=production
+ENV PORT=4000
 
-# Change ownership of app directory
-RUN chown -R nodejs:nodejs /app
-USER nodejs
+USER node
+EXPOSE 4000
 
-# Expose port
-EXPOSE 5000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node healthcheck.js || exit 1
-
-# Start application
-CMD ["node", "dist/index.js"]
+# The server entrypoint enforces the V2 Supabase URL, anon key and service-role
+# key at startup. Configure those secrets in the deployment environment.
+CMD ["npm", "start"]

@@ -1,26 +1,26 @@
-// src/lib/supabase.ts
-// Frontend Supabase client — used by all React components
-// Uses ANON key (safe for browser) with RLS enforcing row-level access
+// Frontend Supabase client — used by React components.
+// Only a browser-safe publishable/anon key belongs in VITE_* variables.
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_ANON = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+const SUPABASE_KEY = (
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_SUPABASE_ANON_KEY
+) as string;
 
-if (!SUPABASE_URL || !SUPABASE_ANON) {
-  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY in .env');
+if (!SUPABASE_URL || !SUPABASE_KEY) {
+  throw new Error('Missing VITE_SUPABASE_URL or VITE_SUPABASE_PUBLISHABLE_KEY in deployment environment');
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON, {
+export const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
   realtime: {
     params: { eventsPerSecond: 10 },
   },
 });
 
-// ============================================================================
-// TYPE DEFINITIONS — matching actual database schema
-// ============================================================================
-
+// Legacy domain types/helpers below are retained until their consumers are
+// audited and removed safely; do not treat them as the operational data model.
 export interface MeterReading {
   id: string;
   cluster_id: string;
@@ -117,9 +117,6 @@ export interface PriceOracle {
   updated_at: string;
 }
 
-// ============================================================================
-// HELPER: Subscribe to realtime validated readings
-// ============================================================================
 export function subscribeToValidatedReadings(
   callback: (reading: MeterReading) => void
 ): () => void {
@@ -142,9 +139,6 @@ export function subscribeToValidatedReadings(
   };
 }
 
-// ============================================================================
-// HELPER: Fetch live protocol stats from backend API
-// ============================================================================
 export async function fetchProtocolStats(): Promise<{
   nodeCount: number;
   totalStorageKwh: number;

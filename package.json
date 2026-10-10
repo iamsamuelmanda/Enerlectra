@@ -7,17 +7,27 @@
   "main": "server/src/index.ts",
   "scripts": {
     "prepare": "node -e \"if (process.env.NODE_ENV !== 'production') { try { require('husky').install() } catch (e) {} }\"",
-   "start": "tsx -r tsconfig-paths/register ./server/src/index.ts",
+    "start": "tsx -r tsconfig-paths/register ./server/src/index.ts",
     "dev": "tsx ./server/src/index.ts",
     "build": "npm run build:client",
     "build:client": "cd client && npx vite build",
     "build:server": "tsc -p tsconfig.server.json",
     "typecheck:server": "tsc -p tsconfig.ci-server.json",
     "typecheck:client": "cd client && npx tsc --noEmit",
-    "typecheck:telegram-bot": "cd integrations/telegram-bot && npx tsc --noEmit",
-    "test": "node --test test/ci-smoke.test.mjs",
-    "ci": "npm test && npm run typecheck:server && npm run typecheck:client && npm run build:client && npm run typecheck:telegram-bot",
-    "clean": "rm -rf dist client/dist"
+    "typecheck:telegram-bot": "cd integrations/enerlectra-bot && npx tsc --noEmit",
+    "test": "node --import tsx --test test/ci-smoke.test.mjs test/canonical-boundary.test.mjs test/ellie-inference-boundary.test.mjs test/v2-self-service-onboarding.test.mjs test/v2-tenant-context.test.mjs test/v2-channel-tenant-context.test.mjs test/v2-ellie-context-builder.test.mjs && npm run test:command-tenant-context && npm run test:runtime-boundary && npm run test:action-http && npm run test:multi-tenant && npm run test:operational-intelligence",
+    "ci": "npm test && npm run typecheck:server && npm --prefix client ci && npm run typecheck:client && npm run build:client",
+    "clean": "rm -rf dist client/dist",
+    "test:action": "node --import tsx --test test/v2-action-integration.test.mjs test/v2-actor-channel-privilege-integration.test.mjs",
+    "test:customer-operational-issue": "node --import tsx --test test/customer-operational-issue.test.mjs test/v2-customer-operational-issue-integration.test.mjs",
+    "test:action-http": "node --import tsx --test test/v2-action-http-integration.test.mjs",
+    "test:command-tenant-context": "node --import tsx --test test/v2-command-tenant-context.test.mjs",
+    "test:runtime-boundary": "node --import tsx --test test/v2-runtime-boundary.test.mjs",
+    "provision:actor": "node scripts/provision-actor.mjs",
+    "test:self-service": "node --import tsx --test test/v2-self-service-onboarding.test.mjs",
+    "test:security-gate": "npm run test:self-service && node --import tsx --test test/v2-actor-channel-privilege-integration.test.mjs",
+    "test:operational-intelligence": "node --import tsx --test test/v2-operational-intelligence.test.mjs",
+    "test:multi-tenant": "node --import tsx --test test/v2-multi-tenant-boundary.test.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.8.0",
@@ -27,7 +37,7 @@
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
     "autoprefixer": "^10.4.20",
-    "axios": "^1.7.0",
+    "axios": "^1.20.0",
     "bcryptjs": "^2.4.3",
     "clsx": "^2.1.1",
     "compression": "^1.7.4",
@@ -41,10 +51,10 @@
     "express-rate-limit": "^7.4.0",
     "framer-motion": "^11.5.0",
     "helmet": "^7.1.0",
-    "jsonwebtoken": "^9.0.2",
+    "jsonwebtoken": "^9.0.0",
     "lucide-react": "^0.446.0",
-    "morgan": "^1.10.0",
-    "multer": "^1.4.5-lts.1",
+    "morgan": "^1.0.0",
+    "multer": "^2.4.0",
     "node-cron": "^4.2.1",
     "pino": "^10.3.1",
     "pino-pretty": "^13.1.3",
@@ -55,8 +65,6 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.4.1",
-    "react-router-dom": "^6.26.0",
-    "recharts": "^2.12.0",
     "sharp": "^0.35.3",
     "socket.io": "^4.7.5",
     "tailwind-merge": "^2.5.0",
@@ -73,7 +81,6 @@
     "@types/compression": "^1.7.5",
     "@types/cookie-parser": "^1.4.7",
     "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.16.0",
     "@types/react": "^18.3.5",
@@ -83,7 +90,7 @@
     "tsconfig-paths": "^4.2.0"
   },
   "engines": {
-    "node": "20.x",
-    "npm": ">=8.0.0"
+    "node": "24.x",
+    "npm": ">=10.0.0"
   }
 }

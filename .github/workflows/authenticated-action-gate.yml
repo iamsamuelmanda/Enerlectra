@@ -1,0 +1,67 @@
+name: Authenticated Action Gate
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'test/action-integration.test.mjs'
+      - 'test/multi-tenant-boundary.test.mjs'
+      - 'test/action-http-integration.test.mjs'
+      - 'test/actor-channel-privilege-integration.test.mjs'
+      - 'test/channel-tenant-context.test.mjs'
+      - 'test/customer-operational-issue-integration.test.mjs'
+      - 'test/self-service-onboarding.test.mjs'
+      - 'test/customer-operational-issue.test.mjs'
+      - 'supabase/migrations/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'server/src/platform/**'
+      - 'server/src/routes/**'
+      - 'server/src/services/**'
+      - 'server/src/index.ts'
+      - 'enerlectra-core/src/**'
+      - 'client/src/**'
+      - '.github/workflows/**'
+
+jobs:
+  action-gate:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: https://mtyhzvkiuibigjximsix.supabase.co
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Require integration secrets
+        run: |
+          if [ -z "${SUPABASE_ANON_KEY}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "::error::Repository secrets SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are required."
+            exit 1
+          fi
+
+      - name: Run platform and runtime boundary tests
+        run: npm test
+
+      - name: Run authenticated Action gate
+        run: npm run test:action
+
+      - name: Run Action HTTP gate
+        run: npm run test:action-http
+
+      - name: Run multi-tenant boundary gate
+        run: npm run test:multi-tenant
+
+      - name: Run Customer Operational Issue gate
+        run: npm run test:customer-operational-issue
