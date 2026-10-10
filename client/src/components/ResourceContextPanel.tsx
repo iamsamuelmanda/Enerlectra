@@ -78,7 +78,7 @@ export default function ResourceContextPanel({ onContextChange }: { onContextCha
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-3"><div className="text-2xl font-semibold">{customers.length}</div><div className="text-xs text-[var(--color-ink-muted)]">Customers</div></div>
         <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-3"><div className="text-2xl font-semibold">{sites.length}</div><div className="text-xs text-[var(--color-ink-muted)]">Sites</div></div>
-        <div className="rounded-xl border border-white/10 bg-black/20 p-3"><div className="text-2xl font-semibold">{assets.length}</div><div className="text-xs text-[var(--color-ink-muted)]">Assets</div></div>
+        <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-canvas)] p-3"><div className="text-2xl font-semibold">{assets.length}</div><div className="text-xs text-[var(--color-ink-muted)]">Assets</div></div>
       </div>
 
       <div className="mt-4 grid gap-3 md:grid-cols-3">
@@ -90,7 +90,7 @@ export default function ResourceContextPanel({ onContextChange }: { onContextCha
           <option value="">Attach site to next issue</option>
           {sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}
         </select>
-        <select onChange={(e) => onContextChange({ assetId: e.target.value || undefined })} className="rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-xs text-slate-300">
+        <select onChange={(e) => onContextChange({ assetId: e.target.value || undefined })} className="el-input text-xs">
           <option value="">Attach asset to next issue</option>
           {assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.asset_type}{asset.model ? ` · ${asset.model}` : ''}</option>)}
         </select>
@@ -113,12 +113,12 @@ export default function ResourceContextPanel({ onContextChange }: { onContextCha
           </form>}
           {canWrite.asset && <form onSubmit={submitAsset} className="rounded-lg border border-[var(--color-border)] p-4">
             <h3 className="text-sm font-medium">Add asset</h3>
-            <input required value={assetType} onChange={(e) => setAssetType(e.target.value)} placeholder="Asset type" className="mt-3 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm" />
+            <input required value={assetType} onChange={(e) => setAssetType(e.target.value)} placeholder="Asset type" className="el-input mt-3" />
             <input value={assetModel} onChange={(e) => setAssetModel(e.target.value)} placeholder="Model (optional)" className="el-input mt-2" />
             <input value={assetSerial} onChange={(e) => setAssetSerial(e.target.value)} placeholder="Serial number (optional)" className="el-input mt-2" />
-            <select value={assetCustomerId} onChange={(e) => setAssetCustomerId(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"><option value="">Customer optional</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select>
-            <select value={assetSiteId} onChange={(e) => setAssetSiteId(e.target.value)} className="mt-2 w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm"><option value="">Site optional</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select>
-            <button disabled={busy} className="mt-3 flex items-center gap-2 rounded-lg bg-amber-400 px-3 py-2 text-xs font-medium text-black disabled:opacity-50"><Plus size={14} /> Add</button>
+            <select value={assetCustomerId} onChange={(e) => setAssetCustomerId(e.target.value)} className="el-input mt-2"><option value="">Customer optional</option>{customers.map((customer) => <option key={customer.id} value={customer.id}>{customer.name}</option>)}</select>
+            <select value={assetSiteId} onChange={(e) => setAssetSiteId(e.target.value)} className="el-input mt-2"><option value="">Site optional</option>{sites.map((site) => <option key={site.id} value={site.id}>{site.name}</option>)}</select>
+            <button disabled={busy} className="el-button-primary mt-3"><Plus size={14} /> Add</button>
           </form>}
         </div>
       )}
