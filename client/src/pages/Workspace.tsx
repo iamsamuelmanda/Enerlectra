@@ -144,7 +144,7 @@ export default function Workspace() {
     try {
       await createAction({
         workItemId,
-        actionType: 'PERFORM_FIELD_CHECK',
+        actionType: 'INVESTIGATE',
         consequenceClass: 'OPERATIONAL',
         target,
         metadata: { source: 'web_workspace' },
@@ -321,7 +321,7 @@ export default function Workspace() {
                           </div>
                           {situation.summary && <p className="mt-2 text-sm leading-5 text-[#68716b]">{situation.summary}</p>}
                         </div>
-                        {work && <button onClick={() => verify(situation)} className="shrink-0 rounded-lg border border-[#d9e8d9] px-3 py-2 text-xs text-[#3f6d45] hover:bg-[#f2f8f1]">Verify outcome</button>}
+                        {work && <button onClick={() => verify(situation)} className="shrink-0 rounded-lg border border-[#d9e8d9] px-3 py-2 text-xs text-[#3f6d45] hover:bg-[#f2f8f1]">Record evidence</button>}
                       </div>
 
                       {recommendation && (
