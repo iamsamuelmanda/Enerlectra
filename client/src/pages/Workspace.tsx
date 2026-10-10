@@ -260,7 +260,7 @@ export default function Workspace() {
               <p className="mt-1 text-2xl font-semibold text-[#202521]">{value}</p>
             </div>
           ))}
-        </div>
+        </div>}
 
         {activeView === "overview" && <div className="mt-7 grid items-start gap-5 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
           <form onSubmit={submit} className="rounded-2xl border border-[#e3e7e2] bg-white p-5 sm:p-6">
