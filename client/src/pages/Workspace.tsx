@@ -114,10 +114,10 @@ export default function Workspace() {
         situationId: verificationTarget.situationId,
         workItemId: verificationTarget.workItemId,
         verificationType: 'OPERATOR_CONFIRMATION',
-        status: 'VERIFIED',
-        result: { evidenceStatement: verificationEvidence.trim(), source: 'web_workspace' },
+        status: 'PARTIAL',
+        result: { evidenceStatement: verificationEvidence.trim(), source: 'web_workspace', resolutionEffect: 'none' },
       });
-      toast.success('Verification evidence recorded');
+      toast.success('Evidence statement recorded; situation remains unresolved');
       setVerificationTarget(null);
       setVerificationEvidence('');
       await loadQueue();
@@ -286,7 +286,7 @@ export default function Workspace() {
             {result && <div className="mt-4 flex gap-3 rounded-xl border border-[#d9e8d9] bg-[#f2f8f1] p-4 text-sm text-[#3f6d45]"><CheckCircle2 size={18} />{result}</div>}
             {verificationTarget && <form onSubmit={submitVerification} className="mt-5 rounded-xl border border-[var(--color-border)] bg-[var(--color-canvas)] p-4">
               <h3 className="text-sm font-semibold">Record verification evidence</h3>
-              <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">Describe the observation or evidence that supports this outcome. This records your statement; it does not independently prove the outcome.</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">Record the evidence statement or observation you have. This is stored as partial evidence and will not resolve the situation; verified resolution requires a linked observation or event.</p>
               <textarea value={verificationEvidence} onChange={(event) => setVerificationEvidence(event.target.value)} required minLength={8} rows={4} className="el-input mt-3" placeholder="Describe the evidence observed…" />
               <div className="mt-3 flex gap-2"><button disabled={verificationBusy} className="el-button-primary">{verificationBusy ? 'Recording…' : 'Record evidence'}</button><button type="button" onClick={() => setVerificationTarget(null)} className="el-button-secondary">Cancel</button></div>
             </form>}
