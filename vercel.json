@@ -4,6 +4,10 @@
   "outputDirectory": "client/dist",
   "rewrites": [
     {
+      "source": "/api/:path*",
+      "destination": "https://enerlectra.onrender.com/api/:path*"
+    },
+    {
       "source": "/signin",
       "destination": "/index.html"
     },
@@ -22,7 +26,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self' https://pay.lenco.co 'unsafe-inline' 'unsafe-eval'; script-src-elem 'self' https://pay.lenco.co; connect-src 'self' https://api.lenco.co https://*.supabase.co wss://*.supabase.co https://enerlectra-backend.onrender.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-src 'self' https://pay.lenco.co;"
+          "value": "default-src 'self'; script-src 'self' https://pay.lenco.co 'unsafe-inline' 'unsafe-eval'; script-src-elem 'self' https://pay.lenco.co; connect-src 'self' https://api.lenco.co https://*.supabase.co wss://*.supabase.co https://enerlectra.onrender.com; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; frame-src 'self' https://pay.lenco.co;"
         }
       ]
     }
