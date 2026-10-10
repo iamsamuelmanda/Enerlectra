@@ -16,7 +16,7 @@ const principles = [
   },
 ];
 
-export default function V2Home() {
+export default function Home() {
   return (
     <main className="el-shell">
       <header className="border-b border-[var(--color-border)] bg-white">
