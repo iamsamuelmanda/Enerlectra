@@ -68,7 +68,6 @@ export default function SignIn() {
               <input className="el-input" type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} minLength={8} placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} required/>
             </label>
             <button disabled={busy} className="el-button-primary el-auth-submit">
-              {busy ? 'Working…' : mode === 'signup' ? 'Create account' : 'Sign in'}
               {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in to Enerlectra'}
             </button>
           </form>
