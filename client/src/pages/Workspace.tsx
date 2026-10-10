@@ -42,6 +42,7 @@ export default function Workspace() {
   const [verificationBusy, setVerificationBusy] = useState(false);
   const [contextSelection, setContextSelection] = useState<{ customerId?: string; siteId?: string; assetId?: string }>({});
   const [actionBusy, setActionBusy] = useState<string | null>(null);
+  const [activeView, setActiveView] = useState<'overview' | 'configuration' | 'records'>('overview');
 
   const loadQueue = async () => {
     setQueueBusy(true);
@@ -226,8 +227,13 @@ export default function Workspace() {
       </header>
 
       <section className="el-container py-7 sm:py-10">
-        <OperatingContextPanel />
-        <ResourceContextPanel onContextChange={(next) => setContextSelection((current) => ({ ...current, ...next }))} />
+        <div className="mb-7 flex gap-1 overflow-x-auto rounded-xl border border-[var(--color-border)] bg-white p-1" role="tablist" aria-label="Workspace sections">
+          {([["overview", "Overview"], ["configuration", "Configure operations"], ["records", "Customers & assets"]] as const).map(([key, label]) => (
+            <button key={key} type="button" role="tab" aria-selected={activeView === key} onClick={() => setActiveView(key)} className={activeView === key ? "min-h-10 shrink-0 rounded-lg bg-[#202a23] px-4 text-sm font-semibold text-white" : "min-h-10 shrink-0 rounded-lg px-4 text-sm font-semibold text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-muted)]"}>{label}</button>
+          ))}
+        </div>
+        {activeView === "configuration" && <div className="mb-7"><OperatingContextPanel /></div>}
+        {activeView === "records" && <div className="mb-7"><ResourceContextPanel onContextChange={(next) => setContextSelection((current) => ({ ...current, ...next }))} /></div>}
         <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.25em] text-[#607b31]">Operational intelligence</p>
@@ -241,7 +247,7 @@ export default function Workspace() {
           </button>
         </div>
 
-        <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {activeView === "overview" && <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {[
             ['Open', queueMetrics.openSituations],
             ['Critical', queueMetrics.criticalSituations],
@@ -256,7 +262,7 @@ export default function Workspace() {
           ))}
         </div>
 
-        <div className="mt-7 grid items-start gap-5 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
+        {activeView === "overview" && <div className="mt-7 grid items-start gap-5 xl:grid-cols-[minmax(320px,.8fr)_minmax(0,1.2fr)]">
           <form onSubmit={submit} className="rounded-2xl border border-[#e3e7e2] bg-white p-5 sm:p-6">
             <div className="flex items-center gap-3">
               <AlertTriangle size={18} className="text-[#607b31]" />
@@ -383,7 +389,7 @@ export default function Workspace() {
               </div>
             )}
           </section>
-        </div>
+        </div>}
       </section>
     </main>
   );
