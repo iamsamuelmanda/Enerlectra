@@ -3,6 +3,7 @@ import { ArrowRight, Loader2, LogIn, ShieldCheck, UserPlus } from 'lucide-react'
 import toast from 'react-hot-toast';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { GoogleSignIn } from '@/features/auth/components/GoogleSignIn';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -72,6 +73,8 @@ export default function SignIn() {
               {busy ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in to Enerlectra'}
             </button>
           </form>
+          <div className="my-5 flex items-center gap-3 text-xs text-[#929a92]"><span className="h-px flex-1 bg-[#e3e7e2]"/><span>or continue with</span><span className="h-px flex-1 bg-[#e3e7e2]"/></div>
+          <GoogleSignIn />
           <p className="mt-6 text-center text-xs leading-5 text-[#68716b]">Your organization’s data stays within its authorized workspace.</p>
         </div>
         <p className="text-xs text-[#929a92]">© Enerlectra · Operational intelligence</p>
