@@ -94,26 +94,26 @@ export default function OperatingContextPanel() {
   };
 
   return (
-    <section className="mb-8 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+    <section className="mb-6 rounded-xl border border-[var(--color-border)] bg-white p-5 shadow-[var(--shadow-card)]">
       <div className="flex items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <Settings2 size={17} className="text-amber-300" />
+            <Settings2 size={17} className="text-[var(--color-brand)]" />
             <h2 className="font-medium">Operating context</h2>
           </div>
-          <p className="mt-1 text-xs leading-5 text-slate-500">
+          <p className="mt-1 text-xs leading-5 text-[var(--color-ink-muted)]">
             Tell Enerlectra how this organization operates. These settings shape context and recommendations; they never grant permissions.
           </p>
         </div>
-        <button onClick={() => setOpen((value) => !value)} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5">
+        <button onClick={() => setOpen((value) => !value)} className="el-button-secondary">
           {open ? 'Close' : 'Configure'}
         </button>
       </div>
 
       {open && (
         <div className="mt-6 space-y-5">
-          <label className="block text-sm text-slate-300">Profile name
-            <input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3" />
+          <label className="el-label block">Profile name
+            <input value={profileName} onChange={(e) => setProfileName(e.target.value)} className="el-input mt-2" />
           </label>
           {([
             ['Business models / activities', businessModels, setBusinessModels],
@@ -128,17 +128,17 @@ export default function OperatingContextPanel() {
             </label>
           ))}
           <div>
-            <p className="text-sm text-slate-300">Enabled capabilities</p>
-            <p className="mt-1 text-xs text-slate-500">Select only what the organization actually needs today.</p>
+            <p className="el-label">Enabled capabilities</p>
+            <p className="mt-1 text-xs text-[var(--color-ink-muted)]">Select only what the organization actually needs today.</p>
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {CAPABILITIES.map((key) => (
-                <button type="button" key={key} onClick={() => toggleCapability(key)} className={activeCapabilitySet.has(key) ? 'rounded-lg border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-left text-xs text-amber-200' : 'rounded-lg border border-white/10 px-3 py-2 text-left text-xs text-slate-500 hover:bg-white/5'}>
+                <button type="button" key={key} onClick={() => toggleCapability(key)} className={activeCapabilitySet.has(key) ? 'rounded-lg border border-[var(--color-brand)] bg-[var(--color-brand-soft)] px-3 py-2 text-left text-xs text-[var(--color-brand)]' : 'rounded-lg border border-[var(--color-border)] px-3 py-2 text-left text-xs text-[var(--color-ink-muted)] hover:bg-[var(--color-surface-muted)]'}>
                   {key.replaceAll('_', ' ')}
                 </button>
               ))}
             </div>
           </div>
-          <button onClick={() => void save()} disabled={busy} className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-3 text-sm font-medium text-black disabled:opacity-50">
+          <button onClick={() => void save()} disabled={busy} className="el-button-primary">
             <Save size={16} /> {busy ? 'Saving…' : 'Save operating context'}
           </button>
         </div>
