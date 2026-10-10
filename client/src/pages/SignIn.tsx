@@ -1,10 +1,10 @@
 import { FormEvent, ReactNode, useEffect, useState } from 'react';
-import { ArrowRight, Loader2, LogIn, ShieldCheck, UserPlus, Zap } from 'lucide-react';
+import { ArrowRight, Loader2, LogIn, ShieldCheck, UserPlus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 
-export default function V2SignIn() {
+export default function SignIn() {
   const navigate = useNavigate();
   const location = useLocation();
   const invite = new URLSearchParams(location.search).get('invite');
@@ -48,7 +48,6 @@ export default function V2SignIn() {
     <main className="el-shell grid min-h-screen min-w-0 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(420px,.9fr)]">
       <section className="flex flex-col px-5 py-6 sm:px-10 lg:px-14 xl:px-20">
         <a href="/" className="flex w-fit items-center gap-2.5 text-[#202521] no-underline" aria-label="Enerlectra home">
-          <span className="grid size-9 place-items-center rounded-xl bg-[#c8f169]"><Zap size={20} strokeWidth={2.5}/></span>
           <span className="text-sm font-extrabold tracking-[.14em]">ENERLECTRA</span>
         </a>
         <div className="mx-auto my-auto w-full max-w-md py-12">
