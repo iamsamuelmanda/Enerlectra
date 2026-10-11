@@ -64,7 +64,8 @@ export function createVerificationsRouter(db: SupabaseClient): Router {
 
       if (error) {
         const code = error.message.match(/(ACTOR_NOT_ACTIVE_MEMBER|VERIFICATION_WRITE_PERMISSION_REQUIRED|VERIFICATION_TARGET_REQUIRED|SITUATION_NOT_FOUND|WORK_ITEM_NOT_FOUND|ACTION_NOT_FOUND|ACTION_WORK_TARGET_MISMATCH|ACTION_SITUATION_TARGET_MISMATCH|INVALID_VERIFICATION_TYPE|INVALID_VERIFICATION_STATUS|VERIFICATION_OUTCOME_EVIDENCE_REQUIRED|VERIFICATION_EVIDENCE_NOT_FOUND|VERIFICATION_SITUATION_REQUIRED|VERIFICATION_EVENT_NOT_FOUND)/)?.[1];
-        const status = code?.startsWith('VERIFICATION_OUTCOME_') || code?.startsWith('VERIFICATION_EVIDENCE_') || code === 'VERIFICATION_SITUATION_REQUIRED' || code === 'VERIFICATION_EVENT_NOT_FOUND' ? 422 : 403;\n        return res.status(status).json({ error: status === 403 ? 'Forbidden' : 'Verification requires valid outcome evidence', code: code ?? 'VERIFICATION_FAILED' });
+        const status = code?.startsWith('VERIFICATION_OUTCOME_') || code?.startsWith('VERIFICATION_EVIDENCE_') || code === 'VERIFICATION_SITUATION_REQUIRED' || code === 'VERIFICATION_EVENT_NOT_FOUND' ? 422 : 403;
+        return res.status(status).json({ error: status === 403 ? 'Forbidden' : 'Verification requires valid outcome evidence', code: code ?? 'VERIFICATION_FAILED' });
       }
 
       const verification = Array.isArray(data) ? data[0] : data;
