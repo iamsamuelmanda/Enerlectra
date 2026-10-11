@@ -226,7 +226,7 @@ if (enabled) {
     assert.notEqual(stillOpen.status, 'RESOLVED');
     assert.equal(stillOpen.resolved_at, null);
 
-    const evidenceTime = new Date(Date.now() + 1000).toISOString();
+    const evidenceTime = new Date().toISOString();
     const { data: evidence, error: evidenceError } = await admin
       .from('observations')
       .insert({
