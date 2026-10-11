@@ -78,16 +78,21 @@ begin
     end;
   end if;
 
+  -- Any supplied evidence reference must be tenant-local, regardless of status.
+  if p_observation_id is not null then
+    select o.observation_type,o.observed_at into v_observation_type,v_observation_observed_at
+    from public.observations o
+    where o.id=p_observation_id and o.organization_id=p_organization_id;
+    if v_observation_type is null then raise exception 'VERIFICATION_EVIDENCE_NOT_FOUND'; end if;
+  end if;
+
   if p_status='VERIFIED' then
     if p_observation_id is null then raise exception 'VERIFICATION_OUTCOME_EVIDENCE_REQUIRED'; end if;
     select s.opened_at into v_situation_opened_at
     from public.situations s where s.id=v_situation_id and s.organization_id=p_organization_id;
     if v_situation_id is null or v_situation_opened_at is null then raise exception 'VERIFICATION_SITUATION_REQUIRED'; end if;
-    select o.observation_type,o.observed_at into v_observation_type,v_observation_observed_at
-    from public.observations o
-    where o.id=p_observation_id and o.organization_id=p_organization_id;
-    if v_observation_type is null then raise exception 'VERIFICATION_EVIDENCE_NOT_FOUND'; end if;
-    if v_observation_type in ('CUSTOMER_REPORT','CUSTOMER_OPERATIONAL_ISSUE','INITIAL_REPORT')
+    -- Explicit allowlist: arbitrary or initial-report observations are not resolution evidence.
+    if v_observation_type not in ('OUTCOME_CONFIRMATION','POST_ACTION_CHECK','METER_READING','PAYMENT_CONFIRMATION','TELEMETRY','SYSTEM_STATE')
        or v_observation_observed_at < v_situation_opened_at then
       raise exception 'VERIFICATION_OUTCOME_EVIDENCE_REQUIRED';
     end if;
