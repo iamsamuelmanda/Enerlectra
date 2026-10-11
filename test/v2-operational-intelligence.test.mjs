@@ -192,11 +192,11 @@ if (enabled) {
     assert.deepEqual(recommendation.context_snapshot.businessModels, ['EPC', 'ENERGY_AS_A_SERVICE']);
   });
 
-  test('verification closes the situation through the authenticated HTTP boundary', async () => {
+  test('VERIFIED requires fresh same-tenant outcome evidence before resolving a situation', async () => {
     const token = await signIn();
     const result = await request('/api/operational-issues', token, {
       title: 'Verification loop test',
-      summary: 'A situation that should be closed through verified evidence.',
+      summary: 'A situation that should only close through evidence-backed verification.',
       severity: 'MEDIUM',
       priority: 'NORMAL',
       workType: 'INVESTIGATE',
@@ -205,21 +205,58 @@ if (enabled) {
       source: 'WEB',
       idempotencyKey: `verification-${runId}`,
     });
-
     assert.equal(result.status, 201);
+
+    const summaryOnly = await request('/api/verifications', token, {
+      situationId: result.body.situationId,
+      workItemId: result.body.workItemId,
+      verificationType: 'OPERATOR_CONFIRMATION',
+      status: 'VERIFIED',
+      result: { summary: 'Claimed resolved without outcome evidence.' },
+    });
+    assert.notEqual(summaryOnly.status, 201, 'summary text alone must not resolve a situation');
+
+    const { data: stillOpen, error: stillOpenError } = await admin
+      .from('situations')
+      .select('status,resolved_at')
+      .eq('organization_id', state.orgId)
+      .eq('id', result.body.situationId)
+      .single();
+    assert.ifError(stillOpenError);
+    assert.notEqual(stillOpen.status, 'RESOLVED');
+    assert.equal(stillOpen.resolved_at, null);
+
+    const evidenceTime = new Date(Date.now() + 1000).toISOString();
+    const { data: evidence, error: evidenceError } = await admin
+      .from('observations')
+      .insert({
+        organization_id: state.orgId,
+        actor_id: state.actorId,
+        source: 'operator_attestation',
+        observation_type: 'OUTCOME_CONFIRMATION',
+        observed_at: evidenceTime,
+        received_at: evidenceTime,
+        value: { outcome: 'operationally_confirmed', method: 'manual_check' },
+        provenance: { source: 'operator_attestation', independently_measured: false },
+      })
+      .select('id')
+      .single();
+    assert.ifError(evidenceError);
+    assert.ok(evidence?.id);
 
     const verification = await request('/api/verifications', token, {
       situationId: result.body.situationId,
       workItemId: result.body.workItemId,
       verificationType: 'OPERATOR_CONFIRMATION',
       status: 'VERIFIED',
-      result: { summary: 'Outcome confirmed by operational gate.' },
+      observationId: evidence.id,
+      result: { summary: 'Operator recorded an outcome check.' },
     });
-
     assert.equal(verification.status, 201);
     assert.equal(verification.body.success, true);
     assert.equal(verification.body.verification.verification_status, 'VERIFIED');
     assert.equal(verification.body.verification.situation_status, 'RESOLVED');
+    assert.equal(verification.body.verification.observation_id, evidence.id);
 
     const { data: situation, error } = await admin
       .from('situations')
@@ -230,6 +267,7 @@ if (enabled) {
     assert.ifError(error);
     assert.equal(situation.status, 'RESOLVED');
     assert.ok(situation.resolved_at);
+    assert.equal(situation.resolution_summary, 'Operator recorded an outcome check.');
   });
 
   test('operational queue rejects a forged organization context before intelligence retrieval', async () => {
