@@ -6,11 +6,12 @@ const url = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const integrationEnabled = Boolean(url && serviceRoleKey && anonKey);
+if (!integrationEnabled && process.env.REQUIRE_LIVE_INTEGRATION === 'true') {
+  throw new Error('REQUIRE_LIVE_INTEGRATION=true but Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY. are not all configured');
+}
 
-test('V2 Action authenticated integration gate is configured', () => {
-  if (!integrationEnabled) {
-    assert.ok(true, 'Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to run live authenticated Action tests.');
-  }
+test('V2 Action authenticated live integration gate is configured', { skip: !integrationEnabled }, () => {
+  assert.ok(integrationEnabled, 'SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are required.');
 });
 
 if (!integrationEnabled) {
