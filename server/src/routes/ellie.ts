@@ -1,8 +1,8 @@
 import crypto from 'node:crypto';
 import { Router } from 'express';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { askEllieStructured } from 'enerlectra-core/src/ai/ellie.js';
-import type { EllieOperationalDigest } from 'enerlectra-core/src/domain/intelligence/ellie-context.js';
+import { askEllieStructured } from 'enerlectra-core';
+import type { EllieOperationalDigest } from 'enerlectra-core';
 import { createTenantContextResolver, TenantContextError } from '../platform/tenant/resolver.js';
 import { buildCanonicalEllieContext } from '../platform/intelligence/ellie-context-builder.js';
 import { loadOrganizationSnapshot } from '../platform/intelligence/organization-snapshot.js';
@@ -476,10 +476,11 @@ export function createEllieRouter(db: SupabaseClient): Router {
         });
       }
 
+      const verificationEvidenceRefs: string[] = [];
       if (verificationId) {
         const { data: verification, error: verificationError } = await db
           .from('verifications')
-          .select('id,organization_id,situation_id,verification_type,status')
+          .select('id,organization_id,situation_id,verification_type,status,observation_id,event_id')
           .eq('id', verificationId)
           .eq('organization_id', tenant.organizationId)
           .maybeSingle();
@@ -496,6 +497,17 @@ export function createEllieRouter(db: SupabaseClient): Router {
             error: `Verification status ${verification.status} does not support learning outcome ${outcome}`,
             code: 'VERIFICATION_STATUS_MISMATCH',
           });
+        }
+        if (outcome === 'VERIFIED' || outcome === 'FAILED') {
+          const linkedEvidence = [verification.observation_id, verification.event_id]
+            .filter((id): id is string => typeof id === 'string' && id.length > 0);
+          if (!linkedEvidence.length) {
+            return res.status(422).json({
+              error: 'Outcome learning requires a verification linked to outcome evidence',
+              code: 'VERIFICATION_OUTCOME_EVIDENCE_REQUIRED',
+            });
+          }
+          verificationEvidenceRefs.push(...linkedEvidence);
         }
       }
 
@@ -530,6 +542,7 @@ export function createEllieRouter(db: SupabaseClient): Router {
         : [];
       const evidenceRefs = [...new Set([
         ...snapshotEvidence,
+        ...verificationEvidenceRefs,
         ...(verificationId ? [verificationId] : []),
       ])];
 
