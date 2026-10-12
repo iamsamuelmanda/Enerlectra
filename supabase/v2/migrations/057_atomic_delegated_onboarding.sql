@@ -1,4 +1,4 @@
--- Enerlectra — Migration 056: atomic delegated organization onboarding
+-- Enerlectra — Migration 057: atomic delegated organization onboarding
 --
 -- A delegated creator must not be left with a pending organization that has no
 -- owner-claim invitation when the second client RPC fails. Keep organization
