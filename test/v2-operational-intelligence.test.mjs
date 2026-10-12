@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createCustomerOperationalIssuesRouter } from '../server/src/routes/customerOperationalIssues.js';
 import { createVerificationsRouter } from '../server/src/routes/verifications.js';
 import { createOperationsRouter } from '../server/src/routes/operations.js';
+import { createEllieRouter } from '../server/src/routes/ellie.js';
 
 const url = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -109,6 +110,7 @@ if (enabled) {
     app.use('/api/operational-issues', createCustomerOperationalIssuesRouter(admin));
     app.use('/api/verifications', createVerificationsRouter(admin));
     app.use('/api/operations', createOperationsRouter(admin));
+    app.use('/api/intelligence', createEllieRouter(admin));
 
     server = http.createServer(app);
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -271,6 +273,141 @@ if (enabled) {
     assert.equal(situation.status, 'RESOLVED');
     assert.ok(situation.resolved_at);
     assert.equal(situation.resolution_summary, 'Operator recorded an outcome check.');
+
+    const { data: recommendation, error: recommendationError } = await admin
+      .from('recommendations')
+      .select('id,context_snapshot')
+      .eq('organization_id', state.orgId)
+      .eq('situation_id', result.body.situationId)
+      .limit(1)
+      .maybeSingle();
+    assert.ifError(recommendationError);
+    assert.ok(recommendation?.id, 'issue intake should create a recommendation for the situation');
+
+    const learningSignal = 'Verified outcome evidence supports this operational response';
+    const contextSnapshot = {
+      ...((recommendation.context_snapshot ?? {}) as Record<string, unknown>),
+      evidenceUsed: [evidence.id],
+      targetResourceIds: [],
+      learningSignal,
+    };
+    const { error: recommendationUpdateError } = await admin
+      .from('recommendations')
+      .update({ status: 'PROPOSED', context_snapshot: contextSnapshot })
+      .eq('id', recommendation.id)
+      .eq('organization_id', state.orgId);
+    assert.ifError(recommendationUpdateError);
+
+    const verificationId = verification.body.verification.verification_id;
+    const feedback = await request(
+      `/api/intelligence/ellie/${recommendation.id}/feedback`,
+      token,
+      { outcome: 'VERIFIED', verificationId, result: { summary: 'Evidence-backed outcome' } },
+    );
+    assert.equal(feedback.status, 200, JSON.stringify(feedback.body));
+
+    const { data: learningEvent, error: learningEventError } = await admin
+      .from('intelligence_learning_events')
+      .select('id,verification_id,outcome')
+      .eq('organization_id', state.orgId)
+      .eq('recommendation_id', recommendation.id)
+      .single();
+    assert.ifError(learningEventError);
+    assert.equal(learningEvent.outcome, 'VERIFIED');
+    assert.equal(learningEvent.verification_id, verificationId);
+
+    const { data: memory, error: memoryError } = await admin
+      .from('intelligence_memories')
+      .select('id,knowledge_type,evidence_refs,occurrence_count')
+      .eq('organization_id', state.orgId)
+      .eq('scope_key', `recommendation-outcome:${result.body.situationId}`)
+      .eq('statement', learningSignal)
+      .single();
+    assert.ifError(memoryError);
+    assert.equal(memory.knowledge_type, 'OUTCOME');
+    assert.ok(memory.evidence_refs.includes(evidence.id));
+    assert.ok(memory.evidence_refs.includes(verificationId));
+    assert.equal(memory.occurrence_count, 1);
+  });
+
+  test('Ellie rejects failed-outcome learning when verification has no linked evidence', async () => {
+    const token = await signIn();
+    const result = await request('/api/operational-issues', token, {
+      title: 'Unsubstantiated failure regression',
+      summary: 'A failed outcome without evidence must not become organizational learning.',
+      severity: 'LOW',
+      priority: 'NORMAL',
+      workType: 'INVESTIGATE',
+      observationType: 'CUSTOMER_REPORT',
+      observationValue: { symptom: 'unsubstantiated_failure' },
+      source: 'WEB',
+      idempotencyKey: `failed-learning-${runId}`,
+    });
+    assert.equal(result.status, 201);
+
+    const { data: recommendation, error: recommendationError } = await admin
+      .from('recommendations')
+      .select('id,context_snapshot')
+      .eq('organization_id', state.orgId)
+      .eq('situation_id', result.body.situationId)
+      .limit(1)
+      .maybeSingle();
+    assert.ifError(recommendationError);
+    assert.ok(recommendation?.id);
+
+    const contextSnapshot = {
+      ...((recommendation.context_snapshot ?? {}) as Record<string, unknown>),
+      evidenceUsed: [],
+      targetResourceIds: [],
+      learningSignal: 'An unsubstantiated failure must not be reinforced',
+    };
+    const { error: updateError } = await admin
+      .from('recommendations')
+      .update({ status: 'PROPOSED', context_snapshot: contextSnapshot })
+      .eq('id', recommendation.id)
+      .eq('organization_id', state.orgId);
+    assert.ifError(updateError);
+
+    const { data: failedData, error: failedError } = await admin.rpc('record_operational_verification', {
+      p_organization_id: state.orgId,
+      p_actor_id: state.actorId,
+      p_situation_id: result.body.situationId,
+      p_work_item_id: result.body.workItemId,
+      p_action_id: null,
+      p_verification_type: 'OPERATOR_CONFIRMATION',
+      p_status: 'FAILED',
+      p_result: { summary: 'Failure recorded without outcome evidence' },
+      p_observation_id: null,
+      p_event_id: null,
+    });
+    assert.ifError(failedError);
+    const failedVerification = Array.isArray(failedData) ? failedData[0] : failedData;
+    assert.ok(failedVerification?.verification_id);
+
+    const feedback = await request(
+      `/api/intelligence/ellie/${recommendation.id}/feedback`,
+      token,
+      { outcome: 'FAILED', verificationId: failedVerification.verification_id },
+    );
+    assert.equal(feedback.status, 422);
+    assert.equal(feedback.body.code, 'VERIFICATION_OUTCOME_EVIDENCE_REQUIRED');
+
+    const { data: learningEvents, error: learningEventsError } = await admin
+      .from('intelligence_learning_events')
+      .select('id')
+      .eq('organization_id', state.orgId)
+      .eq('recommendation_id', recommendation.id);
+    assert.ifError(learningEventsError);
+    assert.deepEqual(learningEvents, []);
+
+    const { data: persistedRecommendation, error: persistedRecommendationError } = await admin
+      .from('recommendations')
+      .select('status')
+      .eq('organization_id', state.orgId)
+      .eq('id', recommendation.id)
+      .single();
+    assert.ifError(persistedRecommendationError);
+    assert.equal(persistedRecommendation.status, 'PROPOSED');
   });
 
   test('operational queue rejects a forged organization context before intelligence retrieval', async () => {
