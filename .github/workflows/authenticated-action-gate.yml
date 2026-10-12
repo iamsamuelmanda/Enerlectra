@@ -12,7 +12,9 @@ on:
       - 'test/customer-operational-issue-integration.test.mjs'
       - 'test/self-service-onboarding.test.mjs'
       - 'test/customer-operational-issue.test.mjs'
+      - 'test/v2-verification-evidence-integration.test.mjs'
       - 'supabase/migrations/**'
+      - 'supabase/v2/migrations/**'
       - 'package.json'
       - 'package-lock.json'
       - 'server/src/platform/**'
@@ -65,3 +67,6 @@ jobs:
 
       - name: Run Customer Operational Issue gate
         run: npm run test:customer-operational-issue
+
+      - name: Run operational verification evidence gate
+        run: npm run test:verification-evidence
