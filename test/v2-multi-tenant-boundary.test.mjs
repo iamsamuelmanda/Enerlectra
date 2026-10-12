@@ -6,9 +6,12 @@ const url = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.SUPABASE_ANON_KEY;
 const enabled = Boolean(url && serviceRoleKey && anonKey);
+if (!enabled && process.env.REQUIRE_LIVE_INTEGRATION === 'true') {
+  throw new Error('REQUIRE_LIVE_INTEGRATION=true but Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY. are not all configured');
+}
 
-test('V2 multi-tenant boundary gate is configured', () => {
-  if (!enabled) assert.ok(true, 'Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY for the live gate.');
+test('V2 multi-tenant live integration gate is configured', { skip: !enabled }, () => {
+  assert.ok(enabled, 'SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are required.');
 });
 
 if (enabled) {
