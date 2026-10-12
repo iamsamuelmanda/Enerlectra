@@ -5,11 +5,12 @@ import { createClient } from '@supabase/supabase-js';
 const url = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const enabled = Boolean(url && serviceRoleKey);
+if (!enabled && process.env.REQUIRE_LIVE_INTEGRATION === 'true') {
+  throw new Error('REQUIRE_LIVE_INTEGRATION=true but Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. are not all configured');
+}
 
-test('operational verification evidence regression gate is configured', () => {
-  if (!enabled) {
-    assert.ok(true, 'Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to run live database verification tests.');
-  }
+test('operational verification evidence live integration gate is configured', { skip: !enabled }, () => {
+  assert.ok(enabled, 'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.');
 });
 
 if (enabled) {
