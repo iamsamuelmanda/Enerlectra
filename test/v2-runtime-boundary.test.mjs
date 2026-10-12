@@ -40,8 +40,8 @@ test('active server composition root does not mount retired protocol runtime', a
 
 test('Ellie depends on the public Core API and enforces evidence-backed learning', async () => {
   const source = await read('../server/src/routes/ellie.ts');
-  assert.match(source, /import \{ askEllieStructured \} from 'enerlectra-core'/);
-  assert.match(source, /import type \{ EllieOperationalDigest \} from 'enerlectra-core'/);
+  assert.match(source, /import \{ askEllieStructured \} from 'enerlectra-core\/ai\/ellie\.js'/);
+  assert.match(source, /import type \{ EllieOperationalDigest \} from 'enerlectra-core\/domain\/intelligence\/ellie-context\.js'/);
   assert.equal(source.includes('enerlectra-core/src/'), false, 'Ellie route must not bypass Core public exports');
   assert.match(source, /createTenantContextResolver/);
   assert.match(source, /buildCanonicalEllieContext/);
