@@ -286,7 +286,7 @@ if (enabled) {
 
     const learningSignal = 'Verified outcome evidence supports this operational response';
     const contextSnapshot = {
-      ...((recommendation.context_snapshot ?? {}) as Record<string, unknown>),
+      ...(recommendation.context_snapshot ?? {}),
       evidenceUsed: [evidence.id],
       targetResourceIds: [],
       learningSignal,
@@ -356,7 +356,7 @@ if (enabled) {
     assert.ok(recommendation?.id);
 
     const contextSnapshot = {
-      ...((recommendation.context_snapshot ?? {}) as Record<string, unknown>),
+      ...(recommendation.context_snapshot ?? {}),
       evidenceUsed: [],
       targetResourceIds: [],
       learningSignal: 'An unsubstantiated failure must not be reinforced',
