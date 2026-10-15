@@ -2,21 +2,22 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.SUPABASE_TEST_URL;
-const serviceRoleKey = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY;
-const anonKey = process.env.SUPABASE_TEST_ANON_KEY;
+const allowProduction = process.env.ALLOW_PRODUCTION_ONBOARDING_TESTS === 'true';
+const url = process.env.SUPABASE_TEST_URL ?? (allowProduction ? process.env.SUPABASE_URL : undefined);
+const serviceRoleKey = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY ?? (allowProduction ? process.env.SUPABASE_SERVICE_ROLE_KEY : undefined);
+const anonKey = process.env.SUPABASE_TEST_ANON_KEY ?? (allowProduction ? process.env.SUPABASE_ANON_KEY : undefined);
 const onboardingApiUrl = process.env.ONBOARDING_TEST_API_URL?.replace(/\/+$/, '');
 const enabled = Boolean(url && serviceRoleKey && anonKey && onboardingApiUrl);
 if (!enabled && process.env.REQUIRE_ONBOARDING_TEST_INTEGRATION === 'true') {
   throw new Error(
-    'REQUIRE_ONBOARDING_TEST_INTEGRATION=true requires isolated SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY, SUPABASE_TEST_SERVICE_ROLE_KEY and ONBOARDING_TEST_API_URL. The API must use the same disposable test Supabase project; production credentials are not accepted.'
+    'REQUIRE_ONBOARDING_TEST_INTEGRATION=true requires Supabase URL, anon key, service-role key and ONBOARDING_TEST_API_URL. Use SUPABASE_TEST_* for an isolated project, or explicitly set ALLOW_PRODUCTION_ONBOARDING_TESTS=true to use SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY.'
   );
 }
 
-test('self-service onboarding integration requires an isolated Supabase project and its API', { skip: !enabled }, () => {
+test('self-service onboarding integration requires Supabase credentials and its API', { skip: !enabled }, () => {
   assert.ok(
     enabled,
-    'Configure isolated SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY, SUPABASE_TEST_SERVICE_ROLE_KEY and ONBOARDING_TEST_API_URL. The API must target the same disposable test project; do not point this test at production.'
+    'Configure SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY, SUPABASE_TEST_SERVICE_ROLE_KEY and ONBOARDING_TEST_API_URL; or explicitly opt in to operational credentials with ALLOW_PRODUCTION_ONBOARDING_TESTS=true.'
   );
 });
 
@@ -32,6 +33,10 @@ if (enabled) {
     orgs: [],
     actorIds: [],
     membershipIds: [],
+    orgNames: [
+      `Onboarding Gate Owner ${runId}`,
+      `Onboarding Gate Delegated ${runId}`,
+    ],
   };
 
   async function createUser(label) {
@@ -82,19 +87,32 @@ if (enabled) {
   }
 
   async function cleanup() {
-    for (const orgId of state.orgs) {
-      await admin.from('organization_invitations').delete().eq('organization_id', orgId);
-      await admin.from('memberships').delete().eq('organization_id', orgId);
-      await admin.from('organizations').delete().eq('id', orgId);
+    const discoveredOrgIds = new Set(state.orgs);
+    // Recover organizations created by the API if a response was lost before its ID was recorded.
+    for (const name of state.orgNames) {
+      const { data, error } = await admin.from('organizations').select('id').eq('name', name);
+      if (error) throw new Error(`Failed to discover test organization during cleanup: ${error.message}`);
+      for (const org of data ?? []) discoveredOrgIds.add(org.id);
+    }
+    for (const orgId of discoveredOrgIds) {
+      const invitationDelete = await admin.from('organization_invitations').delete().eq('organization_id', orgId);
+      if (invitationDelete.error) throw new Error(`Failed to clean test invitations: ${invitationDelete.error.message}`);
+      const membershipDelete = await admin.from('memberships').delete().eq('organization_id', orgId);
+      if (membershipDelete.error) throw new Error(`Failed to clean test memberships: ${membershipDelete.error.message}`);
+      const orgDelete = await admin.from('organizations').delete().eq('id', orgId);
+      if (orgDelete.error) throw new Error(`Failed to clean test organization: ${orgDelete.error.message}`);
     }
     for (const userId of state.users) {
-      await admin.from('actors').delete().eq('auth_user_id', userId);
+      const actorDelete = await admin.from('actors').delete().eq('auth_user_id', userId);
+      if (actorDelete.error) throw new Error(`Failed to clean test actor: ${actorDelete.error.message}`);
     }
     for (const actorId of state.actorIds) {
-      await admin.from('actors').delete().eq('id', actorId);
+      const actorDelete = await admin.from('actors').delete().eq('id', actorId);
+      if (actorDelete.error) throw new Error(`Failed to clean test actor: ${actorDelete.error.message}`);
     }
     for (const userId of state.users) {
-      await admin.auth.admin.deleteUser(userId);
+      const { error } = await admin.auth.admin.deleteUser(userId);
+      if (error && error.code !== 'user_not_found') throw new Error(`Failed to clean test user: ${error.message}`);
     }
   }
 
@@ -111,7 +129,7 @@ if (enabled) {
     secondOwner = await createUser('second-owner');
 
     const ownerSetup = await createOrganization(owner, {
-      name: `Onboarding Gate Owner ${runId}`,
+      name: state.orgNames[0],
       intent: 'OWNER',
     });
     assert.equal(ownerSetup.organization.onboarding_state, 'ACTIVE');
@@ -119,7 +137,7 @@ if (enabled) {
     state.orgs.push(orgOwner);
 
     const delegatedSetup = await createOrganization(operator, {
-      name: `Onboarding Gate Delegated ${runId}`,
+      name: state.orgNames[1],
       intent: 'DELEGATED_OPERATOR',
       ownerEmail: secondOwner.email,
     });
