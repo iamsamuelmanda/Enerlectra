@@ -8,7 +8,7 @@ test('browser onboarding uses the authenticated API and never invokes privileged
   const source = await read('../client/src/pages/Onboarding.tsx');
   assert.match(source, /\/api\/onboarding\/organizations/);
   assert.match(source, /\/api\/onboarding\/invitations\/accept/);
-  assert.match(source, /Authorization: `Bearer \\${accessToken}`/);
+  assert.ok(source.includes('Authorization: `Bearer ${accessToken}`'));
   for (const rpc of ['create_organization', 'create_delegated_organization_with_owner_invitation', 'accept_organization_invitation']) {
     assert.equal(source.includes(`rpc('${rpc}'`), false, `browser must not call privileged RPC ${rpc}`);
   }
