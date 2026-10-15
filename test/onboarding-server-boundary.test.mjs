@@ -30,6 +30,9 @@ test('trusted onboarding migration limits RPC execution to service_role and chec
   assert.match(source, /revoke all on function public\.server_create_onboarding_organization[\s\S]*?from public, anon, authenticated/i);
   assert.match(source, /grant execute on function public\.server_create_onboarding_organization[\s\S]*?to service_role/i);
   assert.match(source, /grant execute on function public\.server_accept_organization_invitation[\s\S]*?to service_role/i);
+  assert.match(source, /revoke all on function public\.create_delegated_organization_with_owner_invitation\(text,text\)[\s\S]*?from public, anon, authenticated, service_role/i);
+  assert.match(source, /extensions\.gen_random_bytes\(32\)/);
+  assert.match(source, /extensions\.digest\(p_token, 'sha256'\)/);
   assert.match(source, /INVITATION_EMAIL_MISMATCH/);
   assert.match(source, /expires_at > now\(\)/);
   assert.match(source, /encode\(digest\(p_token, 'sha256'\), 'hex'\)/);
