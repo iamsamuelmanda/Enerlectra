@@ -22,6 +22,7 @@ import { createOperationsRouter } from './routes/operations.js';
 import { createOrganizationContextRouter } from './routes/organizationContext.js';
 import { createResourcesRouter } from './routes/resources.js';
 import { createEllieRouter } from './routes/ellie.js';
+import { createOnboardingRouter } from './routes/onboarding.js';
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -198,6 +199,7 @@ app.use('/api/organization/context', createOrganizationContextRouter(supabase));
 app.use('/api/resources', createResourcesRouter(supabase));
 app.use('/api/verifications', createVerificationsRouter(supabase));
 app.use('/api/intelligence', createEllieRouter(supabase));
+app.use('/api/onboarding', createOnboardingRouter(supabase));
 
 app.post('/api/webhooks/whatsapp', (_req, res) => {
   res.status(503).json({ error: 'WhatsApp channel adapter not configured' });
