@@ -34,7 +34,7 @@ begin
   if p_name is null or length(btrim(p_name)) = 0 or length(btrim(p_name)) > 120 then
     raise exception 'ORGANIZATION_NAME_REQUIRED';
   end if;
-  if p_intent not in ('OWNER', 'DELEGATED_OPERATOR') then
+  if p_intent is null or p_intent not in ('OWNER', 'DELEGATED_OPERATOR') then
     raise exception 'INVALID_CREATOR_INTENT';
   end if;
 
@@ -63,6 +63,9 @@ begin
     case when p_intent = 'OWNER' then 'ACTIVE' else 'PENDING_AUTHORITY' end
   )
   returning * into v_org;
+
+  insert into public.operating_model_profiles(organization_id, name, status, configuration)
+  values (v_org.id, 'Default operating profile', 'ACTIVE', '{}'::jsonb);
 
   insert into public.memberships(organization_id, actor_id, role_id, status)
   values (v_org.id, v_actor.id, v_role_id, 'ACTIVE');
@@ -143,6 +146,22 @@ begin
   if lower(btrim(p_verified_email)) <> lower(v_inv.email) then
     raise exception 'INVITATION_EMAIL_MISMATCH';
   end if;
+  if v_inv.purpose = 'OWNER_CLAIM' then
+    if v_inv.role_id is distinct from (select id from public.roles where key = 'OWNER') then
+      raise exception 'OWNER_CLAIM_REQUIRES_OWNER_ROLE';
+    end if;
+    if not exists (select 1 from public.organizations o where o.id = v_inv.organization_id and o.onboarding_state = 'PENDING_AUTHORITY') then
+      raise exception 'ORGANIZATION_NOT_PENDING_AUTHORITY';
+    end if;
+    if exists (
+      select 1 from public.memberships m
+      join public.membership_roles mr on mr.membership_id = m.id
+      join public.roles r on r.id = mr.role_id
+      where m.organization_id = v_inv.organization_id and m.status = 'ACTIVE' and r.key = 'OWNER'
+    ) then
+      raise exception 'ORGANIZATION_ALREADY_HAS_OWNER';
+    end if;
+  end if;
 
   select * into v_membership from public.memberships
   where organization_id = v_inv.organization_id and actor_id = v_actor.id
@@ -152,12 +171,16 @@ begin
     values (v_inv.organization_id, v_actor.id, v_inv.role_id, 'ACTIVE')
     returning * into v_membership;
   else
-    update public.memberships set status = 'ACTIVE', role_id = v_inv.role_id, updated_at = now()
+    update public.memberships set status = 'ACTIVE',
+      role_id = case when v_inv.purpose = 'OWNER_CLAIM' then v_inv.role_id else role_id end,
+      updated_at = now()
     where id = v_membership.id returning * into v_membership;
   end if;
 
-  insert into public.membership_roles(membership_id, role_id)
-  values (v_membership.id, v_inv.role_id) on conflict do nothing;
+  insert into public.membership_roles(membership_id, role_id, is_primary)
+  values (v_membership.id, v_inv.role_id, v_inv.purpose = 'OWNER_CLAIM')
+  on conflict (membership_id, role_id) do update
+    set is_primary = public.membership_roles.is_primary or excluded.is_primary;
 
   if v_inv.purpose = 'OWNER_CLAIM' then
     update public.organizations set onboarding_state = 'ACTIVE', updated_at = now()
@@ -176,10 +199,15 @@ begin
 end;
 $$;
 
--- Migration 057 accidentally exposed this wrapper to authenticated browser clients.
--- Close that path as part of the server-side boundary migration.
-revoke all on function public.create_delegated_organization_with_owner_invitation(text,text)
-from public, anon, authenticated, service_role;
+-- Migration 057 introduced a browser-callable wrapper. Revoke it when present;
+-- some deployed databases never applied 057 because its migration version/name drifted.
+do $migration$
+begin
+  if to_regprocedure('public.create_delegated_organization_with_owner_invitation(text,text)') is not null then
+    execute 'revoke all on function public.create_delegated_organization_with_owner_invitation(text,text) from public, anon, authenticated, service_role';
+  end if;
+end;
+$migration$;
 
 revoke all on function public.server_create_onboarding_organization(uuid,text,text,text,text)
 from public, anon, authenticated;
