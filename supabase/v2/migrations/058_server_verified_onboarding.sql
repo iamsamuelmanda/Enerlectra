@@ -176,6 +176,13 @@ begin
 end;
 $$;
 
+-- Migration 057 accidentally exposed this wrapper to authenticated browser clients.
+-- Close that path as part of the server-side boundary migration.
+revoke all on function public.create_delegated_organization_with_owner_invitation(text,text)
+from public, anon, authenticated;
+grant execute on function public.create_delegated_organization_with_owner_invitation(text,text)
+to service_role;
+
 revoke all on function public.server_create_onboarding_organization(uuid,text,text,text,text)
 from public, anon, authenticated;
 revoke all on function public.server_accept_organization_invitation(uuid,text,text)
