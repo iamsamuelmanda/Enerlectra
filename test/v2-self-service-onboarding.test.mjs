@@ -5,13 +5,19 @@ import { createClient } from '@supabase/supabase-js';
 const url = process.env.SUPABASE_TEST_URL;
 const serviceRoleKey = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY;
 const anonKey = process.env.SUPABASE_TEST_ANON_KEY;
-const enabled = Boolean(url && serviceRoleKey && anonKey);
+const onboardingApiUrl = process.env.ONBOARDING_TEST_API_URL?.replace(/\/+$/, '');
+const enabled = Boolean(url && serviceRoleKey && anonKey && onboardingApiUrl);
 if (!enabled && process.env.REQUIRE_ONBOARDING_TEST_INTEGRATION === 'true') {
-  throw new Error('REQUIRE_ONBOARDING_TEST_INTEGRATION=true but isolated SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY and SUPABASE_TEST_SERVICE_ROLE_KEY are not all configured');
+  throw new Error(
+    'REQUIRE_ONBOARDING_TEST_INTEGRATION=true requires isolated SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY, SUPABASE_TEST_SERVICE_ROLE_KEY and ONBOARDING_TEST_API_URL. The API must use the same disposable test Supabase project; production credentials are not accepted.'
+  );
 }
 
-test('isolated self-service onboarding integration requires explicitly configured test-project credentials', { skip: !enabled }, () => {
-  assert.ok(enabled, 'Set SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY and SUPABASE_TEST_SERVICE_ROLE_KEY for an isolated disposable Supabase project. Production credentials are deliberately not accepted.');
+test('self-service onboarding integration requires an isolated Supabase project and its API', { skip: !enabled }, () => {
+  assert.ok(
+    enabled,
+    'Configure isolated SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY, SUPABASE_TEST_SERVICE_ROLE_KEY and ONBOARDING_TEST_API_URL. The API must target the same disposable test project; do not point this test at production.'
+  );
 });
 
 if (enabled) {
@@ -51,7 +57,28 @@ if (enabled) {
     });
     assert.ifError(error);
     assert.ok(data.session?.access_token);
-    return client;
+    return { client, accessToken: data.session.access_token };
+  }
+
+  async function postOnboarding(path, accessToken, body) {
+    const response = await fetch(`${onboardingApiUrl}/api/onboarding/${path}`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = await response.json().catch(() => ({}));
+    return { response, payload };
+  }
+
+  async function createOrganization(user, body) {
+    const { accessToken } = await signIn(user);
+    const { response, payload } = await postOnboarding('organizations', accessToken, body);
+    assert.equal(response.status, 201, JSON.stringify(payload));
+    assert.ok(payload.organization?.id, 'API must return the created organization');
+    return payload;
   }
 
   async function cleanup() {
@@ -83,27 +110,21 @@ if (enabled) {
     operator = await createUser('operator');
     secondOwner = await createUser('second-owner');
 
-    const ownerClient = await signIn(owner);
-    const { data: ownerOrg, error: ownerOrgError } = await ownerClient.rpc('create_organization', {
-      p_name: `Onboarding Gate Owner ${runId}`,
-      p_creator_intent: 'OWNER',
+    const ownerSetup = await createOrganization(owner, {
+      name: `Onboarding Gate Owner ${runId}`,
+      intent: 'OWNER',
     });
-    assert.ifError(ownerOrgError);
-    assert.equal(ownerOrg.onboarding_state, 'ACTIVE');
-    orgOwner = ownerOrg.id;
+    assert.equal(ownerSetup.organization.onboarding_state, 'ACTIVE');
+    orgOwner = ownerSetup.organization.id;
     state.orgs.push(orgOwner);
 
-    const delegatedClient = await signIn(operator);
-    const { data: delegatedSetup, error: delegatedOrgError } = await delegatedClient.rpc(
-      'create_delegated_organization_with_owner_invitation',
-      {
-        p_name: `Onboarding Gate Delegated ${runId}`,
-        p_owner_email: secondOwner.email,
-      }
-    );
-    assert.ifError(delegatedOrgError);
+    const delegatedSetup = await createOrganization(operator, {
+      name: `Onboarding Gate Delegated ${runId}`,
+      intent: 'DELEGATED_OPERATOR',
+      ownerEmail: secondOwner.email,
+    });
     assert.equal(delegatedSetup.organization.onboarding_state, 'PENDING_AUTHORITY');
-    assert.ok(delegatedSetup.invitation.token);
+    assert.ok(delegatedSetup.invitation?.token);
     delegatedOwnerClaimToken = delegatedSetup.invitation.token;
     orgDelegated = delegatedSetup.organization.id;
     state.orgs.push(orgDelegated);
@@ -157,12 +178,13 @@ if (enabled) {
   test('delegated operator can invite a responsible owner who claims the workspace', async () => {
     assert.ok(delegatedOwnerClaimToken, 'atomic delegated onboarding must issue an owner-claim token');
 
-    const secondOwnerClient = await signIn(secondOwner);
-    const { data: claimed, error: claimError } = await secondOwnerClient.rpc(
-      'accept_organization_invitation',
-      { p_token: delegatedOwnerClaimToken }
+    const { accessToken } = await signIn(secondOwner);
+    const { response, payload: claimed } = await postOnboarding(
+      'invitations/accept',
+      accessToken,
+      { token: delegatedOwnerClaimToken }
     );
-    assert.ifError(claimError);
+    assert.equal(response.status, 200, JSON.stringify(claimed));
     assert.equal(claimed.status, 'ACTIVE');
 
     const { data: org, error: orgError } = await admin
@@ -183,9 +205,9 @@ if (enabled) {
   });
 
   test('ownership can be granted to another active member and multiple owners remain valid', async () => {
-    const ownerClient = await signIn(owner);
+    const { client: ownerClient } = await signIn(owner);
     const member = await createUser('member');
-    const memberClient = await signIn(member);
+    const { client: memberClient } = await signIn(member);
 
     const { data: memberActor, error: actorError } = await admin
       .from('actors')
@@ -286,7 +308,7 @@ if (enabled) {
     assert.ifError(error);
     assert.equal(owners.length, 1);
 
-    const brianClient = await signIn(secondOwner);
+    const { client: brianClient } = await signIn(secondOwner);
     const { error: demotionError } = await brianClient.rpc(
       'transfer_organization_ownership',
       {
@@ -311,16 +333,10 @@ if (enabled) {
       .single();
     assert.ifError(ownerActorError);
 
-    const { data: ownerClientSession, error: sessionError } = await (async () => {
-      const c = createClient(url, anonKey, { auth: { autoRefreshToken: false, persistSession: false } });
-      return c.auth.signInWithPassword({ email: owner.email, password });
-    })();
-    assert.ifError(sessionError);
-    assert.ok(ownerClientSession.session);
-
+    const { accessToken } = await signIn(owner);
     const scoped = createClient(url, anonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
-      global: { headers: { Authorization: `Bearer ${ownerClientSession.session.access_token}` } },
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
     });
 
     const { data: otherOrgRows, error: otherOrgError } = await scoped
