@@ -82,13 +82,13 @@ begin
 
   select id into v_role_id from public.roles where key = 'OWNER';
   if v_role_id is null then raise exception 'ONBOARDING_ROLE_MISSING'; end if;
-  v_token := encode(gen_random_bytes(32), 'hex');
+  v_token := encode(extensions.gen_random_bytes(32), 'hex');
   insert into public.organization_invitations(
     organization_id, purpose, email, role_id, token_hash,
     invited_by_actor_id, expires_at
   ) values (
     v_org.id, 'OWNER_CLAIM', v_owner_email, v_role_id,
-    encode(digest(v_token, 'sha256'), 'hex'), v_actor.id,
+    encode(extensions.digest(v_token, 'sha256'), 'hex'), v_actor.id,
     now() + interval '7 days'
   ) returning * into v_inv;
 
@@ -136,7 +136,7 @@ begin
 
   select * into v_inv
   from public.organization_invitations
-  where token_hash = encode(digest(p_token, 'sha256'), 'hex')
+  where token_hash = encode(extensions.digest(p_token, 'sha256'), 'hex')
     and status = 'PENDING' and expires_at > now()
   for update;
   if v_inv.id is null then raise exception 'INVITATION_INVALID_OR_EXPIRED'; end if;
@@ -179,9 +179,7 @@ $$;
 -- Migration 057 accidentally exposed this wrapper to authenticated browser clients.
 -- Close that path as part of the server-side boundary migration.
 revoke all on function public.create_delegated_organization_with_owner_invitation(text,text)
-from public, anon, authenticated;
-grant execute on function public.create_delegated_organization_with_owner_invitation(text,text)
-to service_role;
+from public, anon, authenticated, service_role;
 
 revoke all on function public.server_create_onboarding_organization(uuid,text,text,text,text)
 from public, anon, authenticated;
