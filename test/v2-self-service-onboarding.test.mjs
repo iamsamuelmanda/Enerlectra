@@ -2,16 +2,16 @@ import test, { before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createClient } from '@supabase/supabase-js';
 
-const url = process.env.SUPABASE_URL;
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const anonKey = process.env.SUPABASE_ANON_KEY;
+const url = process.env.SUPABASE_TEST_URL;
+const serviceRoleKey = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY;
+const anonKey = process.env.SUPABASE_TEST_ANON_KEY;
 const enabled = Boolean(url && serviceRoleKey && anonKey);
-if (!enabled && process.env.REQUIRE_LIVE_INTEGRATION === 'true') {
-  throw new Error('REQUIRE_LIVE_INTEGRATION=true but SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are not all configured');
+if (!enabled && process.env.REQUIRE_ONBOARDING_TEST_INTEGRATION === 'true') {
+  throw new Error('REQUIRE_ONBOARDING_TEST_INTEGRATION=true but isolated SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY and SUPABASE_TEST_SERVICE_ROLE_KEY are not all configured');
 }
 
-test('live self-service onboarding gate requires configured test credentials', { skip: !enabled }, () => {
-  assert.ok(enabled, 'Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY to run live onboarding integration tests.');
+test('isolated self-service onboarding integration requires explicitly configured test-project credentials', { skip: !enabled }, () => {
+  assert.ok(enabled, 'Set SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY and SUPABASE_TEST_SERVICE_ROLE_KEY for an isolated disposable Supabase project. Production credentials are deliberately not accepted.');
 });
 
 if (enabled) {
