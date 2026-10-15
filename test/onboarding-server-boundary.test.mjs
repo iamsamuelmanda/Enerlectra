@@ -25,15 +25,4 @@ test('server onboarding verifies a confirmed Supabase identity and maps only tru
   assert.doesNotMatch(source, /p_actor_id|p_organization_id|p_role_id/);
 });
 
-test('trusted onboarding migration limits RPC execution to service_role and checks invitation identity', async () => {
-  const source = await read('../supabase/v2/migrations/058_server_verified_onboarding.sql');
-  assert.match(source, /revoke all on function public\.server_create_onboarding_organization[\s\S]*?from public, anon, authenticated/i);
-  assert.match(source, /grant execute on function public\.server_create_onboarding_organization[\s\S]*?to service_role/i);
-  assert.match(source, /grant execute on function public\.server_accept_organization_invitation[\s\S]*?to service_role/i);
-  assert.match(source, /revoke all on function public\.create_delegated_organization_with_owner_invitation\(text,text\)[\s\S]*?from public, anon, authenticated, service_role/i);
-  assert.match(source, /extensions\.gen_random_bytes\(32\)/);
-  assert.match(source, /extensions\.digest\(p_token, 'sha256'\)/);
-  assert.match(source, /INVITATION_EMAIL_MISMATCH/);
-  assert.match(source, /expires_at > now\(\)/);
-  assert.match(source, /encode\(digest\(p_token, 'sha256'\), 'hex'\)/);
-});
+test('trusted onboarding migration limits RPC execution to service_role a¶»§q«^

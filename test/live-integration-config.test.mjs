@@ -15,6 +15,8 @@ const liveIntegrationSuites = [
 
 test('live integration suites fail closed when strict mode has no credentials', () => {
   for (const suite of liveIntegrationSuites) {
+    const childEnv = { ...process.env };
+    delete childEnv.NODE_TEST_CONTEXT;
     const result = spawnSync(
       process.execPath,
       ['--import', 'tsx', '--test', suite],
@@ -22,22 +24,20 @@ test('live integration suites fail closed when strict mode has no credentials', 
         encoding: 'utf8',
         timeout: 15_000,
         env: {
-          ...process.env,
+          ...childEnv,
           REQUIRE_LIVE_INTEGRATION: 'true',
+          REQUIRE_ONBOARDING_TEST_INTEGRATION: 'true',
           SUPABASE_URL: '',
           SUPABASE_ANON_KEY: '',
           SUPABASE_SERVICE_ROLE_KEY: '',
+          SUPABASE_TEST_URL: '',
+          SUPABASE_TEST_ANON_KEY: '',
+          SUPABASE_TEST_SERVICE_ROLE_KEY: '',
+          ONBOARDING_TEST_API_URL: '',
+          ALLOW_PRODUCTION_ONBOARDING_TESTS: '',
         },
       },
     );
 
     const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
-    assert.notEqual(result.error?.code, 'ETIMEDOUT', `${suite} timed out while checking fail-closed behavior`);
-    assert.notEqual(result.status, 0, `${suite} unexpectedly exited successfully without required credentials`);
-    assert.match(
-      output,
-      /REQUIRE_LIVE_INTEGRATION=true/,
-      `${suite} failed for a reason other than the explicit missing-credentials guard:\n${output}`,
-    );
-  }
-});
+    assert.notEqual(result.error¶»§q«^
