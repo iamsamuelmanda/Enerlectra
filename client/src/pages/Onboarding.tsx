@@ -35,11 +35,16 @@ export default function Onboarding() {
       if (intent === 'DELEGATED_OPERATOR') {
         // Create the pending organization and owner-claim invitation in one
         // database transaction so an invitation failure cannot orphan a workspace.
-        const { data, error } = await supabase.rpc('create_delegated_organization_with_owner_invitation', {
-          p_name: name.trim(),
-          p_owner_email: inviteEmail.trim(),
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData.session?.access_token;
+        if (!accessToken) throw new Error('Your session expired. Sign in again.');
+        const response = await fetch('/api/onboarding/organizations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+          body: JSON.stringify({ name: name.trim(), intent: 'DELEGATED_OPERATOR', ownerEmail: inviteEmail.trim() }),
         });
-        if (error) throw error;
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.code || 'Could not create workspace');
         const invitation = data?.invitation as { token?: string } | undefined;
         const token = invitation?.token;
         if (!token) throw new Error('Owner claim invitation was created without a token.');
@@ -48,11 +53,16 @@ export default function Onboarding() {
         return;
       }
 
-      const { error } = await supabase.rpc('create_organization', {
-        p_name: name.trim(),
-        p_creator_intent: 'OWNER',
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Your session expired. Sign in again.');
+      const response = await fetch('/api/onboarding/organizations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ name: name.trim(), intent: 'OWNER' }),
       });
-      if (error) throw error;
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.code || 'Could not create workspace');
       toast.success('Workspace created.');
       navigate('/workspace', { replace: true });
     } catch (error) {
@@ -66,8 +76,16 @@ export default function Onboarding() {
     if (!token) return;
     setBusy(true);
     try {
-      const { error } = await supabase.rpc('accept_organization_invitation', { p_token: token });
-      if (error) throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error('Your session expired. Sign in again.');
+      const response = await fetch('/api/onboarding/invitations/accept', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ token }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.code || 'Could not accept invitation');
       toast.success('You now have access to the workspace.');
       navigate('/workspace', { replace: true });
     } catch (error) {
