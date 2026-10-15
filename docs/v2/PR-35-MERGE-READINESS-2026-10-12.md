@@ -73,3 +73,42 @@ The security advisor's finding about `organization_invitations` having RLS enabl
 3. Decide on an isolated, non-production Supabase test target and apply/test migrations there only after the deployment target is confirmed.
 4. Restore a functioning test runner or obtain an explicitly approved alternative execution environment; then run the authenticated workflow, tenant isolation, Ellie learning/verification, dependency-direction, typecheck/build, and audit gates.
 5. Update this checkpoint with actual command results. Only then reconsider PR #35's draft status and merge readiness.
+
+
+## 7. Follow-up verification — 2026-10-15
+
+This section supersedes older statements above where the live state has since changed. It records observations, not assumptions.
+
+### Current head and CI execution
+
+- Reviewed head: `b7d77d4dc0955a720a7fd724c8e4ac693a9bbd59`.
+- PR #35 remains open and unmerged.
+- Current CI run: [38667433989](https://github.com/iamsamuelmanda/Enerlectra/actions/runs/38667433989). Its four jobs (security audit, server typecheck, root install/smoke tests, client typecheck/build) all concluded failure after approximately two seconds, with empty `steps`, `runner_id: 0`, and no runner name.
+- Current Authenticated Action Gate: [38667434013](https://github.com/iamsamuelmanda/Enerlectra/actions/runs/38667434013). It likewise failed after approximately two seconds with empty `steps` and no assigned runner.
+- These are runner-execution failures, not evidence that the code passed or failed the commands. No current-head test suite, typecheck, client build, or npm audit has been proven to execute.
+
+### Validation deployment
+
+- A separate, free Render validation service was inspected: `Enerlectra-exact-head-validation`, service `srv-db2s6bcs728c73af94qg`, URL https://enerlectra-exact-head-validation.onrender.com.
+- Its live deployment is the reviewed head `b7d77d4dc0955a720a7fd724c8e4ac693a9bbd59`. Render completed `npm install`, started `npm start`, connected to canonical Supabase, and marked the service live.
+- This service's build command is only `npm install`; it does not run tests, typechecks, client build, or security audit. The install log reported 25 vulnerabilities (1 low, 8 moderate, 15 high, 1 critical); exact packages and fix paths remain unverified because `npm audit` did not execute.
+- The validation service is configured with the production Supabase project. Therefore it has only been used for startup validation; no mutating onboarding test was run through it. The production Render service was not redeployed or reconfigured during this validation.
+
+### Production database migration 058
+
+- Migration `058_server_verified_onboarding` was applied to the live Supabase project on 2026-10-15 and is recorded as version `20261015014615`.
+- A post-application privilege query confirmed both new onboarding RPCs are executable by `service_role`, and not by `anon` or `authenticated`.
+- The conditional revoke of the legacy delegated-onboarding function was safe against the live schema, where that function was absent.
+- This is a production schema change, not proof of end-to-end correctness. A proposed synthetic-user create/accept/cleanup test was blocked by the SQL tool's safety checks and did not run. No claim is made that onboarding behavior, cleanup, tenant isolation, or invitation acceptance has passed against a database.
+- Supabase security advisor returned one INFO finding: `organization_invitations` has RLS enabled without direct client policies. This is compatible with a server-only access design, but the intended server-only grants and SECURITY DEFINER path must remain documented and tested.
+
+### Test/code mismatch still blocking release
+
+- `test/v2-self-service-onboarding.test.mjs` still calls the legacy browser RPCs `create_organization`, `create_delegated_organization_with_owner_invitation`, and `accept_organization_invitation`. Migration 058 is designed to remove browser execution of these operations and the client now uses `/api/onboarding/*`. The existing integration test is therefore stale relative to the new server boundary and is not a valid verification of the current onboarding flow.
+- `test/onboarding-server-boundary.test.mjs` contains static source assertions only. It does not execute Express handlers or validate database transactions.
+- The legacy integration suite explicitly requires an isolated disposable Supabase project through `SUPABASE_TEST_URL`, `SUPABASE_TEST_ANON_KEY`, and `SUPABASE_TEST_SERVICE_ROLE_KEY`; production credentials are intentionally not accepted. No isolated project credentials have been verified/configured in this work session.
+- The earlier “not performed” statement in section 5 is superseded: migration 058 was applied to production as recorded above. The merge decision remains unchanged.
+
+### Decision
+
+**PR #35 remains NOT READY TO MERGE.** The server starts on the validation service, but behavioral onboarding tests, tenant-isolation tests, Ellie evidence-learning tests, dependency-direction checks, server/client typechecks, client build, and exact dependency vulnerability analysis are not verified. The next release blocker is to align the stale self-service integration suite with the server API and obtain an isolated test database, then get executable test evidence from a working runner or another approved execution environment. Do not treat the Render startup check as a substitute for those gates.
