@@ -51,5 +51,12 @@
     "@types/pg": "^8.20.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./ai/ellie.js": "./src/ai/ellie.ts",
+    "./domain/intelligence/ellie-context.js": "./src/domain/intelligence/ellie-context.ts",
+    "./src/*.js": "./src/*.ts",
+    "./src/*.ts": "./src/*.ts"
   }
 }

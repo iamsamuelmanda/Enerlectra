@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
-  root: './', 
+  root: './',
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
@@ -21,16 +21,16 @@ export default defineConfig({
       '@lib': path.resolve(__dirname, './src/lib'),
       '@types': path.resolve(__dirname, './src/types'),
       '@clusters': path.resolve(__dirname, './src/features/clusters'),
-      '@clusters-components': path.resolve(__dirname, './src/features/clusters/components'), // Added
+      '@clusters-components': path.resolve(__dirname, './src/features/clusters/components'),
       '@simulation': path.resolve(__dirname, './src/features/simulation'),
-      '@simulation-components': path.resolve(__dirname, './src/features/simulation/components'), // Added
+      '@simulation-components': path.resolve(__dirname, './src/features/simulation/components'),
     },
   },
   server: {
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:4000', 
+        target: 'http://localhost:4000',
         changeOrigin: true,
         secure: false,
       },
@@ -42,12 +42,16 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          charts: ['recharts'],
-          ui: ['framer-motion', 'lucide-react']
-        }
-      }
-    }
+        // Vite 8 uses Rolldown, whose manualChunks option must be a function.
+        // Keep this compatible with Vite 5/Rollup as well.
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined;
+          if (/[\\/]node_modules[\\/](react|react-dom|react-router-dom)[\\/]/.test(id)) return 'vendor';
+          if (/[\\/]node_modules[\\/]recharts[\\/]/.test(id)) return 'charts';
+          if (/[\\/]node_modules[\\/](framer-motion|lucide-react)[\\/]/.test(id)) return 'ui';
+          return undefined;
+        },
+      },
+    },
   },
 });

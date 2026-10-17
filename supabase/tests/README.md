@@ -1,0 +1,3 @@
+-- Database-level invariant gate for deferred final-owner protection.
+-- This file is intended for `supabase test db`/pgTAP environments; the live
+-- integration gate in Node also exercises the same invariant through RLS.

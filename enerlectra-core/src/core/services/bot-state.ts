@@ -2,7 +2,6 @@
 //
 // Channel-agnostic resolution of "who is calling and what org are they in"
 // for command handlers that need both actorId and organizationId.
-import { getUserOrgId } from './identity.js';
 
 export interface BotState {
   userId: string;
@@ -28,10 +27,10 @@ export async function getBotState(context: {
   if (!context?.actorId) return null;
 
   const userId = context.actorId;
-  const orgId =
-    context.organizationId && context.organizationId !== 'default-org'
-      ? context.organizationId
-      : await getUserOrgId(userId);
+  // Organization context must come from a trusted channel/tenant resolver.
+  // Never infer tenant authorization from a legacy channel-user table.
+  const orgId = context.organizationId?.trim();
+  if (!orgId) return null;
 
   return { userId, orgId };
 }

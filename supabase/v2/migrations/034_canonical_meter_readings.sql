@@ -1,0 +1,4 @@
+-- 034: exploratory canonical meter-reading capability.
+-- This migration was applied during forensic implementation and immediately
+-- superseded by 035 after the ICP-first scope review.
+-- It is retained as migration history; the capability is not active.

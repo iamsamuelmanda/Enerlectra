@@ -1,8 +1,8 @@
-# V2 Vertical Slice — PAYGo
+# Validation Slice — PAYGo
 
 ## 1. Purpose
 
-Define the smallest complete PAYGo operational workflow that can validate Enerlectra V2's operational kernel against a materially different distributed-energy operating model.
+Define one representative PAYGo workflow used to validate Enerlectra's shared operational kernel against a materially different operating context. This slice is a validation case, not a PAYGo-specific product boundary.
 
 Source contracts:
 - `docs/v2/V2-Domain-and-Tenancy-Blueprint.md`
@@ -373,3 +373,16 @@ Verification
 ```
 
 The difference is operating-model context and capability/policy configuration, not a separate domain kernel.
+
+
+## 17. Market-scope interpretation
+
+PAYGo is a second validation case, not Enerlectra's ICP definition. Its value in the architecture review is that payment/service exceptions exercise materially different evidence, responsibilities, and capabilities while traversing the same operational kernel.
+
+A customer with no payment workflow should not inherit payment functionality. A mixed-model operator may enable payment reconciliation alongside installation, maintenance, field service, or other capabilities.
+
+The active product question remains:
+
+> What operational complexity does this organization actually need Enerlectra to understand and help resolve?
+
+The kernel must stay stable while capabilities, policies, responsibilities, terminology, and external integrations adapt to the organization.

@@ -1,22 +1,19 @@
-// src/core/workflow/execution-context.ts
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { EllieContext } from '../../domain/intelligence/ellie-context.js';
 
 export interface ExecutionContext {
-  // Identities
   actorId: string;
   organizationId: string;
   correlationId: string;
-  
-  // Infrastructure
   supabase: SupabaseClient;
-  logger: any; // Logger instance
-  posthog: any; // Telemetry client
-  
-  // State / Capabilities
-  transaction?: any; // For DB transactions
+  logger: any;
+  posthog: any;
+  transaction?: any;
   featureFlags?: Record<string, boolean>;
+  /** Canonical intelligence context resolved from the V2 tenant boundary. */
+  ellieContext?: EllieContext;
+  /** Legacy/free-form AI context retained for backwards compatibility. */
   aiContext?: Record<string, any>;
 }
 
-// Keep the alias so CommandRouter doesn't break
 export type WorkflowContext = ExecutionContext;

@@ -3,7 +3,7 @@ services:
     name: enerlectra-ellie-bot
     env: node
     plan: free
-    rootDir: integrations/telegram-bot
+    rootDir: integrations/enerlectra-bot
     buildCommand: "npm ci && npm run build"
     startCommand: "npm start"
     healthCheckPath: /
@@ -18,10 +18,10 @@ services:
         value: https://enerlectra-ellie-bot.onrender.com
 
   - type: web
-    name: enerlectra-backend
+    name: Enerlectra
     env: node
     plan: free
-    buildCommand: "npm ci"
+    buildCommand: "npm ci && npm run build:client"
     startCommand: "npm start"
     envVars:
       - key: NODE_ENV
@@ -32,6 +32,12 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         value: https://enerlectra-frontend-c406365od-samuel-mandas-projects.vercel.app,http://localhost:3000
+      - key: SUPABASE_URL
+        value: https://mtyhzvkiuibigjximsix.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
     healthCheckPath: /api/health
     autoDeploy: true
     branch: main

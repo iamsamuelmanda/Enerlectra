@@ -1,7 +1,7 @@
 // installer.service.ts
 // Core service for installer-specific operations.
 
-import { supabase } from '../../infrastructure/supabase.ts';
+import { supabase } from '../../infrastructure/supabase.js';
 import { logger } from './logger.js';
 import { logMetric } from './metrics.js';
 

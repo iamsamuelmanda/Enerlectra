@@ -1,3 +1,5 @@
+> **Historical terminology notice (2026-10-07):** This document records an earlier reconstruction phase. Enerlectra is now one canonical platform; "V2" does not denote a second runtime or product. Canonical runtime Supabase variables are `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. The active product boundary is governed by `docs/product/ENERLECTRA-CUSTOMER-EVIDENCE-PRODUCT-BOUNDARY-2026-10-07.md` and `docs/architecture/ENERLECTRA-CODEBASE-EVIDENCE-RECLASSIFICATION-2026-10-07.md`.
+
 # V1 → V2 Repository Dependency Map
 
 Status: READ-ONLY FORENSIC MAP
@@ -82,9 +84,9 @@ Current repository contains multiple Supabase client patterns:
 V2 configuration must be separately named. Existing V1 variables must not silently change meaning.
 
 Recommended direction:
-- `V2_SUPABASE_URL`
-- `V2_SUPABASE_PUBLISHABLE_KEY`
-- `V2_SUPABASE_SERVICE_ROLE_KEY` (server-only; never commit the value)
+- `SUPABASE_URL`
+- `SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` (server-only; never commit the value)
 
 No V2 browser code may import a legacy V1 Supabase client.
 
