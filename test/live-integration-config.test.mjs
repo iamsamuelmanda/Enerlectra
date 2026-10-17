@@ -40,4 +40,13 @@ test('live integration suites fail closed when strict mode has no credentials', 
     );
 
     const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`;
-    assert.notEqual(result.error¶»§q«^
+    assert.notEqual(result.error?.code, 'ETIMEDOUT', `${suite} timed out while checking fail-closed behavior`);
+    assert.equal(result.error, undefined, `${suite} could not be launched: ${result.error?.message ?? result.error}`);
+    assert.notEqual(result.status, 0, `${suite} unexpectedly exited successfully without required credentials`);
+    assert.match(
+      output,
+      /REQUIRE_(?:LIVE_INTEGRATION|ONBOARDING_TEST_INTEGRATION)=true/,
+      `${suite} failed for a reason other than the explicit missing-credentials guard:\n${output}`,
+    );
+  }
+});
