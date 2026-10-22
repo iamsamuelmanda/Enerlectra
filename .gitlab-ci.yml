@@ -1,0 +1,53 @@
+# GitLab CI alternative for Enerlectra.
+# This does not replace GitHub Actions or deploy to production.
+# No production secrets are required by these verification jobs.
+
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - when: never
+
+stages:
+  - test
+  - security
+
+default:
+  image: node:24-bookworm-slim
+  cache:
+    key:
+      files:
+        - package-lock.json
+        - client/package-lock.json
+    paths:
+      - .npm/
+    policy: pull-push
+  before_script:
+    - node --version
+    - npm --version
+    - npm config set cache .npm --global
+
+root-tests:
+  stage: test
+  script:
+    - npm ci
+    - npm test
+    - npm run typecheck:server
+
+client-checks:
+  stage: test
+  script:
+    - npm ci
+    - npm --prefix client ci
+    - npm run typecheck:client
+    - npm run build:client
+
+security-audit:
+  stage: security
+  script:
+    - npm ci
+    - npm audit --audit-level=high
+    - npm --prefix client ci
+    - npm --prefix client audit --audit-level=high
+    - npm --prefix integrations/enerlectra-bot ci
+    - npm --prefix integrations/enerlectra-bot audit --audit-level=high
