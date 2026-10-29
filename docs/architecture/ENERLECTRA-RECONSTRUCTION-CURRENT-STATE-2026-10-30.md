@@ -164,3 +164,74 @@ The user confirmed that `enerlectra-v2` is the canonical future production datab
 ### Next test-project gate
 
 When `peekaboo-platform` becomes accessible, inspect its migration history, table inventory, row counts, Auth users, storage and enabled extensions. If it contains no data that needs preserving, apply the canonical reconstruction migrations from `supabase/v2/migrations/001_foundation.sql` through `059_server_verified_ownership_transfer.sql` in order (after confirming the migration execution method and baseline). Configure CI to use this restored project only as `SUPABASE_TEST_URL`, `SUPABASE_TEST_ANON_KEY` and `SUPABASE_TEST_SERVICE_ROLE_KEY`; production runtime remains pinned to `enerlectra-v2`. Verify migrations, critical grants/RLS and a complete passing integration run before claiming the test environment is ready.
+
+
+## 8. Restored test project and verified migration state — 2026-10-30
+
+The paused `peekaboo-platform` project (`nbtsjtemfvnrnohmbzie`) is now `ACTIVE_HEALTHY` and is the candidate isolated integration-test database.
+
+### Preserving its prior data
+
+Before applying canonical migrations, the original public schema was inspected read-only. It contained eight legacy analytics tables; seven were empty and `learned_patterns` held five generic sample rows. No Auth users or Storage buckets were present.
+
+The original eight tables were moved into a non-exposed `legacy_reference` schema, and privileges were revoked from `public`, `anon`, `authenticated` and `service_role`. No table or row was deleted; all five rows in `legacy_reference.learned_patterns` are preserved.
+
+### Canonical schema installed
+
+The migration list now contains 60 records: the one archival migration plus all canonical V2 migrations 001–059. Read-only verification returned:
+
+- 31 canonical public base tables; all 31 have RLS enabled.
+- No RLS-enabled canonical public tables missing policies, except `organization_invitations`, which is intentionally service-role-only and is documented that way in migration 053.
+- Zero organization, actor, membership, customer/site/asset, observation/event, situation/work/action/verification or Auth-user rows in the isolated test database.
+- Five preserved seed rows in the archived legacy schema.
+- `server_transfer_organization_ownership(uuid,uuid,uuid,boolean)`: executable by `service_role`, not executable by `authenticated` or `anon`.
+- Legacy `transfer_organization_ownership(uuid,uuid,boolean)`: not executable by `authenticated`.
+
+### Migration defects found and corrected in source
+
+The clean migration run uncovered two reproducibility defects. Both are patched in the reconstruction branch and were then successfully applied on the test project:
+
+1. Migration 008 attempted to drop `situation_history_insert` even though migration 007 had never created that policy. The statement now uses `DROP POLICY IF EXISTS`.
+2. Migration 040 defined RLS policies referencing `operating_model_business_models.organization_id` before migration 044 added that column. The column is now declared nullable in migration 040 and is backfilled and constrained by migration 044.
+
+These fixes matter because a reconstruction must install from a clean database without relying on a prior unrecorded state.
+
+### Remaining advisor warnings
+
+Supabase security advisors report GraphQL schema discoverability warnings for tables granted to `anon` (8) and `authenticated` (30). The same grant pattern is present on `enerlectra-v2`; all these tables have RLS enabled and their policies target authenticated roles. The advisors also report the no-policy invitation table, by design. These warnings still require an explicit API-surface decision before production exposure: RLS limits row access but does not hide table names from GraphQL schema discovery. Do not change grants blindly without reviewing supported Data API/GraphQL usage and testing app behavior.
+
+## 9. CI quota diagnosis and fallback state
+
+The latest GitLab MR pipeline `3006328056` on source head `39b173751d081c1853fef80e4368d2d1fcfd32c2` failed with `ci_quota_exceeded` in all six jobs. Each job has `started_at=null` and `runner=null`: no code step was executed. This is GitLab instance-runner compute quota exhaustion, not evidence of source-test failure. GitLab documents that GitLab.com Free namespaces have a base monthly quota of 400 compute minutes and that project/group runners are not subject to that instance-runner quota ([compute minutes documentation](https://docs.gitlab.com/ci/pipelines/compute_minutes/), [runner quota administration](https://docs.gitlab.com/administration/cicd/compute_minutes/)).
+
+The exact GitLab candidate tree was mirrored to GitHub branch `reconstruction/platform-identity-boundary` in commit `75d778ffe4c36a5def1e82a94766de8a3192e417`. A full tree comparison confirmed all 732 file blobs match the current GitLab reconstruction branch exactly. However, the GitHub Actions API showed no workflow run associated with that new commit, and prior GitHub jobs also failed before any steps appeared. Therefore this mirror is not yet verified by a new GitHub CI run.
+
+To complete live integration verification, configure the new isolated test project secrets in CI:
+- `SUPABASE_TEST_URL=https://nbtsjtemfvnrnohmbzie.supabase.co`
+- `SUPABASE_TEST_ANON_KEY` — publishable/anon key for this test project.
+- `SUPABASE_TEST_SERVICE_ROLE_KEY` — service-role key for this test project (keep secret).
+
+The authenticated workflow now rejects any project ref other than `nbtsjtemfvnrnohmbzie` and skips the live gate if the three test secrets are absent. Neither workflow should target `enerlectra-v2` for mutable integration fixtures now that V2 is the intended production target.
+
+### CI recovery options
+
+1. Use a GitLab project/group runner (not covered by the shared instance-runner quota), or replenish/reset GitLab compute minutes.
+2. Enable/repair GitHub Actions execution and manually trigger the candidate workflows. A current-head workflow run must be visible and must actually execute steps before we call CI recovered.
+
+Until one of those routes executes the latest SHA, the CI gate is blocked even though the test database schema and privilege checks passed. No production deployment has occurred.
+
+
+## 10. GitHub CI fallback diagnostic — 2026-10-30
+
+The reconstruction tree at GitLab head `39b173751d081c1853fef80e4368d2d1fcfd32c2` was mirrored into GitHub branch `reconstruction/platform-identity-boundary` as commit `75d778ffe4c36a5def1e82a94766de8a3192e417`. A tree comparison verified all 732 blobs match the current GitLab branch exactly.
+
+A temporary draft verification PR #39 was opened and then closed because GitHub Actions still did not create a workflow run for that commit. The PR was not merged. Existing GitHub Actions runs continue to show jobs failing within seconds, with no runner name and no steps. This indicates GitHub Actions execution needs repair/enablement or a manual workflow dispatch; it does not establish that the tests passed or failed on the current head.
+
+The candidate source is now synced in GitHub PR #35 (still draft) and GitLab MR !39 (still draft). No source was merged to `main`, and Render was not redeployed. The test database/schema gates described above have passed by direct SQL and migration-history checks; authenticated end-to-end integration tests still require CI execution with isolated test secrets.
+
+## 11. Exact next actions to unblock automated verification
+
+- **GitLab:** either purchase/reset compute minutes for the namespace or register/attach a project/group runner. GitLab-hosted instance runners are currently rejecting all jobs with `ci_quota_exceeded`.
+- **GitHub:** inspect repository Actions settings and ensure Actions/hosted runners are enabled; then manually dispatch the current candidate CI workflow from the Actions UI or push a commit using a path that reliably triggers Actions. The available GitHub connector actions in this session did not expose a workflow-dispatch operation.
+- **Integration secrets:** configure `SUPABASE_TEST_URL=https://nbtsjtemfvnrnohmbzie.supabase.co`, plus the test project's anon/publishable key and service-role key, as CI secrets. Never use the production `enerlectra-v2` service role for mutable integration fixtures.
+- After a runner actually starts, require passing root tests, core build, client typecheck/build, Telegram typecheck, dependency audit, and the authenticated live gates on the **exact final commit SHA** before changing MR draft status.
