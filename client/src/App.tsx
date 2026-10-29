@@ -4,7 +4,7 @@ import Router from '@/routes/router';
 
 export default function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+    <BrowserRouter>
       <Router />
       <Toaster
         position="top-right"

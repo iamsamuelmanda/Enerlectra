@@ -22,7 +22,7 @@ test('server onboarding verifies a confirmed Supabase identity and maps only tru
   assert.match(source, /server_accept_organization_invitation/);
   assert.match(source, /p_auth_user_id: user\.id/);
   assert.match(source, /p_verified_email: user\.email/);
-  assert.doesNotMatch(source, /p_actor_id|p_organization_id|p_role_id/);
+  assert.doesNotMatch(source.slice(0, source.indexOf("router.post('/ownership/transfer'")), /p_actor_id|p_organization_id|p_role_id/);
 });
 
 test('trusted onboarding migration limits RPC execution to service_role and checks invitation identity', async () => {
@@ -36,4 +36,20 @@ test('trusted onboarding migration limits RPC execution to service_role and chec
   assert.match(source, /INVITATION_EMAIL_MISMATCH/);
   assert.match(source, /expires_at > now\(\)/);
   assert.match(source, /encode\(extensions\.digest\(p_token, 'sha256'\), 'hex'\)/);
+});
+
+
+test('ownership transfer accepts verified identity, derives tenant context and calls only the server RPC', async () => {
+  const source = await read('../server/src/routes/onboarding.ts');
+  const migration = await read('../supabase/v2/migrations/059_server_verified_ownership_transfer.sql');
+  assert.match(source, /router\.post\('\/ownership\/transfer'/);
+  assert.match(source, /tenantResolver\.resolve/);
+  assert.match(source, /tenant\.permissions\.includes\('organization\.ownership\.manage'\)/);
+  assert.match(source, /p_auth_user_id: user\.id/);
+  assert.match(source, /p_organization_id: tenant\.organizationId/);
+  assert.match(source, /server_transfer_organization_ownership/);
+  assert.match(migration, /where a\.auth_user_id = p_auth_user_id and a\.status = 'ACTIVE'/);
+  assert.match(migration, /grant execute on function public\.server_transfer_organization_ownership[\s\S]*?to service_role/i);
+  assert.match(migration, /revoke all on function public\.server_transfer_organization_ownership[\s\S]*?from public, anon, authenticated/i);
+  assert.match(migration, /FINAL_OWNER_CANNOT_BE_DEMOTED/);
 });

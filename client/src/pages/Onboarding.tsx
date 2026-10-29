@@ -111,9 +111,9 @@ export default function Onboarding() {
           </div>
           {invitationMode ? (
             <form onSubmit={acceptInvitation} className="el-card p-6 sm:p-9">
-              <p className="el-eyebrow">Owner claim</p><h1 className="mt-3 text-3xl font-semibold">Claim your business workspace</h1>
-              <p className="mt-3 text-sm leading-6 text-[#68716b]">This invitation assigns you OWNER authority. Your signed-in email must match the invitation recipient.</p>
-              <button disabled={busy} className="el-button-primary mt-8">{busy?<Loader2 size={17} className="animate-spin"/>:<ArrowRight size={17}/>} {busy?'Accepting invitation…':'Accept owner invitation'}</button>
+              <p className="el-eyebrow">Organization Lead claim</p><h1 className="mt-3 text-3xl font-semibold">Claim your business workspace</h1>
+              <p className="mt-3 text-sm leading-6 text-[#68716b]">This invitation assigns you Organization Lead authority for the workspace; it does not establish legal ownership of the business or its assets. Your signed-in email must match the invitation recipient.</p>
+              <button disabled={busy} className="el-button-primary mt-8">{busy?<Loader2 size={17} className="animate-spin"/>:<ArrowRight size={17}/>} {busy?'Accepting invitation…':'Accept Organization Lead invitation'}</button>
             </form>
           ) : (
             <form onSubmit={createWorkspace} className="el-card p-6 sm:p-9">
@@ -129,7 +129,7 @@ export default function Onboarding() {
                   <button type="button" onClick={()=>setIntent('OWNER')} className={`rounded-xl border p-4 text-left transition ${intent==='OWNER'?'border-[#8ba64d] bg-[#f1f7e6] ring-1 ring-[#c8dca0]':'border-[#e3e7e2] bg-white hover:border-[#c4cdc0]'}`}>
                     <span className="grid size-9 place-items-center rounded-lg bg-white text-[#526b2d]"><Building2 size={19}/></span>
                     <span className="mt-3 block text-sm font-semibold text-[#202521]">My own business</span>
-                    <span className="mt-1 block text-xs leading-5 text-[#68716b]">You become the owner and can configure the workspace.</span>
+                    <span className="mt-1 block text-xs leading-5 text-[#68716b]">You become the Organization Lead and can configure the workspace. This role does not establish legal ownership of the business or its assets.</span>
                   </button>
                   <button type="button" onClick={()=>setIntent('DELEGATED_OPERATOR')} className={`rounded-xl border p-4 text-left transition ${intent==='DELEGATED_OPERATOR'?'border-[#8ba64d] bg-[#f1f7e6] ring-1 ring-[#c8dca0]':'border-[#e3e7e2] bg-white hover:border-[#c4cdc0]'}`}>
                     <span className="grid size-9 place-items-center rounded-lg bg-white text-[#526b2d]"><Users size={19}/></span>

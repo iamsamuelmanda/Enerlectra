@@ -1,0 +1,164 @@
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: never
+
+stages:
+  - security
+  - test
+
+default:
+  image: node:24-bookworm-slim
+
+root-tests:
+  stage: test
+  script:
+    - npm ci
+    - npm test
+    - npm run typecheck:server
+
+core-checks:
+  stage: test
+  script:
+    - npm --prefix enerlectra-core ci
+    - npm --prefix enerlectra-core run build
+
+client-checks:
+  stage: test
+  script:
+    - npm ci
+    - npm --prefix client ci
+    - npm run typecheck:client
+    - npm run build:client
+
+telegram-bot-checks:
+  stage: test
+  script:
+    - npm ci
+    - npm --prefix integrations/enerlectra-bot ci
+    - npm run typecheck:telegram-bot
+
+security-audit:
+  stage: security
+  script:
+    - npm ci
+    - |
+      set +e
+      npm audit --audit-level=high
+      root_status=$?
+      npm --prefix client ci
+      client_install_status=$?
+      if [ "$client_install_status" -eq 0 ]; then
+        npm --prefix client audit --audit-level=high
+        client_status=$?
+      else
+        client_status=$client_install_status
+      fi
+      npm --prefix integrations/enerlectra-bot ci
+      bot_install_status=$?
+      if [ "$bot_install_status" -eq 0 ]; then
+        npm --prefix integrations/enerlectra-bot audit --audit-level=high
+        bot_status=$?
+      else
+        bot_status=$bot_install_status
+      fi
+      npm --prefix enerlectra-core ci
+      core_install_status=$?
+      if [ "$core_install_status" -eq 0 ]; then
+        npm --prefix enerlectra-core audit --audit-level=high
+        core_status=$?
+      else
+        core_status=$core_install_status
+      fi
+      echo "Audit exit codes: root=$root_status client=$client_status telegram-bot=$bot_status core=$core_status"
+      test "$root_status" -eq 0 -a "$client_status" -eq 0 -a "$bot_status" -eq 0 -a "$core_status" -eq 0
+
+authenticated-live-gates:
+  stage: test
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_SOURCE_PROJECT_ID == $CI_PROJECT_ID && $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME == "reconstruction/platform-identity-boundary-merged"'
+      when: manual
+    - when: never
+  allow_failure: false
+  variables:
+    REQUIRE_LIVE_INTEGRATION: "true"
+    REQUIRE_ONBOARDING_TEST_INTEGRATION: "true"
+    PORT: "4173"
+    ONBOARDING_TEST_API_URL: "http://127.0.0.1:4173"
+  script:
+    - |
+      set -euo pipefail
+
+      # Capture credentials into non-exported shell variables, then remove the
+      # original exported variables before dependency installation or app startup.
+      test_url="${SUPABASE_TEST_URL:?Missing protected CI variable SUPABASE_TEST_URL}"
+      test_anon="${SUPABASE_TEST_ANON_KEY:?Missing protected CI variable SUPABASE_TEST_ANON_KEY}"
+      test_service="${SUPABASE_TEST_SERVICE_ROLE_KEY:?Missing protected CI variable SUPABASE_TEST_SERVICE_ROLE_KEY}"
+      unset SUPABASE_TEST_URL SUPABASE_TEST_ANON_KEY SUPABASE_TEST_SERVICE_ROLE_KEY
+      unset SUPABASE_URL SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY
+      unset ALLOW_PRODUCTION_ONBOARDING_TESTS
+
+      if printf '%s' "$test_url" | grep -q 'tlaqxnblzerlegezekml'; then
+        echo "Refusing to run integration tests against enerlectra-prod."
+        exit 1
+      fi
+
+      # Validate only the non-privileged anon credential in a child process.
+      SUPABASE_TEST_URL="$test_url" SUPABASE_TEST_ANON_KEY="$test_anon" node --input-type=module <<'NODE'
+      const url = process.env.SUPABASE_TEST_URL;
+      const anon = process.env.SUPABASE_TEST_ANON_KEY;
+      const expectedRef = new URL(url).hostname.split('.')[0];
+      if (expectedRef === 'tlaqxnblzerlegezekml') throw new Error('Production Supabase is not an allowed test target.');
+      const parts = anon.split('.');
+      if (parts.length === 3) {
+        const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+        if (claims.ref && claims.ref !== expectedRef) throw new Error('Anon key does not belong to the configured test project.');
+      }
+      const response = await fetch(`${url}/auth/v1/settings`, { headers: { apikey: anon } });
+      if (!response.ok) throw new Error(`Supabase anon credential rejected with HTTP ${response.status}`);
+      console.log(`Validated isolated Supabase test project ${expectedRef}.`);
+      NODE
+
+      # Install dependencies before any privileged credentials enter a process environment.
+      npm ci
+
+      # Start the reviewed server entrypoint directly (not via npm lifecycle scripts).
+      # The app requires the canonical Supabase service credential to initialize its DB boundary.
+      SUPABASE_URL="$test_url" \
+      SUPABASE_ANON_KEY="$test_anon" \
+      SUPABASE_SERVICE_ROLE_KEY="$test_service" \
+      node --import tsx -r tsconfig-paths/register ./server/src/index.ts > /tmp/enerlectra-live-test-server.log 2>&1 &
+      server_pid=$!
+      trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+      ready=0
+      for attempt in $(seq 1 45); do
+        if node --input-type=module -e "const r = await fetch('http://127.0.0.1:4173/api/health'); process.exit(r.ok ? 0 : 1)" >/dev/null 2>&1; then
+          ready=1
+          break
+        fi
+        sleep 2
+      done
+      if [ "$ready" -ne 1 ]; then
+        cat /tmp/enerlectra-live-test-server.log
+        exit 1
+      fi
+
+      # Only the two explicitly required live-test files receive the admin credential.
+      # Do not use npm scripts here: that would expose credentials to npm lifecycle hooks.
+      if ! env \
+        SUPABASE_TEST_URL="$test_url" \
+        SUPABASE_TEST_ANON_KEY="$test_anon" \
+        SUPABASE_TEST_SERVICE_ROLE_KEY="$test_service" \
+        SUPABASE_URL="$test_url" \
+        SUPABASE_ANON_KEY="$test_anon" \
+        SUPABASE_SERVICE_ROLE_KEY="$test_service" \
+        REQUIRE_LIVE_INTEGRATION="true" \
+        REQUIRE_ONBOARDING_TEST_INTEGRATION="true" \
+        ONBOARDING_TEST_API_URL="http://127.0.0.1:4173" \
+        node --import tsx --test test/v2-self-service-onboarding.test.mjs test/v2-multi-tenant-boundary.test.mjs; then
+        echo "Integration test failed; emitting bounded server diagnostics (structured IDs/codes only)."
+        tail -n 120 /tmp/enerlectra-live-test-server.log
+        exit 1
+      fi

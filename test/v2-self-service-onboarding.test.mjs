@@ -65,12 +65,13 @@ if (enabled) {
     return { client, accessToken: data.session.access_token };
   }
 
-  async function postOnboarding(path, accessToken, body) {
+  async function postOnboarding(path, accessToken, body, extraHeaders = {}) {
     const response = await fetch(`${onboardingApiUrl}/api/onboarding/${path}`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
+        ...extraHeaders,
       },
       body: JSON.stringify(body),
     });
@@ -95,8 +96,24 @@ if (enabled) {
       for (const org of data ?? []) discoveredOrgIds.add(org.id);
     }
     for (const orgId of discoveredOrgIds) {
+      // The owner invariant intentionally blocks deleting the final owner of an
+      // active organization. Mark test tenants pending before cascading cleanup.
+      const pending = await admin.from('organizations')
+        .update({ onboarding_state: 'PENDING_AUTHORITY' })
+        .eq('id', orgId);
+      if (pending.error) throw new Error(`Failed to prepare test organization cleanup: ${pending.error.message}`);
       const invitationDelete = await admin.from('organization_invitations').delete().eq('organization_id', orgId);
       if (invitationDelete.error) throw new Error(`Failed to clean test invitations: ${invitationDelete.error.message}`);
+      // Remove role rows while their parent memberships still exist. The deferred
+      // invariant trigger needs the parent organization ID when evaluating role deletes.
+      const { data: memberships, error: membershipLookupError } = await admin
+        .from('memberships').select('id').eq('organization_id', orgId);
+      if (membershipLookupError) throw new Error(`Failed to find test memberships: ${membershipLookupError.message}`);
+      const membershipIds = (memberships ?? []).map((row) => row.id);
+      if (membershipIds.length > 0) {
+        const roleDelete = await admin.from('membership_roles').delete().in('membership_id', membershipIds);
+        if (roleDelete.error) throw new Error(`Failed to clean test role assignments: ${roleDelete.error.message}`);
+      }
       const membershipDelete = await admin.from('memberships').delete().eq('organization_id', orgId);
       if (membershipDelete.error) throw new Error(`Failed to clean test memberships: ${membershipDelete.error.message}`);
       const orgDelete = await admin.from('organizations').delete().eq('id', orgId);
@@ -162,7 +179,7 @@ if (enabled) {
 
     const { data: membership, error: membershipError } = await admin
       .from('memberships')
-      .select('id,actor_id,status,roles(key)')
+      .select('id,actor_id,status,roles!memberships_role_id_fkey(key)')
       .eq('organization_id', orgOwner)
       .single();
     assert.ifError(membershipError);
@@ -176,7 +193,7 @@ if (enabled) {
   test('delegated creator is not silently converted into OWNER', async () => {
     const { data: membership, error } = await admin
       .from('memberships')
-      .select('id,actor_id,status,roles(key)')
+      .select('id,actor_id,status,roles!memberships_role_id_fkey(key)')
       .eq('organization_id', orgDelegated)
       .single();
     assert.ifError(error);
@@ -215,99 +232,92 @@ if (enabled) {
 
     const { data: owners, error: ownerError } = await admin
       .from('memberships')
-      .select('actor_id,roles(key)')
+      .select('actor_id,roles!memberships_role_id_fkey(key)')
       .eq('organization_id', orgDelegated)
       .eq('status', 'ACTIVE');
     assert.ifError(ownerError);
     assert.ok(owners.some((row) => row.roles.key === 'OWNER'));
   });
 
-  test('ownership can be granted to another active member and multiple owners remain valid', async () => {
-    const { client: ownerClient } = await signIn(owner);
+  test('ownership transfer uses the verified server API and preserves multiple owners', async () => {
+    const { accessToken: ownerToken, client: ownerClient } = await signIn(owner);
     const member = await createUser('member');
     const { client: memberClient } = await signIn(member);
 
     const { data: memberActor, error: actorError } = await admin
       .from('actors')
+      .insert({ auth_user_id: member.id, actor_type: 'HUMAN', email: member.email, status: 'ACTIVE' })
       .select('id')
-      .eq('auth_user_id', member.id)
       .single();
     assert.ifError(actorError);
     state.actorIds.push(memberActor.id);
 
     const { data: operatorRole, error: roleError } = await admin
-      .from('roles')
-      .select('id')
-      .eq('key', 'OPERATOR')
-      .single();
+      .from('roles').select('id').eq('key', 'OPERATOR').single();
     assert.ifError(roleError);
 
     const { data: membership, error: membershipError } = await admin
       .from('memberships')
-      .insert({
-        organization_id: orgOwner,
-        actor_id: memberActor.id,
-        role_id: operatorRole.id,
-        status: 'ACTIVE',
-      })
-      .select('id')
-      .single();
+      .insert({ organization_id: orgOwner, actor_id: memberActor.id, role_id: operatorRole.id, status: 'ACTIVE' })
+      .select('id').single();
     assert.ifError(membershipError);
     state.membershipIds.push(membership.id);
 
-    const { data: result, error: transferError } = await ownerClient.rpc(
-      'transfer_organization_ownership',
-      {
-        p_organization_id: orgOwner,
-        p_target_membership_id: membership.id,
-        p_demote_current_owner: false,
-      }
+    // The legacy privileged RPC must remain unavailable to authenticated clients.
+    const { error: directRpcError } = await ownerClient.rpc('transfer_organization_ownership', {
+      p_organization_id: orgOwner,
+      p_target_membership_id: membership.id,
+      p_demote_current_owner: false,
+    });
+    assert.ok(directRpcError, 'authenticated clients must not execute the privileged legacy RPC');
+    assert.match(directRpcError.message, /permission denied|not authorized/i);
+
+    const { response, payload } = await postOnboarding(
+      'ownership/transfer', ownerToken,
+      { targetMembershipId: membership.id, demoteCurrentOwner: false },
+      { 'x-organization-id': orgOwner },
     );
-    assert.ifError(transferError);
-    assert.equal(result.target_membership_id, membership.id);
+    assert.equal(response.status, 200, JSON.stringify(payload));
+    assert.equal(payload.target_membership_id, membership.id);
 
     const { data: roles, error: rolesError } = await admin
       .from('membership_roles')
-      .select('membership_id,roles(key)')
+      .select('membership_id,roles!membership_roles_role_id_fkey(key)')
       .eq('membership_id', membership.id);
     assert.ifError(rolesError);
     assert.ok(roles.some((row) => row.roles.key === 'OWNER'));
 
     const { data: owners, error: ownersError } = await admin
       .from('membership_roles')
-      .select('membership_id,memberships!inner(organization_id,status),roles!inner(key)')
+      .select('membership_id,memberships!inner(organization_id,status),roles!membership_roles_role_id_fkey!inner(key)')
       .eq('memberships.organization_id', orgOwner)
       .eq('memberships.status', 'ACTIVE')
       .eq('roles.key', 'OWNER');
     assert.ifError(ownersError);
     assert.ok(owners.length >= 2);
 
-    // Member now has two responsibilities: primary OPERATOR + OWNER.
+    // Changing the member's primary role must not erase the separate OWNER assignment.
     const { error: demoteError } = await memberClient
-      .from('memberships')
-      .update({ role_id: operatorRole.id })
-      .eq('id', membership.id);
+      .from('memberships').update({ role_id: operatorRole.id }).eq('id', membership.id);
     assert.ifError(demoteError);
 
-    const { data: ownerAssignments } = await admin
+    const { data: ownerAssignments, error: ownerAssignmentsError } = await admin
       .from('membership_roles')
-      .select('role_id,roles(key)')
+      .select('role_id,roles!membership_roles_role_id_fkey(key)')
       .eq('membership_id', membership.id);
+    assert.ifError(ownerAssignmentsError);
     assert.ok(ownerAssignments.some((row) => row.roles.key === 'OWNER'));
 
-    const { error: demotionTransferError } = await ownerClient.rpc(
-      'transfer_organization_ownership',
-      {
-        p_organization_id: orgOwner,
-        p_target_membership_id: membership.id,
-        p_demote_current_owner: true,
-      }
+    const { response: demoteResponse, payload: demotePayload } = await postOnboarding(
+      'ownership/transfer', ownerToken,
+      { targetMembershipId: membership.id, demoteCurrentOwner: true },
+      { 'x-organization-id': orgOwner },
     );
-    assert.ifError(demotionTransferError);
+    assert.equal(demoteResponse.status, 200, JSON.stringify(demotePayload));
 
     const { data: remainingOwners, error: remainingOwnersError } = await admin
       .from('membership_roles')
-      .select('membership_id,memberships!inner(organization_id,status),roles!inner(key)')
+      .select('membership_id,memberships!inner(organization_id,status),roles!membership_roles_role_id_fkey!inner(key)')
       .eq('memberships.organization_id', orgOwner)
       .eq('memberships.status', 'ACTIVE')
       .eq('roles.key', 'OWNER');
@@ -319,28 +329,28 @@ if (enabled) {
   test('final active OWNER cannot be removed or demoted', async () => {
     const { data: owners, error } = await admin
       .from('membership_roles')
-      .select('membership_id,memberships!inner(organization_id,status),roles!inner(key)')
+      .select('membership_id,memberships!inner(organization_id,status),roles!membership_roles_role_id_fkey!inner(key)')
       .eq('memberships.organization_id', orgDelegated)
       .eq('memberships.status', 'ACTIVE')
       .eq('roles.key', 'OWNER');
     assert.ifError(error);
     assert.equal(owners.length, 1);
 
-    const { client: brianClient } = await signIn(secondOwner);
-    const { error: demotionError } = await brianClient.rpc(
-      'transfer_organization_ownership',
-      {
-        p_organization_id: orgDelegated,
-        p_target_membership_id: owners[0].membership_id,
-        p_demote_current_owner: true,
-      }
-    );
+    const { client: ownerClient, accessToken } = await signIn(secondOwner);
+    const { error: directError } = await ownerClient.rpc('transfer_organization_ownership', {
+      p_organization_id: orgDelegated,
+      p_target_membership_id: owners[0].membership_id,
+      p_demote_current_owner: true,
+    });
+    assert.ok(directError, 'the legacy privileged RPC remains unavailable to authenticated clients');
 
-    assert.ok(
-      demotionError,
-      'the final OWNER must not be demoted even when the caller is attempting an explicit ownership transfer'
+    const { response, payload } = await postOnboarding(
+      'ownership/transfer', accessToken,
+      { targetMembershipId: owners[0].membership_id, demoteCurrentOwner: true },
+      { 'x-organization-id': orgDelegated },
     );
-    assert.match(demotionError.message, /FINAL_OWNER_CANNOT_BE_DEMOTED/);
+    assert.equal(response.status, 409, JSON.stringify(payload));
+    assert.equal(payload.code, 'FINAL_OWNER_CANNOT_BE_DEMOTED');
   });
 
   test('tenant isolation remains enforced between two organizations', async () => {

@@ -81,7 +81,7 @@ export function createTenantContextResolver(client: SupabaseClient): TenantConte
       let membershipQuery = client
         .from('memberships')
         .select(
-          'id, organization_id, role_id, status, organizations!inner(id, status), roles!inner(key)'
+          'id, organization_id, role_id, status, organizations!inner(id, status), roles!memberships_role_id_fkey!inner(key)'
         )
         .eq('actor_id', actor.id)
         .eq('status', 'ACTIVE');

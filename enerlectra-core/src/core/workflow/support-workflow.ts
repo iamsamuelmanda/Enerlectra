@@ -1,4 +1,4 @@
-import { redis } from '../../infrastructure/redis';
+import { redis } from '../../infrastructure/redis.js';
 
 /** Short-lived support conversation state shared by the Telegram adapter. */
 export class SupportWorkflow {

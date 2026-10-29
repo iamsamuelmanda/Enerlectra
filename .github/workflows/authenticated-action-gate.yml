@@ -4,13 +4,13 @@ on:
   pull_request:
     branches: [ main ]
     paths:
-      - 'test/action-integration.test.mjs'
-      - 'test/multi-tenant-boundary.test.mjs'
-      - 'test/action-http-integration.test.mjs'
-      - 'test/actor-channel-privilege-integration.test.mjs'
-      - 'test/channel-tenant-context.test.mjs'
-      - 'test/customer-operational-issue-integration.test.mjs'
-      - 'test/self-service-onboarding.test.mjs'
+      - 'test/v2-action-integration.test.mjs'
+      - 'test/v2-multi-tenant-boundary.test.mjs'
+      - 'test/v2-action-http-integration.test.mjs'
+      - 'test/v2-actor-channel-privilege-integration.test.mjs'
+      - 'test/v2-channel-tenant-context.test.mjs'
+      - 'test/v2-customer-operational-issue-integration.test.mjs'
+      - 'test/v2-self-service-onboarding.test.mjs'
       - 'test/customer-operational-issue.test.mjs'
       - 'test/v2-verification-evidence-integration.test.mjs'
       - 'supabase/migrations/**'
@@ -24,50 +24,148 @@ on:
       - 'enerlectra-core/src/**'
       - 'client/src/**'
       - '.github/workflows/**'
+  workflow_dispatch:
 
 jobs:
   action-gate:
     runs-on: ubuntu-latest
     env:
-      SUPABASE_URL: https://mtyhzvkiuibigjximsix.supabase.co
-      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-      REQUIRE_LIVE_INTEGRATION: 'true'
+      SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+      SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+      SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+      PORT: '4173'
+      ONBOARDING_TEST_API_URL: http://127.0.0.1:4173
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Determine isolated integration credentials
+        id: credentials
+        shell: bash
+        run: |
+          if [ -z "${SUPABASE_TEST_URL}" ] || [ -z "${SUPABASE_TEST_ANON_KEY}" ] || [ -z "${SUPABASE_TEST_SERVICE_ROLE_KEY}" ]; then
+            echo "run_live_gate=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Authenticated live gate skipped. Configure SUPABASE_TEST_URL, SUPABASE_TEST_ANON_KEY and SUPABASE_TEST_SERVICE_ROLE_KEY for the isolated enerlectra-test project."
+            exit 0
+          fi
+          node --input-type=module <<'NODE'
+          const expectedRef = 'nbtsjtemfvnrnohmbzie';
+          const url = process.env.SUPABASE_TEST_URL;
+          const anon = process.env.SUPABASE_TEST_ANON_KEY;
+          const service = process.env.SUPABASE_TEST_SERVICE_ROLE_KEY;
+          const actualRef = new URL(url).hostname.split('.')[0];
+          if (actualRef !== expectedRef) throw new Error(`Refusing live test target ${actualRef}; expected isolated project ${expectedRef}.`);
+          for (const [name,value] of [['SUPABASE_TEST_ANON_KEY',anon],['SUPABASE_TEST_SERVICE_ROLE_KEY',service]]) {
+            const parts = value.split('.');
+            if (parts.length === 3) {
+              const claims = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf8'));
+              if (claims.ref && claims.ref !== expectedRef) throw new Error(`${name} belongs to ${claims.ref}, not isolated project ${expectedRef}.`);
+            }
+          }
+          const response = await fetch(`${url}/auth/v1/settings`, {headers:{apikey:anon}});
+          if (!response.ok) throw new Error(`Isolated Supabase credential check failed: HTTP ${response.status}`);
+          console.log(`Validated isolated Supabase project ${expectedRef}.`);
+          NODE
+          echo "run_live_gate=true" >> "$GITHUB_OUTPUT"
+
       - name: Use Node.js 24
+        if: steps.credentials.outputs.run_live_gate == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 24.x
           cache: npm
 
       - name: Install dependencies
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm ci
 
-      - name: Require integration secrets
+      - name: Start candidate backend for authenticated integration tests
+        if: steps.credentials.outputs.run_live_gate == 'true'
+        shell: bash
         run: |
-          if [ -z "${SUPABASE_ANON_KEY}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
-            echo "::error::Repository secrets SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY are required."
-            exit 1
-          fi
+          SUPABASE_URL="$SUPABASE_TEST_URL" \
+          SUPABASE_ANON_KEY="$SUPABASE_TEST_ANON_KEY" \
+          SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_TEST_SERVICE_ROLE_KEY" \
+          node --import tsx -r tsconfig-paths/register ./server/src/index.ts > /tmp/enerlectra-live-test-server.log 2>&1 &
+          server_pid=$!
+          echo "$server_pid" > /tmp/enerlectra-live-test-server.pid
+          ready=0
+          for attempt in $(seq 1 45); do
+            if curl -fsS http://127.0.0.1:4173/api/health > /dev/null; then ready=1; break; fi
+            sleep 2
+          done
+          if [ "$ready" -ne 1 ]; then cat /tmp/enerlectra-live-test-server.log; exit 1; fi
 
       - name: Run platform and runtime boundary tests
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm test
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          REQUIRE_LIVE_INTEGRATION: 'true'
+          REQUIRE_ONBOARDING_TEST_INTEGRATION: 'true'
 
       - name: Run authenticated Action gate
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm run test:action
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          REQUIRE_LIVE_INTEGRATION: 'true'
 
       - name: Run Action HTTP gate
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm run test:action-http
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          REQUIRE_LIVE_INTEGRATION: 'true'
 
       - name: Run multi-tenant boundary gate
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm run test:multi-tenant
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          REQUIRE_LIVE_INTEGRATION: 'true'
 
       - name: Run Customer Operational Issue gate
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm run test:customer-operational-issue
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          REQUIRE_LIVE_INTEGRATION: 'true'
 
       - name: Run operational verification evidence gate
+        if: steps.credentials.outputs.run_live_gate == 'true'
         run: npm run test:verification-evidence
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          SUPABASE_TEST_URL: ${{ secrets.SUPABASE_TEST_URL }}
+          SUPABASE_TEST_ANON_KEY: ${{ secrets.SUPABASE_TEST_ANON_KEY }}
+          SUPABASE_TEST_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_TEST_SERVICE_ROLE_KEY }}
+          REQUIRE_LIVE_INTEGRATION: 'true'

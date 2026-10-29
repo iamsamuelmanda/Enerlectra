@@ -35,4 +35,4 @@ after insert or update of status on public.situations
 for each row execute function private.record_situation_status_history();
 
 revoke insert on public.situation_history from authenticated;
-drop policy situation_history_insert on public.situation_history;
+drop policy if exists situation_history_insert on public.situation_history;

@@ -14,6 +14,9 @@ create table if not exists public.operating_model_profiles (
 
 create table if not exists public.operating_model_business_models (
   id uuid primary key default gen_random_uuid(),
+  -- Added nullable here because the tenant-scope backfill is applied in migration 044.
+  -- The RLS policies in this migration need the column to exist from the first pass.
+  organization_id uuid references public.organizations(id) on delete cascade,
   operating_model_profile_id uuid not null references public.operating_model_profiles(id) on delete cascade,
   business_model_key text not null,
   is_primary boolean not null default false,

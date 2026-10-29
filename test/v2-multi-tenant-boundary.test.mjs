@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 const url = process.env.SUPABASE_URL;
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const anonKey = process.env.SUPABASE_ANON_KEY;
+const apiBaseUrl = (process.env.ONBOARDING_TEST_API_URL || 'http://127.0.0.1:4173').replace(/\/+$/, '');
 const enabled = Boolean(url && serviceRoleKey && anonKey);
 if (!enabled && process.env.REQUIRE_LIVE_INTEGRATION === 'true') {
   throw new Error('REQUIRE_LIVE_INTEGRATION=true but Set SUPABASE_URL, SUPABASE_ANON_KEY and SUPABASE_SERVICE_ROLE_KEY. are not all configured');
@@ -48,7 +49,8 @@ if (enabled) {
       password,
     });
     assert.ifError(error);
-    return client;
+    assert.ok(data.session?.access_token, 'sign-in must return an access token');
+    return { client, accessToken: data.session.access_token };
   }
 
   async function seedTenant(label, authId) {
@@ -95,39 +97,39 @@ if (enabled) {
     }).select('id').single();
     assert.ifError(siteError);
 
-    const { data: issue, error: issueError } = await admin.rpc('create_customer_operational_issue', {
-      p_organization_id: org.id,
-      p_actor_id: actor.id,
-      p_title: `Tenant ${label} situation`,
-      p_summary: `isolated tenant test ${label}`,
-      p_severity: 'HIGH',
-      p_customer_id: customer.id,
-      p_site_id: site.id,
-      p_asset_id: null,
-      p_observation_type: 'MULTI_TENANT_GATE',
-      p_observation_value: { label, runId },
-      p_source: 'test',
-      p_work_type: 'INVESTIGATE',
-      p_priority: 'HIGH',
-      p_assigned_actor_id: null,
-      p_idempotency_key: `multi-tenant-${label}-${runId}`,
-      p_correlation_id: null,
-      p_recommendation_type: 'INSPECT',
-      p_recommendation_summary: `Inspect tenant ${label}`,
-      p_recommendation_rationale: 'Multi-tenant regression fixture',
-      p_recommendation_confidence: 1,
-      p_recommendation_context: { test: true },
+    const signedIn = await signIn(label);
+    const response = await fetch(`${apiBaseUrl}/api/operational-issues`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${signedIn.accessToken}`,
+        'content-type': 'application/json',
+        'x-organization-id': org.id,
+      },
+      body: JSON.stringify({
+        title: `Tenant ${label} situation`,
+        summary: `isolated tenant test ${label}`,
+        severity: 'HIGH',
+        customerId: customer.id,
+        siteId: site.id,
+        observationType: 'MULTI_TENANT_GATE',
+        observationValue: { label, runId },
+        source: 'test',
+        workType: 'INVESTIGATE',
+        priority: 'HIGH',
+        idempotencyKey: `multi-tenant-${label}-${runId}`,
+      }),
     });
-    assert.ifError(issueError);
-    const row = Array.isArray(issue) ? issue[0] : issue;
-    assert.ok(row?.situation_id);
-    assert.ok(row?.work_item_id);
-    situationIds[label] = row.situation_id;
-    workItemIds[label] = row.work_item_id;
+    const issue = await response.json();
+    assert.equal(response.status, 201, `operational issue API failed: ${JSON.stringify(issue)}`);
+    assert.ok(issue.situationId);
+    assert.ok(issue.workItemId);
+    situationIds[label] = issue.situationId;
+    workItemIds[label] = issue.workItemId;
   }
 
   async function selectVisible(client, table, id) {
-    const { data, error } = await client.from(table).select('id,organization_id').eq('id', id);
+    const columns = table === 'organizations' ? 'id' : 'id,organization_id';
+    const { data, error } = await client.from(table).select(columns).eq('id', id);
     assert.ifError(error);
     return data;
   }
@@ -140,21 +142,39 @@ if (enabled) {
 
   after(async () => {
     for (const id of Object.values(orgs)) {
-      await admin.from('organizations').delete().eq('id', id);
+      const pending = await admin.from('organizations')
+        .update({ onboarding_state: 'PENDING_AUTHORITY' }).eq('id', id);
+      assert.ifError(pending.error);
+      const invitations = await admin.from('organization_invitations').delete().eq('organization_id', id);
+      assert.ifError(invitations.error);
+      const { data: memberships, error: lookupError } = await admin
+        .from('memberships').select('id').eq('organization_id', id);
+      assert.ifError(lookupError);
+      const membershipIds = (memberships ?? []).map((row) => row.id);
+      if (membershipIds.length) {
+        const roles = await admin.from('membership_roles').delete().in('membership_id', membershipIds);
+        assert.ifError(roles.error);
+      }
+      const deletedMemberships = await admin.from('memberships').delete().eq('organization_id', id);
+      assert.ifError(deletedMemberships.error);
+      const deletedOrganization = await admin.from('organizations').delete().eq('id', id);
+      assert.ifError(deletedOrganization.error);
     }
     for (const user of Object.values(users)) {
-      await admin.from('actors').delete().eq('auth_user_id', user.id);
-      await admin.auth.admin.deleteUser(user.id);
+      const actorDelete = await admin.from('actors').delete().eq('auth_user_id', user.id);
+      assert.ifError(actorDelete.error);
+      const userDelete = await admin.auth.admin.deleteUser(user.id);
+      assert.ifError(userDelete.error);
     }
   });
 
   test('each authenticated tenant sees its own organization and none of the other tenant', async () => {
     const [a, b] = await Promise.all([signIn('a'), signIn('b')]);
 
-    const aOrg = await selectVisible(a, 'organizations', orgs.a);
-    const aOtherOrg = await selectVisible(a, 'organizations', orgs.b);
-    const bOrg = await selectVisible(b, 'organizations', orgs.b);
-    const bOtherOrg = await selectVisible(b, 'organizations', orgs.a);
+    const aOrg = await selectVisible(a.client, 'organizations', orgs.a);
+    const aOtherOrg = await selectVisible(a.client, 'organizations', orgs.b);
+    const bOrg = await selectVisible(b.client, 'organizations', orgs.b);
+    const bOtherOrg = await selectVisible(b.client, 'organizations', orgs.a);
 
     assert.equal(aOrg.length, 1);
     assert.equal(aOtherOrg.length, 0);
@@ -166,8 +186,8 @@ if (enabled) {
     const [a, b] = await Promise.all([signIn('a'), signIn('b')]);
 
     for (const [client, own, other] of [
-      [a, 'a', 'b'],
-      [b, 'b', 'a'],
+      [a.client, 'a', 'b'],
+      [b.client, 'b', 'a'],
     ]) {
       assert.equal((await selectVisible(client, 'customers', customerIds[own])).length, 1);
       assert.equal((await selectVisible(client, 'customers', customerIds[other])).length, 0);
@@ -179,7 +199,7 @@ if (enabled) {
   });
 
   test('forged cross-tenant inserts are rejected by RLS', async () => {
-    const a = await signIn('a');
+    const { client: a } = await signIn('a');
 
     const { data, error } = await a.from('situations').insert({
       organization_id: orgs.b,
@@ -194,7 +214,7 @@ if (enabled) {
   });
 
   test('forged cross-tenant updates cannot move tenant-owned data', async () => {
-    const a = await signIn('a');
+    const { client: a } = await signIn('a');
 
     const { data, error } = await a.from('work_items')
       .update({ organization_id: orgs.b, title: 'forged tenant reassignment' })
@@ -210,11 +230,11 @@ if (enabled) {
       .single();
     assert.ifError(persistedError);
     assert.equal(persisted.organization_id, orgs.a);
-    assert.equal(persisted.title, `Tenant a work`);
+    assert.equal(persisted.title, `Tenant a situation`);
   });
 
   test('tenant principals cannot delete the other tenant organization', async () => {
-    const a = await signIn('a');
+    const { client: a } = await signIn('a');
     const { data, error } = await a.from('organizations').delete().eq('id', orgs.b).select('id');
     assert.ok(error || !data?.length, 'cross-tenant organization delete unexpectedly succeeded');
 

@@ -75,7 +75,11 @@ export async function createCustomerOperationalIssue(
   });
 
   if (error) {
-    throw new Error(`Failed to create customer operational issue: ${error.message}`);
+    // Preserve only the structured database code for server-side diagnostics.
+    // The route deliberately does not return the provider message to clients.
+    const failure = new Error('Customer operational issue transaction failed');
+    Object.assign(failure, { code: error.code ?? 'DATABASE_ERROR' });
+    throw failure;
   }
 
   const row = Array.isArray(data) ? data[0] : data;

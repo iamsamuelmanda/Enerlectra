@@ -75,7 +75,7 @@ export async function resolveChannelTenantContext(
 
   const memberships = await client
     .from('memberships')
-    .select('id, organization_id, role_id, status, organizations!inner(id,status), roles!inner(key)')
+    .select('id, organization_id, role_id, status, organizations!inner(id,status), roles!memberships_role_id_fkey!inner(key)')
     .eq('actor_id', actor.data.id)
     .eq('status', 'ACTIVE');
 

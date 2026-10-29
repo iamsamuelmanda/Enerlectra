@@ -32,6 +32,7 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
     const accessToken =
       authorization?.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
 
+    let failureStage = 'tenant_context';
     try {
       const tenant = await tenantResolver.resolve({
         accessToken,
@@ -82,6 +83,7 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
         });
       }
 
+      failureStage = 'issue_transaction';
       const result = await createCustomerOperationalIssue(db, tenant, {
         title: body.title.trim(),
         summary: typeof body.summary === 'string' ? body.summary : undefined,
@@ -143,6 +145,23 @@ export function createCustomerOperationalIssuesRouter(db: SupabaseClient): Route
           code: matchedCode,
         });
       }
+
+      const errorCode = error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+        ? error.code
+        : undefined;
+      const correlationId = typeof req.headers['x-correlation-id'] === 'string'
+        ? req.headers['x-correlation-id']
+        : undefined;
+      // Log identifiers and structured codes only; never log payloads, tokens, SQL,
+      // or raw provider messages.
+      console.error(JSON.stringify({
+        event: 'customer_operational_issue_failed',
+        requestId,
+        correlationId,
+        errorType: error instanceof Error ? error.name : typeof error,
+        databaseCode: errorCode,
+        failureStage,
+      }));
 
       return res.status(500).json({
         error: 'Failed to create customer operational issue',
