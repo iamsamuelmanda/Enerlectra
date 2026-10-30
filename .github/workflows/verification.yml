@@ -1,0 +1,102 @@
+name: Enerlectra verification
+
+on:
+  push:
+    branches:
+      - reconstruction/platform-identity-boundary
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: enerlectra-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  root-tests:
+    name: Backend tests and server typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: node --version && npm --version
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck:server
+
+  core-checks:
+    name: Enerlectra Core build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: enerlectra-core/package-lock.json
+      - run: npm --prefix enerlectra-core ci
+      - run: npm --prefix enerlectra-core run build
+
+  client-checks:
+    name: Client typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+      - run: npm ci
+      - run: npm --prefix client ci
+      - run: npm run typecheck:client
+      - run: npm run build:client
+
+  telegram-bot-checks:
+    name: Telegram bot typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            integrations/enerlectra-bot/package-lock.json
+      - run: npm ci
+      - run: npm --prefix integrations/enerlectra-bot ci
+      - run: npm run typecheck:telegram-bot
+
+  security-audit:
+    name: Dependency security audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            client/package-lock.json
+            integrations/enerlectra-bot/package-lock.json
+            enerlectra-core/package-lock.json
+      - run: npm ci
+      - run: npm audit --audit-level=high
+      - run: npm --prefix client ci
+      - run: npm --prefix client audit --audit-level=high
+      - run: npm --prefix integrations/enerlectra-bot ci
+      - run: npm --prefix integrations/enerlectra-bot audit --audit-level=high
+      - run: npm --prefix enerlectra-core ci
+      - run: npm --prefix enerlectra-core audit --audit-level=high
