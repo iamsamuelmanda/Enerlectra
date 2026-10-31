@@ -36,9 +36,7 @@ import settlementRoutes from './routes/settlement.js';
 // ──────────────────────────────────────────────────────────────
 // Import background jobs
 // ──────────────────────────────────────────────────────────────
-import './jobs/settlementCron.js';
 import './jobs/matchingCron.js';
-import './jobs/payoutProcessorCron.js';
 
 // ──────────────────────────────────────────────────────────────
 // Import shared services (used directly in endpoints)
