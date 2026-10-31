@@ -3,7 +3,7 @@ import { BaseDomainEvent } from './event-types.js';
 
 // Pull connection credentials straight from your environmental configuration variables
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY; 
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY; 
 
 // 🛡️ SAFETY GUARD: Crash loudly if these are missing so we know exactly what's wrong
 if (!supabaseUrl || !supabaseKey) {
