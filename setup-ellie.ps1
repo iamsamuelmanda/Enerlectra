@@ -271,7 +271,7 @@ const router = Router();
 
 const supabase = createClient(
   process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // POST /api/readings/ingest
@@ -723,7 +723,7 @@ Write-Host "  2. Run: database/migrations/001_energy_readings.sql"
 Write-Host ""
 Write-Host "Phase 2: API" -ForegroundColor Cyan
 Write-Host "  1. Update server/index.ts (see server/index.update.txt)"
-Write-Host "  2. Ensure SUPABASE_URL and SUPABASE_SERVICE_KEY are in .env"
+Write-Host "  2. Ensure SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are in .env"
 Write-Host "  3. Start server: npm run dev"
 Write-Host ""
 Write-Host "Phase 3: Bot" -ForegroundColor Cyan
