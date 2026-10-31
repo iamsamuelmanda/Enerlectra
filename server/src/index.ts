@@ -91,9 +91,9 @@ const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 // Supabase client (service role – bypasses RLS)
 // ──────────────────────────────────────────────────────────────
 let supabase: any = null;
-if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_KEY) {
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   try {
-    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+    supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
     logger.info('✅ Supabase connected');
   } catch (error) {
     logger.warn('⚠️ Supabase not configured, running in demo mode');
