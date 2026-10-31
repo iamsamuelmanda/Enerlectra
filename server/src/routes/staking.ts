@@ -5,7 +5,7 @@ import { LedgerService } from 'enerlectra-core';
 import crypto from 'node:crypto';
 
 const router = Router();
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_KEY!);
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 const MINIMUM_STAKE = parseInt(process.env.MINIMUM_STAKE_PCU || '100');
 const VALIDATOR_REWARD = parseFloat(process.env.VALIDATOR_REWARD_PCT || '0.05');
