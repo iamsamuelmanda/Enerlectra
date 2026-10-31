@@ -16,13 +16,15 @@ config({ path: rootEnvPath });
 config({ path: serverEnvPath, override: true });
 
 const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_KEY;
+// Prefer the canonical variable; retain the legacy name during migration.
+const supabaseKey =
+  process.env.SUPABASE_SERVICE_ROLE_KEY ?? process.env.SUPABASE_SERVICE_KEY;
 
 if (!supabaseUrl || !supabaseKey) {
   console.error('ENV paths checked:', rootEnvPath, serverEnvPath);
-  console.error('Available:', Object.keys(process.env).filter(k => k.includes('SUPABASE')));
+  console.error('Available Supabase variable names:', Object.keys(process.env).filter(k => k.includes('SUPABASE')));
   throw new Error(
-    `SUPABASE_URL and SUPABASE_SERVICE_KEY must be set in .env (checked: ${rootEnvPath})`
+    `SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY (or legacy SUPABASE_SERVICE_KEY) must be set (checked: ${rootEnvPath})`
   );
 }
 
